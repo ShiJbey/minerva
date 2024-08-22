@@ -1,0 +1,175 @@
+farming:
+  name: Farming
+  description: >-
+    This is a measure of how good a character is at farming
+  tags: [ "trade" ]
+
+cooking:
+  name: Cooking
+  description: >-
+    This is a measure of how good a character is at cooking
+  tags: [ "trade" ]
+
+blacksmithing:
+  name: Blacksmithing
+  description: >-
+    This is a measure of how good a character is at blacksmithing
+  tags: [ "trade" ]
+
+painting:
+  name: Painting
+  description: >-
+    This is a measure of how good a character is at painting.
+  tags: [ "trade" ]
+
+calligraphy:
+  name: Calligraphy
+  description: >-
+    This is a measure of how good a character is at calligraphy.
+  tags: [ "trade" ]
+
+acting:
+  name: Acting
+  description: >-
+    This is a measure of how good a character get get into
+    character and fake situations.
+  tags: [ "trade" ]
+
+alcohol_making:
+  name: Alcohol Making
+  description: >-
+    This is a measure of how good a character is at making alcohol.
+
+textile_making:
+  name: Textile Making
+  description: >-
+    This is a measure of how good a character is at weaving beautiful
+    patterns into fabrics.
+  tags: [ "trade" ]
+
+hair_styling:
+  name: Hair Styling
+  description: >-
+    This is a measure of how good a character is styling and barbering hair.
+  tags: [ "trade" ]
+
+tailoring:
+  name: Tailoring
+  description: >-
+    This is a measure of a character's ability to sew and mend clothes.
+  tags: [ "trade" ]
+
+fishing:
+  name: Fishing
+  description: >-
+    This is a measure of a character's ability to fish.
+  tags: [ "trade" ]
+
+shoe_making:
+  name: Shoe Making
+  description: >-
+    This is a measure of a character's ability to make and fix shoes.
+  tags: [ "trade" ]
+
+seduction:
+  name: Seduction
+  description: >-
+    This is a measure of a character's ability to seduce a target.
+  tags: [ "trade" ]
+
+flower_breathing:
+  name: Flower Breathing
+  description: >-
+    Flower Breathing is derived from Water Breathing. It mimics flowers
+    and fruits.
+  tags: [ "breathing-style" ]
+
+love_breathing:
+  name: Love Breathing
+  description: >-
+    Love Breathing is derived from Flame Breathing. It is based on the emotion of love
+    and relies on wide, winding, and weaving slashes.
+  tags: [ "breathing-style" ]
+
+flame_breathing:
+  name: Flame Breathing
+  description: >-
+    Flame Breathing is derived from Sun Breathing. It mimics the power of flames.
+  tags: [ "breathing-style" ]
+
+sun_breathing:
+  name: Sun Breathing
+  description: >-
+    Sun Breathing is the original Breathing style from which all others derive.
+  tags: [ "breathing-style" ]
+
+sound_breathing:
+  name: Sound Breathing
+  description: >-
+    Sound Breathing is derived from Thunder Breathing. It mimics sound and
+    its disorientating loudness.
+  tags: [ "breathing-style" ]
+
+thunder_breathing:
+  name: Thunder Breathing
+  description: >-
+    Thunder Breathing is derived from Sun Breathing. It mimics the power of
+    lightning with swift strikes and movements.
+  tags: [ "breathing-style" ]
+
+wind_breathing:
+  name: Wind Breathing
+  description: >-
+    Wind Breathing is derived from Sun Breathing. It mimics powerful torrents
+    of air and whirlwinds.
+  tags: [ "breathing-style" ]
+
+water_breathing:
+  name: Water Breathing
+  description: >-
+    Water Breathing is one of the five main Breathing Styles directly
+    derived from Sun Breathing. This style mimics the flow, flexibility,
+    and adaptability of water.
+  tags: [ "breathing-style" ]
+
+insect_breathing:
+  name: Insect Breathing
+  description: >-
+    Insect Breathing is derived from Flower Breathing. It mimics the lethal
+    strings of insects.
+  tags: [ "breathing-style" ]
+
+serpent_breathing:
+  name: Serpent Breathing
+  description: >-
+    Serpent Breathing is derived from Water Breathing. It mimics the
+    slithering motions of serpents and snakes.
+  tags: [ "breathing-style" ]
+
+moon_breathing:
+  name: Moon Breathing
+  description: >-
+    Moon Breathing is derived from Sun Breathing. Its movements mimic the
+    shape of the crescent moon.
+  tags: [ "breathing-style" ]
+
+stone_breathing:
+  name: Stone Breathing
+  description: >-
+    Stone Breathing is derived from Sun Breathing. It mimics earth and stone
+    with powerful and sturdy attacks.
+  tags: [ "breathing-style" ]
+
+mist_breathing:
+  name: Mist Breathing
+  description: >-
+    Mist Breathing is derived from Wind Breathing. It mimics the obscurity
+    of mist.
+  tags: [ "breathing-style" ]
+
+breast_breathing:
+  name: Beast Breathing
+  description: >-
+    Beast Breathing is a distant derivation of Wind Breathing. It mimics the
+    unpredictability, ferociousness, and wild nature of wild animals.
+  tags: [ "breathing-style" ]

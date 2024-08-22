@@ -1,0 +1,105 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "minerva"
+description = "A agent-based simulation for procedurally-generated story worlds."
+authors = [{ name = "Shi Johnson-Bey", email = "shijbey@gmail.com" }]
+readme = "README.md"
+dynamic = ["version"]
+requires-python = ">=3.8"
+keywords = [
+    "social simulation",
+    "games",
+    "simulation",
+    "artificial intelligence",
+    "agent-based modeling",
+    "multiagent systems",
+    "emergent narrative",
+    "narrative generation",
+    "interactive storytelling",
+    "settlement simulation",
+]
+license = { file = "LICENSE.md" }
+classifiers = [
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Games/Entertainment :: Simulation",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Artificial Life",
+    "Topic :: Sociology",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Typing :: Typed",
+]
+dependencies = [
+    "esper==2.*",
+    "ordered-set==4.*",
+    "tabulate==0.9.*",
+    "PyYAML==6.0.*",
+    "tqdm==4.*",
+    "pydantic==2.*",
+    "attrs==23.*",
+]
+
+[project.optional-dependencies]
+development = ["isort", "ruff", "build", "pytest"]
+
+[project.urls]
+"Homepage" = "https://github.com/ShiJbey/minerva"
+"Bug Tracker" = "https://github.com/ShiJbey/minerva/issues"
+"Repository" = "https://github.com/ShiJBey/minerva.git"
+"Changelog" = "https://github.com/ShiJbey/minerva/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = { attr = "minerva.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.isort]
+profile = "black"
+default_section = "THIRDPARTY"
+known_first_party = "minerva"
+src_paths = ["src/minerva", "tests", "samples"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+
+[tool.pyright]
+reportMissingTypeStubs = "none"
+
+[tool.pylint.design]
+# Minimum number of public methods for a class (see R0903).
+min-public-methods = 0
+# Maximum number of public methods for a class (see R0904).
+max-public-methods = 25
+# Maximum number of attributes for a class (see R0902).
+max-attributes = 10
+# Maximum number of arguments for function / method.
+max-args = 8
+
+[tool.pylint.basic]
+# Allow us to use "_T1, _T2, _T3, ..." as typevar names
+typevar-rgx = "^_{0,2}(?!T[A-Z])(?:[A-Z]+|(?:[A-Z]+[a-z]+)+T?(?<!Type))(?:_co(?:ntra)?)?_?[0-9]*$"
+
+[tool.pylint.similarities]
+# Increases the default threshold for declaring code similarity
+min-similarity-lines = 30

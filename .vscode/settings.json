@@ -1,0 +1,28 @@
+{
+  "cSpell.words": [
+    "Addam",
+    "alicent",
+    "Alyn",
+    "baela",
+    "corlys",
+    "Cristen",
+    "harwin",
+    "Hightower",
+    "Jacaerys",
+    "jace",
+    "laena",
+    "leanor",
+    "marilda",
+    "rhaenyra",
+    "Rhaenys",
+    "Targaryen",
+    "Velaryon",
+    "Viserys"
+  ],
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  }
+}

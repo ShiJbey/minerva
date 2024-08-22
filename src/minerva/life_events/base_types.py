@@ -1,0 +1,149 @@
+"""Life Event System.
+
+Life events are the building block of story generation. We set them apart from the
+ECS-related events by requiring that each have a timestamp of the in-simulation date
+they were emitted. Life events are tracked in two places -- the GlobalEventHistory and
+in characters' PersonalEventHistories.
+
+"""
+
+from __future__ import annotations
+
+import logging
+from abc import ABC
+from itertools import count
+from typing import Any, ClassVar, Iterable, Optional, Sequence
+
+from minerva.datetime import SimDate
+from minerva.ecs import Component, Event, GameObject, World
+
+_logger = logging.getLogger(__name__)
+
+
+class LifeEvent(Event, ABC):
+    """An event of significant importance in a GameObject's life"""
+
+    __event_type__: str = ""
+    """ID used to map the event to considerations and listeners"""
+
+    _next_life_event_id: ClassVar[count[int]] = count()
+
+    __slots__ = ("life_event_id", "timestamp")
+
+    life_event_id: int
+    """Numerical ID of this life event."""
+    timestamp: SimDate
+    """The timestamp of the event"""
+
+    def __init__(self, world: World, **kwargs: Any) -> None:
+        if not type(self).__event_type__:
+            raise ValueError(f"Please specify __event_id__ for class {type(self)}")
+        super().__init__(self.__event_type__, world, **kwargs)
+        self.life_event_id = next(self._next_life_event_id)
+        self.timestamp = world.resources.get_resource(SimDate).copy()
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(id={self.life_event_id}, "
+            f"event_type={self.event_type!r}, timestamp={self.timestamp!r})"
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"{self.__class__.__name__}(id={self.life_event_id}, "
+            f"event_type={self.event_type!r}, timestamp={self.timestamp!r})"
+        )
+
+    @classmethod
+    def event_name(cls) -> str:
+        """Get the event type of this class."""
+        return cls.__event_type__
+
+
+class EventHistory(Component):
+    """Stores a record of all past events for a specific GameObject."""
+
+    __slots__ = ("_history",)
+
+    _history: list[LifeEvent]
+    """A list of events in chronological-order."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._history = []
+
+    @property
+    def history(self) -> Iterable[LifeEvent]:
+        """A collection of events in chronological-order."""
+        return self._history
+
+    def append(self, event: LifeEvent) -> None:
+        """Record a new life event.
+
+        Parameters
+        ----------
+        event
+            The event to record.
+        """
+        self._history.append(event)
+
+    def __str__(self) -> str:
+        return self.__repr__()
+
+    def __repr__(self) -> str:
+        history = [f"{type(e).__name__}({e.life_event_id})" for e in self._history]
+        return f"{self.__class__.__name__}({history})"
+
+
+class GlobalEventHistory:
+    """Stores a record of all past life events."""
+
+    __slots__ = ("history",)
+
+    history: list[LifeEvent]
+    """All recorded life events mapped to their event ID."""
+
+    def __init__(self) -> None:
+        self.history = []
+
+    def append(self, event: LifeEvent) -> None:
+        """Record a new life event.
+
+        Parameters
+        ----------
+        event
+            The event to record.
+        """
+        self.history.append(event)
+
+
+def dispatch_life_event(
+    event: LifeEvent,
+    gameobjects: Optional[Sequence[GameObject]] = None,
+    skip_logging: bool = False,
+) -> None:
+    """Dispatch a life event to event listeners.
+
+    Parameters
+    ----------
+    event
+        The event to dispatch.
+    gameobjects
+        GameObjects to locally dispatch the event from. The event is also saved in their
+        personal event history components.
+    skip_logging
+        Prevents this event from appearing in the global event history, but the event
+        is still dispatched to listeners.
+    """
+
+    if not skip_logging:
+        event.world.resources.get_resource(GlobalEventHistory).append(event)
+
+        _logger.info("[%s]: %s", str(event.timestamp), str(event))
+
+    if gameobjects:
+        for gameobject in gameobjects:
+            gameobject.get_component(EventHistory).append(event)
+            gameobject.dispatch_event(event)
+
+    event.world.events.dispatch_event(event)

@@ -1,0 +1,159 @@
+---
+# Business Types inspired by Demon Slayer.
+
+izakaya:
+  spawn_frequency: 1
+  name: Izakaya
+  owner_type: restaurateur
+  employee_types:
+    chef: 1
+    waitstaff: 1
+
+ryokan:
+  spawn_frequency: 1
+  name: Ryokan
+  owner_type: inn_keeper
+  employee_types:
+    maid: 1
+  tags:
+    - lodging
+    - hospitality
+    - demon_slayer
+
+sake_brewery:
+  name: Sake Brewery
+  owner_type: sake_brewer
+  employee_types:
+    sake_brewer: 2
+  tags:
+    - food
+    - industrial
+    - demon_slayer
+
+tea_house:
+  name: Tea House
+  owner_type: restaurateur
+  employee_types:
+    tea_apprentice: 1
+  tags:
+    - restaurant
+    - demon_slayer
+
+kimono_shop:
+  name: Kimono Shop
+  owner_type: tailor
+  employee_types:
+    tailors_apprentice: 1
+  tags:
+    - clothing
+    - demon_slayer
+    - artisan
+
+restaurant:
+  name: Restaurant
+  owner_type: restaurateur
+  employee_types:
+    chef: 1
+    waitstaff: 2
+  tags:
+    - demon_slayer
+    - restaurant
+
+bookstore:
+  name: Book Store
+  owner_type: book_binder
+  tags:
+    - demon_slayer
+    - store
+
+art_studio:
+  name: Art Studio
+  owner_type: painter
+  tags:
+    - demon_slayer
+    - artisan
+
+barber_shop:
+  name: Barber Shop
+  owner_type: barber
+  employee_types:
+    barber: 2
+  tags:
+    - demon_slayer
+    - wellbeing
+
+blacksmith_shop:
+  name: Blacksmith Shop
+  owner_type: blacksmith
+  employee_types:
+    blacksmiths_apprentice: 1
+  tags:
+    - demon_slayer
+    - artisan
+
+tailor_shop:
+  name: Tailor Shop
+  owner_type: tailor
+  employee_types:
+    tailors_apprentice: 1
+  tags:
+    - clothing
+    - demon_slayer
+    - artisan
+
+cobbler_shop:
+  name: Cobbler Shop
+  owner_type: cobbler
+  employee_types:
+    cobblers_apprentice: 1
+  tags:
+    - clothing
+    - demon_slayer
+    - artisan
+
+fish_stand:
+  name: Fish Stand
+  owner_type: fisherman
+  employees:
+    fisherman: 2
+  tags:
+    - demon_slayer
+    - restaurant
+
+farm:
+  name: Farm
+  owner_type: farmer
+  employee_types:
+    farmhand: 2
+  tags:
+    - demon_slayer
+    - agricultural
+
+bath_house:
+  name: Bath House
+  owner_type: bath_house_owner
+  employee_types:
+    bath_attendant: 2
+  tags:
+    - wellbeing
+    - demon_slayer
+    - entertainment
+
+theater:
+  name: Theater
+  owner_type: theater_owner
+  employee_types:
+    actor: 2
+  tags:
+    - demon_slayer
+    - entertainment
+
+martial_arts_dojo:
+  name: martial_arts_dojo
+  owner_type: martial_arts_master
+  employee_types:
+    ranged_weapons_specialist: 1
+    close_combat_specialist: 1
+  tags:
+    - demon_slayer
+    - recreation
