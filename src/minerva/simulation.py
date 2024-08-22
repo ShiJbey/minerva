@@ -22,28 +22,28 @@ from minerva.datetime import SimDate
 from minerva.ecs import GameObject, World
 from minerva.effects.base_types import EffectLibrary
 from minerva.effects.effects import (
-    AddStatModifierFactory,
     AddRelationshipModifierFactory,
+    AddStatModifierFactory,
 )
 from minerva.life_events.base_types import GlobalEventHistory
 from minerva.pcg.character import CharacterNameFactory, ClanNameFactory
 from minerva.pcg.settlement import SettlementNameFactory
 from minerva.preconditions.base_types import PreconditionLibrary
 from minerva.preconditions.preconditions import (
-    HasTraitPreconditionFactory,
-    OwnerHasTraitPreconditionFactory,
-    TargetHasTraitPreconditionFactory,
     AreOppositeSexPreconditionFactory,
     AreSameSexPreconditionFactory,
-    StatRequirementPreconditionFactory,
-    OwnerStatRequirementFactory,
-    TargetStatRequirementFactory,
-    LifeStageRequirementFactory,
-    TargetLifeStageRequirementFactory,
-    OwnerLifeStageRequirementFactory,
+    HasTraitPreconditionFactory,
     IsSexPreconditionFactory,
-    TargetIsSexPreconditionFactory,
+    LifeStageRequirementFactory,
+    OwnerHasTraitPreconditionFactory,
     OwnerIsSexPreconditionFactory,
+    OwnerLifeStageRequirementFactory,
+    OwnerStatRequirementFactory,
+    StatRequirementPreconditionFactory,
+    TargetHasTraitPreconditionFactory,
+    TargetIsSexPreconditionFactory,
+    TargetLifeStageRequirementFactory,
+    TargetStatRequirementFactory,
 )
 from minerva.relationships.base_types import SocialRuleLibrary
 from minerva.sim_db import SimDB
@@ -149,6 +149,9 @@ class Simulation:
         )
         self.world.systems.add_system(
             minerva.systems.CharacterAgingSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.CharacterLifespanSystem(),
         )
 
     def _init_logging(self) -> None:

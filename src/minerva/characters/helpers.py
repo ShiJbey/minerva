@@ -21,7 +21,6 @@ from minerva.datetime import SimDate
 from minerva.ecs import Event, GameObject
 from minerva.sim_db import SimDB
 
-
 # ===================================
 # Clan Functions
 # ===================================
@@ -225,7 +224,7 @@ def set_family_clan(
     db = family.world.resources.get_resource(SimDB).db
     db.execute(
         """UPDATE families SET clan=? WHERE uid=?;""",
-        (clan.uid, family.uid),
+        (clan, family),
     )
     db.commit()
 
@@ -855,7 +854,7 @@ def set_relation_lover(character: GameObject, lover: Optional[GameObject]) -> No
     db.commit()
 
 
-def set_is_alive(character: GameObject, is_alive: bool) -> None:
+def set_character_alive(character: GameObject, is_alive: bool) -> None:
     """Set is_alive status of a character."""
 
     character.get_component(Character).is_alive = is_alive

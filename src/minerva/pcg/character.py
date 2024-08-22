@@ -261,7 +261,9 @@ def generate_character(
     stats = obj.add_component(StatManager())
 
     # Create all the stat components and add them to the stats class for str look-ups
-    stats.stats["Lifespan"] = obj.add_component(Lifespan())
+    stats.stats["Lifespan"] = obj.add_component(
+        Lifespan(rng.randint(chosen_species.lifespan[0], chosen_species.lifespan[1]))
+    )
     stats.stats["Fertility"] = obj.add_component(Fertility())
     stats.stats["Diplomacy"] = obj.add_component(Diplomacy())
     stats.stats["Martial"] = obj.add_component(Martial())

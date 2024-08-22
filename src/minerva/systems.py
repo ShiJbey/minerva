@@ -2,15 +2,18 @@
 
 import random
 
+from minerva.actions.actions import Die
 from minerva.characters.components import (
     Character,
     Family,
+    Fertility,
+    Lifespan,
     LifeStage,
     Sex,
     SexualOrientation,
-    Fertility,
 )
 from minerva.characters.helpers import (
+    set_character_age,
     set_character_biological_father,
     set_character_birth_clan,
     set_character_birth_family,
@@ -29,20 +32,14 @@ from minerva.characters.helpers import (
     set_household_family,
     set_household_head,
     set_relation_child,
+    set_relation_sibling,
     set_relation_spouse,
-    set_character_age, set_relation_sibling,
 )
 from minerva.config import WORLD_SIZE, Config
-from minerva.datetime import SimDate, MONTHS_PER_YEAR
+from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, GameObject, System, World
 from minerva.effects.base_types import EffectLibrary
-from minerva.life_events.aging import (
-    BecomeAdultEvent,
-    BecomeYoungAdultEvent,
-    BecomeAdolescentEvent,
-    BecomeSeniorEvent,
-)
-from minerva.life_events.base_types import dispatch_life_event
+from minerva.life_events.aging import LifeStageChangeEvent
 from minerva.pcg.character import (
     generate_character,
     generate_child_from,
@@ -55,7 +52,7 @@ from minerva.pcg.settlement import generate_settlement
 from minerva.settlements.base_types import Settlement, WorldGrid
 from minerva.settlements.helpers import set_settlement_controlling_clan
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
-from minerva.stats.helpers import remove_status_effect
+from minerva.stats.helpers import get_stat_value, remove_status_effect
 from minerva.traits.base_types import Trait, TraitLibrary
 
 
@@ -156,13 +153,12 @@ class CharacterAgingSystem(System):
                             else species.senior_female_fertility
                         )
 
-                        fertility.base_value = min(
-                            fertility.base_value, fertility_max
-                        )
+                        fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        evt = BecomeSeniorEvent(character.gameobject)
                         character.life_stage = LifeStage.SENIOR
-                        dispatch_life_event(evt, [character.gameobject])
+                        LifeStageChangeEvent(
+                            character.gameobject, LifeStage.SENIOR
+                        ).dispatch()
 
                 elif age >= species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
@@ -171,15 +167,12 @@ class CharacterAgingSystem(System):
                             if character.sex == Sex.MALE
                             else species.adult_female_fertility
                         )
-                        fertility.base_value = min(
-                            fertility.base_value, fertility_max
-                        )
+                        fertility.base_value = min(fertility.base_value, fertility_max)
 
                         character.life_stage = LifeStage.ADULT
-                        dispatch_life_event(
-                            BecomeAdultEvent(character.gameobject),
-                            [character.gameobject],
-                        )
+                        LifeStageChangeEvent(
+                            character.gameobject, LifeStage.ADULT
+                        ).dispatch()
 
                 elif age >= species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
@@ -189,13 +182,12 @@ class CharacterAgingSystem(System):
                             else species.young_adult_female_fertility
                         )
 
-                        fertility.base_value = min(
-                            fertility.base_value, fertility_max
-                        )
+                        fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        evt = BecomeYoungAdultEvent(character.gameobject)
                         character.life_stage = LifeStage.YOUNG_ADULT
-                        dispatch_life_event(evt, [character.gameobject])
+                        LifeStageChangeEvent(
+                            character.gameobject, LifeStage.YOUNG_ADULT
+                        ).dispatch()
 
                 elif age >= species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
@@ -205,17 +197,32 @@ class CharacterAgingSystem(System):
                             else species.adolescent_female_fertility
                         )
 
-                        fertility.base_value = min(
-                            fertility.base_value, fertility_max
-                        )
+                        fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        evt = BecomeAdolescentEvent(character.gameobject)
                         character.life_stage = LifeStage.ADOLESCENT
-                        dispatch_life_event(evt, [character.gameobject])
+                        LifeStageChangeEvent(
+                            character.gameobject, LifeStage.ADOLESCENT
+                        ).dispatch()
 
                 else:
                     if character.life_stage != LifeStage.CHILD:
                         character.life_stage = LifeStage.CHILD
+
+                        LifeStageChangeEvent(
+                            character.gameobject, LifeStage.CHILD
+                        ).dispatch()
+
+
+class CharacterLifespanSystem(System):
+    """Kills of characters who have reached their lifespan."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        for _, (character, _) in world.get_components((Character, Active)):
+            life_span = get_stat_value(character.gameobject, Lifespan)
+            if character.age >= life_span:
+                Die(character.gameobject).execute()
 
 
 class InitializeWorldMap(System):

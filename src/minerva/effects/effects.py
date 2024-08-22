@@ -8,11 +8,11 @@ from typing import Any, Iterable
 
 from pydantic import ValidationError
 
-from minerva.ecs import World, GameObject
+from minerva.ecs import GameObject, World
 from minerva.effects.base_types import Effect, EffectFactory
-from minerva.preconditions.base_types import PreconditionLibrary, Precondition
+from minerva.preconditions.base_types import Precondition, PreconditionLibrary
 from minerva.relationships.base_types import RelationshipManager, RelationshipModifier
-from minerva.stats.base_types import StatModifierType, StatModifier, StatModifierData
+from minerva.stats.base_types import StatModifier, StatModifierData, StatModifierType
 from minerva.stats.helpers import add_stat_modifier, remove_stat_modifier
 
 
@@ -37,7 +37,6 @@ class AddStatModifier(Effect):
             label=label, value=value, modifier_type=modifier_type
         )
 
-    @property
     def get_description(self) -> str:
         sign = "+" if self.modifier.value > 0 else "-"
         percent_sign = (
@@ -106,7 +105,6 @@ class AddRelationshipModifier(Effect):
             modifiers=modifiers,
         )
 
-    @property
     def get_description(self) -> str:
         return self.modifier.description
 

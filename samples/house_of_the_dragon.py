@@ -4,11 +4,11 @@ import pathlib
 
 from minerva.characters.components import LifeStage, Sex, SexualOrientation
 from minerva.characters.helpers import (
+    set_character_alive,
     set_character_biological_father,
     set_character_father,
     set_character_heir,
     set_character_mother,
-    set_is_alive,
     set_relation_sibling,
     set_relation_spouse,
 )
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    set_is_alive(rhaenys, False)
+    set_character_alive(rhaenys, False)
 
     laena = generate_character(
         sim.world,
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    set_is_alive(laena, False)
+    set_character_alive(laena, False)
 
     daemon = generate_character(
         sim.world,
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    set_is_alive(viserys, False)
+    set_character_alive(viserys, False)
 
     set_character_mother(jace, rhaenyra)
     set_character_father(jace, leanor)

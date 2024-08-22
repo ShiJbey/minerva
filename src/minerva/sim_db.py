@@ -15,6 +15,9 @@ DROP TABLE IF EXISTS siblings;
 DROP TABLE IF EXISTS children;
 DROP TABLE IF EXISTS marriages;
 DROP TABLE IF EXISTS romantic_partners;
+DROP TABLE IF EXISTS life_events;
+DROP TABLE IF EXISTS life_stage_change_events;
+DROP TABLE IF EXISTS death_events;
 
 CREATE TABLE characters (
     uid INT NOT NULL PRIMARY KEY,
@@ -38,6 +41,8 @@ CREATE TABLE characters (
     birth_clan INT,
     family INT,
     birth_family INT,
+    birth_date TEXT,
+    death_date TEXT,
     FOREIGN KEY (mother) REFERENCES characters(uid),
     FOREIGN KEY (father) REFERENCES characters(uid),
     FOREIGN KEY (heir) REFERENCES characters(uid),
@@ -150,6 +155,29 @@ CREATE TABLE children (
     PRIMARY KEY(characterID, childID),
     FOREIGN KEY (characterID) REFERENCES characters(uid),
     FOREIGN KEY (childID) REFERENCES characters(uid)
+);
+
+CREATE TABLE life_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    event_type TEXT,
+    timestamp TEXT
+);
+
+CREATE TABLE life_stage_change_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    life_stage INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE death_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid)
 );
 
 """
