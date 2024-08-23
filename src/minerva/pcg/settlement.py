@@ -10,6 +10,7 @@ from minerva.ecs import GameObject, World
 from minerva.settlements.base_types import PopulationHappiness, Settlement
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatManager
+from minerva.stats.helpers import default_stat_calc_strategy
 
 
 class ISettlementFactory(ABC):
@@ -84,7 +85,7 @@ def generate_settlement(
 
     settlement_component = settlement.add_component(Settlement(name=name))
     settlement.add_component(StatManager())
-    settlement.add_component(PopulationHappiness())
+    settlement.add_component(PopulationHappiness(default_stat_calc_strategy))
     settlement.name = name
 
     rng = world.resources.get_resource(random.Random)

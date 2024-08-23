@@ -10,7 +10,7 @@ from ordered_set import OrderedSet
 
 from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject
-from minerva.stats.base_types import StatComponent
+from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
 
 class LifeStage(enum.IntEnum):
@@ -535,9 +535,10 @@ class Lifespan(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, 999_999), True)
+        super().__init__(calculation_strategy, base_value, (0, 999_999), True)
 
 
 class Fertility(StatComponent):
@@ -549,9 +550,10 @@ class Fertility(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Stewardship(StatComponent):
@@ -563,9 +565,10 @@ class Stewardship(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Martial(StatComponent):
@@ -577,9 +580,10 @@ class Martial(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Intrigue(StatComponent):
@@ -591,9 +595,10 @@ class Intrigue(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Learning(StatComponent):
@@ -605,9 +610,10 @@ class Learning(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Prowess(StatComponent):
@@ -619,9 +625,10 @@ class Prowess(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Sociability(StatComponent):
@@ -633,9 +640,10 @@ class Sociability(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Honor(StatComponent):
@@ -647,9 +655,10 @@ class Honor(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Boldness(StatComponent):
@@ -661,9 +670,10 @@ class Boldness(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Compassion(StatComponent):
@@ -675,9 +685,10 @@ class Compassion(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Diplomacy(StatComponent):
@@ -689,9 +700,10 @@ class Diplomacy(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Greed(StatComponent):
@@ -703,9 +715,10 @@ class Greed(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Rationality(StatComponent):
@@ -717,9 +730,10 @@ class Rationality(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Vengefulness(StatComponent):
@@ -731,9 +745,10 @@ class Vengefulness(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Zeal(StatComponent):
@@ -745,9 +760,10 @@ class Zeal(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class RomancePropensity(StatComponent):
@@ -759,9 +775,10 @@ class RomancePropensity(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class ViolencePropensity(StatComponent):
@@ -773,9 +790,10 @@ class ViolencePropensity(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class WantForPower(StatComponent):
@@ -787,9 +805,10 @@ class WantForPower(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class WantForChildren(StatComponent):
@@ -801,9 +820,10 @@ class WantForChildren(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class WantToWork(StatComponent):
@@ -815,9 +835,10 @@ class WantToWork(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class Luck(StatComponent):
@@ -829,9 +850,10 @@ class Luck(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
 class WantForMarriage(StatComponent):
@@ -843,6 +865,7 @@ class WantForMarriage(StatComponent):
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)

@@ -14,7 +14,7 @@ from minerva.characters.helpers import (
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject
 from minerva.life_events.aging import CharacterDeathEvent
-from minerva.relationships.base_types import deactivate_relationships
+from minerva.relationships.helpers import deactivate_relationships
 
 
 class Die(Action):

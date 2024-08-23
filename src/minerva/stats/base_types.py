@@ -12,8 +12,9 @@ https://www.youtube.com/watch?v=SH25f3cXBVc.
 from __future__ import annotations
 
 import enum
+import math
 from abc import ABC, abstractmethod
-from typing import Callable, ClassVar, Optional
+from typing import Callable, ClassVar, Optional, Protocol
 
 import attrs
 import pydantic
@@ -48,6 +49,15 @@ class StatModifier:
     source: Optional[GameObject] = None
 
 
+class IStatCalculationStrategy(Protocol):
+    """Helps calculate the value of a stat."""
+
+    @abstractmethod
+    def __call__(self, stat_component: StatComponent) -> float:
+        """Calculate the value of the stat."""
+        raise NotImplementedError()
+
+
 class StatComponent(Component, ABC):
     """A stat such as strength, reputation, or attraction.
 
@@ -65,7 +75,7 @@ class StatComponent(Component, ABC):
 
     __slots__ = (
         "base_value",
-        "value",
+        # "value",
         "cached_value",
         "modifiers",
         "active_modifiers",
@@ -73,12 +83,13 @@ class StatComponent(Component, ABC):
         "max_value",
         "is_discrete",
         "listeners",
+        "calculation_strategy",
     )
 
     base_value: float
     """The base score for this stat used by modifiers."""
-    value: float
-    """The final score of the stat clamped between the min and max values."""
+    # value: float
+    # """The final score of the stat clamped between the min and max values."""
     cached_value: Optional[float]
     """The value of the stat when it was last calculated."""
     modifiers: list[StatModifier]
@@ -93,9 +104,12 @@ class StatComponent(Component, ABC):
     """Should the final calculated stat value be converted to an int."""
     listeners: list[Callable[[GameObject, StatComponent], None]]
     """Callbacks to execute when the value changes."""
+    calculation_strategy: IStatCalculationStrategy
+    """Function used to calculate the final value of the stat."""
 
     def __init__(
         self,
+        calculation_strategy: IStatCalculationStrategy,
         base_value: float = 0,
         bounds: Optional[tuple[float, float]] = None,
         is_discrete: bool = False,
@@ -105,8 +119,9 @@ class StatComponent(Component, ABC):
         if not self.__class__.__stat_name__:
             self.__class__.__stat_name__ = self.__class__.__name__
 
+        self.calculation_strategy = calculation_strategy
         self.base_value = base_value
-        self.value = base_value
+        # self.value = base_value
         self.cached_value = None
         self.modifiers = []
         self.active_modifiers = []
@@ -118,6 +133,26 @@ class StatComponent(Component, ABC):
     def stat_name(self) -> str:
         """The name associated with this stat."""
         return self.__stat_name__
+
+    @property
+    def value(self) -> float:
+        """The final score of the stat clamped between the min and max values."""
+        final_value = self.calculation_strategy(self)
+
+        if self.max_value:
+            final_value = min(final_value, self.max_value)
+
+        if self.min_value:
+            final_value = max(final_value, self.min_value)
+
+        if self.is_discrete:
+            final_value = math.trunc(final_value)
+
+        if self.cached_value != final_value:
+            self.cached_value = final_value
+            self.on_value_changed()
+
+        return final_value
 
     def on_add(self) -> None:
         self.gameobject.get_component(StatManager).stats[self.__stat_name__] = self

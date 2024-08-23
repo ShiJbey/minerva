@@ -52,7 +52,7 @@ from minerva.pcg.settlement import generate_settlement
 from minerva.settlements.base_types import Settlement, WorldGrid
 from minerva.settlements.helpers import set_settlement_controlling_clan
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
-from minerva.stats.helpers import get_stat_value, remove_status_effect
+from minerva.stats.helpers import remove_status_effect
 from minerva.traits.base_types import Trait, TraitLibrary
 
 
@@ -219,9 +219,10 @@ class CharacterLifespanSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (character, _) in world.get_components((Character, Active)):
-            life_span = get_stat_value(character.gameobject, Lifespan)
-            if character.age >= life_span:
+        for _, (character, life_span, _) in world.get_components(
+            (Character, Lifespan, Active)
+        ):
+            if character.age >= life_span.value:
                 Die(character.gameobject).execute()
 
 

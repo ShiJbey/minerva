@@ -13,8 +13,11 @@ from minerva.relationships.base_types import (
     Romance,
     SocialRule,
     SocialRuleLibrary,
+)
+from minerva.relationships.helpers import (
     add_relationship,
     get_relationship,
+    remove_stat_modifier,
 )
 from minerva.stats.base_types import (
     StatComponent,
@@ -28,10 +31,8 @@ from minerva.stats.base_types import (
 from minerva.stats.helpers import (
     add_stat_modifier,
     add_status_effect,
-    get_relationship_stat_value,
-    get_stat_value,
+    default_stat_calc_strategy,
     has_stat_with_name,
-    remove_stat_modifier,
     remove_status_effect,
 )
 from minerva.systems import TickStatusEffectSystem
@@ -46,7 +47,9 @@ class Hunger(StatComponent):
         self,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(
+            default_stat_calc_strategy, base_value, (0, self.MAX_VALUE), True
+        )
 
 
 class HungerState(Component):
@@ -118,12 +121,12 @@ def test_get_stat() -> None:
     hunger.base_value = 10
 
     assert hunger.base_value == 10
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
 
     hunger.base_value += 100
 
     assert hunger.base_value == 110
-    assert get_stat_value(character, Hunger) == 110
+    assert hunger.value == 110
 
 
 def test_stat_change_listener() -> None:
@@ -158,12 +161,12 @@ def test_stat_change_listener() -> None:
 
     hunger.base_value = 10
 
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
     assert character.get_component(HungerState).state == "EXCELLENT"
 
     hunger.base_value = 150
 
-    assert get_stat_value(character, Hunger) == 150
+    assert hunger.value == 150
     assert character.get_component(HungerState).state == "FAMISHED"
 
 
@@ -182,13 +185,13 @@ def test_add_stat_modifier() -> None:
 
     hunger.add_modifier(StatModifier("extra-hungry", 50, StatModifierType.FLAT))
 
-    assert get_stat_value(character, Hunger) == 60
+    assert hunger.value == 60
 
     hunger.add_modifier(
         StatModifier("extra-extra-hungry", 0.5, StatModifierType.PERCENT)
     )
 
-    assert get_stat_value(character, Hunger) == 90
+    assert hunger.value == 90
 
 
 def test_remove_stat_modifier() -> None:
@@ -208,11 +211,11 @@ def test_remove_stat_modifier() -> None:
 
     hunger.add_modifier(modifier)
 
-    assert get_stat_value(character, Hunger) == 60
+    assert hunger.value == 60
 
     hunger.remove_modifier(modifier)
 
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
 
 
 def test_status_effect() -> None:
@@ -228,11 +231,11 @@ def test_status_effect() -> None:
 
     hunger.base_value = 10
 
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
 
     add_status_effect(character, HighMetabolismStatusEffect())
 
-    assert get_stat_value(character, Hunger) == 80
+    assert hunger.value == 80
 
 
 def test_remove_status_effect() -> None:
@@ -248,17 +251,17 @@ def test_remove_status_effect() -> None:
 
     hunger.base_value = 10
 
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
 
     status_effect = HighMetabolismStatusEffect()
 
     add_status_effect(character, status_effect)
 
-    assert get_stat_value(character, Hunger) == 80
+    assert hunger.value == 80
 
     remove_status_effect(character, status_effect)
 
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
 
 
 def test_status_effect_system() -> None:
@@ -276,19 +279,19 @@ def test_status_effect_system() -> None:
 
     hunger.base_value = 10
 
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
 
     status_effect = HighMetabolismStatusEffect(duration=1)
 
     add_status_effect(character, status_effect)
 
-    assert get_stat_value(character, Hunger) == 80
+    assert hunger.value == 80
 
     world.step()
 
     world.step()
 
-    assert get_stat_value(character, Hunger) == 10
+    assert hunger.value == 10
 
 
 def test_get_relationship_stat() -> None:
@@ -318,12 +321,13 @@ def test_get_relationship_stat() -> None:
     )
 
     relationship = add_relationship(c1, c2)
+    reputation = relationship.get_component(Reputation)
 
-    assert get_relationship_stat_value(c1, c2, Reputation) == 0
+    assert reputation.value == 0
 
     relationship.get_component(Reputation).base_value = 15
 
-    assert get_relationship_stat_value(c1, c2, Reputation) == 15
+    assert reputation.value == 15
 
 
 def test_get_modifier_to_relationship_stat() -> None:
@@ -353,14 +357,15 @@ def test_get_modifier_to_relationship_stat() -> None:
     )
 
     relationship = add_relationship(c1, c2)
+    reputation = relationship.get_component(Reputation)
 
-    assert get_relationship_stat_value(c1, c2, Reputation) == 0
+    assert reputation.value == 0
 
-    relationship.get_component(Reputation).add_modifier(
+    reputation.add_modifier(
         StatModifier(modifier_type=StatModifierType.FLAT, value=35, label="")
     )
 
-    assert get_relationship_stat_value(c1, c2, Reputation) == 35
+    assert reputation.value == 35
 
 
 def test_relationship_modifiers() -> None:
@@ -415,8 +420,11 @@ def test_relationship_modifiers() -> None:
         )
     )
 
-    assert get_relationship_stat_value(c1, c2, Reputation) == 20
-    assert get_relationship_stat_value(c1, c2, Romance) == 12
+    relationship = get_relationship(c1, c2)
+    reputation = relationship.get_component(Reputation)
+
+    assert reputation.value == 20
+    assert relationship.get_component(Romance).value == 12
 
 
 def test_social_rules() -> None:
@@ -487,7 +495,7 @@ def test_social_rules() -> None:
         )
     )
 
-    assert get_relationship_stat_value(c1, c2, Reputation) == 10
+    assert get_relationship(c1, c2).get_component(Reputation).value == 10
 
 
 def test_relationship_stat_listener() -> None:
@@ -535,13 +543,13 @@ def test_relationship_stat_listener() -> None:
 
     reputation.listeners.append(reputation_listener)
 
-    assert get_relationship_stat_value(c1, c2, Reputation) == 0
+    assert reputation.value == 0
     assert relationship.metadata["reputation_state"] == "NEUTRAL"
 
     reputation.base_value = 80
-    assert get_relationship_stat_value(c1, c2, Reputation) == 80
+    assert reputation.value == 80
     assert relationship.metadata["reputation_state"] == "EXCELLENT"
 
     reputation.base_value = -60
-    assert get_relationship_stat_value(c1, c2, Reputation) == -60
+    assert reputation.value == -60
     assert relationship.metadata["reputation_state"] == "POOR"

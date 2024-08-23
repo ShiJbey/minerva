@@ -4,29 +4,29 @@
 import pytest
 
 from minerva.characters.components import Sociability
-from minerva.ecs import World, GameObject
+from minerva.ecs import GameObject, World
 from minerva.effects.base_types import EffectLibrary
 from minerva.effects.effects import (
-    AddStatModifier,
     AddRelationshipModifier,
+    AddStatModifier,
     RelationshipModifierDir,
 )
 from minerva.preconditions.base_types import PreconditionLibrary
 from minerva.relationships.base_types import (
-    Romance,
-    add_relationship,
     RelationshipManager,
+    Romance,
     SocialRuleLibrary,
 )
+from minerva.relationships.helpers import add_relationship
 from minerva.stats.base_types import (
-    StatManager,
-    StatusEffectManager,
     StatComponent,
-    StatModifierType,
+    StatManager,
     StatModifierData,
+    StatModifierType,
+    StatusEffectManager,
 )
-from minerva.stats.helpers import get_stat, get_stat_value, get_relationship_stat_value
-from minerva.traits.base_types import TraitLibrary, Trait, TraitManager
+from minerva.stats.helpers import default_stat_calc_strategy
+from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
 from minerva.traits.helpers import add_trait, has_trait, remove_trait
 
 
@@ -39,7 +39,9 @@ class Hunger(StatComponent):
         self,
         base_value: float = 0,
     ) -> None:
-        super().__init__(base_value, (0, self.MAX_VALUE), True)
+        super().__init__(
+            default_stat_calc_strategy, base_value, (0, self.MAX_VALUE), True
+        )
 
 
 @pytest.fixture
@@ -131,7 +133,7 @@ def create_test_character(world: World) -> GameObject:
             StatusEffectManager(),
             TraitManager(),
             Hunger(0),
-            Sociability(0),
+            Sociability(default_stat_calc_strategy),
         ]
     )
 
@@ -169,17 +171,19 @@ def test_add_remove_trait_effects(world: World) -> None:
 
     farmer = create_test_character(world)
 
-    get_stat(farmer, "Sociability").base_value = 0
+    sociability = farmer.get_component(Sociability)
+
+    sociability.base_value = 0
 
     success = add_trait(farmer, "gullible")
 
     assert success is True
-    assert get_stat_value(farmer, Sociability) == 10
+    assert sociability.value == 10
 
     success = remove_trait(farmer, "gullible")
 
     assert success is True
-    assert get_stat_value(farmer, Sociability) == 0
+    assert sociability.value == 0
 
 
 def test_try_add_conflicting_trait(world: World) -> None:
@@ -206,18 +210,19 @@ def test_trait_relationship_modifiers(world: World) -> None:
     c1 = create_test_character(world)
     c2 = create_test_character(world)
 
-    add_relationship(c1, c2)
+    relationship = add_relationship(c1, c2)
+    romance = relationship.get_component(Romance)
 
-    assert get_relationship_stat_value(c1, c2, Romance) == 0
+    assert romance.value == 0
 
     add_trait(c1, "flirtatious")
 
-    assert get_relationship_stat_value(c1, c2, Romance) == 10
+    assert romance.value == 10
 
     add_trait(c2, "charming")
 
-    assert get_relationship_stat_value(c1, c2, Romance) == 22
+    assert romance.value == 22
 
     remove_trait(c1, "flirtatious")
 
-    assert get_relationship_stat_value(c1, c2, Romance) == 12
+    assert romance.value == 12

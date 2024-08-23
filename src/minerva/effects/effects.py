@@ -12,8 +12,9 @@ from minerva.ecs import GameObject, World
 from minerva.effects.base_types import Effect, EffectFactory
 from minerva.preconditions.base_types import Precondition, PreconditionLibrary
 from minerva.relationships.base_types import RelationshipManager, RelationshipModifier
+from minerva.relationships.helpers import remove_stat_modifier
 from minerva.stats.base_types import StatModifier, StatModifierData, StatModifierType
-from minerva.stats.helpers import add_stat_modifier, remove_stat_modifier
+from minerva.stats.helpers import add_stat_modifier
 
 
 class AddStatModifier(Effect):

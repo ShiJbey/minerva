@@ -3,7 +3,7 @@
 from typing import Optional
 
 from minerva.ecs import Component, GameObject
-from minerva.stats.base_types import StatComponent
+from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
 
 class WorldGrid:
@@ -95,5 +95,5 @@ class PopulationHappiness(StatComponent):
 
     __stat_name__ = "PopulationHappiness"
 
-    def __init__(self) -> None:
-        super().__init__(0, bounds=(-100, 100))
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(calculation_strategy, 0, bounds=(-100, 100))
