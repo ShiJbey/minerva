@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from minerva.action import Action
+from minerva.actions.base_types import Action
 from minerva.characters.components import Character, Household
 from minerva.characters.helpers import (
     set_character_alive,

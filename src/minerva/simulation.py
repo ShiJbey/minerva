@@ -9,7 +9,6 @@ import sqlite3
 from typing import Optional
 
 import minerva.systems
-from minerva.action import ActionConsiderationLibrary
 from minerva.businesses.data import BusinessLibrary, OccupationLibrary
 from minerva.characters.components import (
     LifeStage,
@@ -96,7 +95,6 @@ class Simulation:
         self._world.resources.add_resource(TraitLibrary())
         self._world.resources.add_resource(OccupationLibrary())
         self._world.resources.add_resource(BusinessLibrary())
-        self._world.resources.add_resource(ActionConsiderationLibrary())
         self._world.resources.add_resource(SocialRuleLibrary())
         self._world.resources.add_resource(GlobalEventHistory())
 

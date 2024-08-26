@@ -78,6 +78,7 @@ CREATE TABLE clans (
     head INT,
     descended_from INT,
     home_base INT,
+    founding_date TEXT,
     FOREIGN KEY (descended_from) REFERENCES clans(uid),
     FOREIGN KEY (home_base) REFERENCES settlements(uid)
 );
@@ -99,6 +100,8 @@ CREATE TABLE families (
     name TEXT,
     head INT,
     clan INT,
+    is_noble INT,
+    founding_date TEXT,
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (clan) REFERENCES clans(uid)
 );
@@ -136,7 +139,10 @@ CREATE TABLE marriages (
     spouseID INT,
     start_date TEXT,
     end_date TEXT,
+    times_cheated INT,
+    last_cheat_partner_id,
     PRIMARY KEY(characterID, spouseID),
+    FOREIGN KEY (last_cheat_partner_id) REFERENCES characters(uid),
     FOREIGN KEY (characterID) REFERENCES characters(uid),
     FOREIGN KEY (spouseID) REFERENCES characters(uid)
 );
