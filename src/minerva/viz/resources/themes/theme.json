@@ -1,0 +1,59 @@
+{
+  "#wiki_window": {
+    "colours": {
+      "dark_bg": "#4c5052"
+    },
+    "misc": {
+      "title_bar_height": "28"
+    }
+  },
+  "#wiki_window.text_box": {
+    "colours": {
+      "dark_bg": "#21282d"
+    },
+    "misc": {
+      "title_bar_height": "28"
+    }
+  },
+  "#wiki_window.#home_button": {
+    "images": {
+      "normal_image": {
+        "package": "minerva.viz",
+        "resource": "resources/images/home_icon.png"
+      }
+    },
+    "misc": {
+      "shape": "ellipse"
+    }
+  },
+  "#wiki_window.label": {
+    "colours": {
+      "dark_bg": "#4c5052"
+    }
+  },
+  "#wiki_window.text_entry_line": {
+    "colours": {
+      "dark_bg": "#21282d"
+    },
+    "misc": {
+      "shape": "rounded_rectangle",
+      "shape_corner_radius": "12"
+    }
+  },
+  "#wiki_window.#title_bar": {
+    "colours": {
+      "normal_bg": "#35393e",
+      "hovered_bg": "#55595e"
+    },
+    "misc": {
+      "text_horiz_alignment": "left",
+      "text_horiz_alignment_padding": "10"
+    }
+  },
+  "#wiki_window.#close_button": {
+    "colours": {
+      "normal_bg": "#35393e",
+      "hovered_bg": "#55595e"
+    }
+  }
+}

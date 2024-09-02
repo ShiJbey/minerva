@@ -1,0 +1,20 @@
+<font size="6"><b>{{settlement.gameobject.name}} ({{settlement.gameobject.uid}})</b></font>
+<br>
+<font size="4"><b>Controlling Family: </b></font>
+{% if settlement.controlling_family is not none %}
+<a href="/gameobject?uid={{settlement.controlling_family.uid}}">{{settlement.controlling_family.name}} ({{settlement.controlling_family.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Business Types: </b></font><br>
+{% if settlement.business_types %}
+{% for business_type in settlement.business_types %}
+- {{business_type}}<br>
+{% endfor %}
+{% else %}
+N/A<br>
+{% endif %}
+<br>
+<font size="4"><b>Happiness Level: </b></font> {{happiness}}/100<br>
+<br>

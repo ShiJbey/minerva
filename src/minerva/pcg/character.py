@@ -40,7 +40,13 @@ from minerva.characters.components import (
     WantToWork,
     Zeal,
 )
-from minerva.ecs import Event, GameObject, World
+from minerva.characters.helpers import set_family_clan, set_character_surname, set_character_birth_surname, \
+    set_character_clan, set_character_family, set_household_family, set_household_head, set_character_household, \
+    set_relation_spouse, set_character_birth_family, set_relation_child, set_character_father, set_character_mother, \
+    set_character_biological_father, set_character_birth_clan, set_relation_sibling, set_family_head, set_clan_head, \
+    set_clan_name
+from minerva.config import Config
+from minerva.ecs import Event, GameObject, World, System
 from minerva.life_events.base_types import EventHistory
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
@@ -241,7 +247,7 @@ def generate_character(
         chosen_life_stage = chosen_species.get_life_stage_for_age(chosen_age)
 
     obj = world.gameobjects.spawn_gameobject()
-
+    obj.metadata["object_type"] = "character"
     character = obj.add_component(
         Character(
             first_name=chosen_first_name,
@@ -405,6 +411,7 @@ def generate_family(world: World) -> GameObject:
     db = world.resources.get_resource(SimDB).db
 
     family = world.gameobjects.spawn_gameobject()
+    family.metadata["object_type"] = "family"
     family_name = character_name_factory.generate_surname()
     family.add_component(Family(name=family_name))
     family.name = family_name
@@ -438,6 +445,7 @@ def generate_clan(world: World) -> GameObject:
     db = world.resources.get_resource(SimDB).db
 
     clan = world.gameobjects.spawn_gameobject()
+    clan.metadata["object_type"] = "clan"
     clan_name = character_name_factory.generate_name()
     clan.add_component(Clan(name=clan_name))
     clan.name = clan_name
@@ -504,3 +512,150 @@ class ClanNameFactory:
         """Clear all potential names."""
 
         self._names = []
+
+
+class InitializeClansSystem(System):
+    """Create initial social landscape with multiple clans."""
+
+    __system_group__ = "InitializationSystems"
+    __update_order__ = ("last",)
+
+    def on_update(self, world: World) -> None:
+        config = world.resources.get_resource(Config)
+        rng = world.resources.get_resource(random.Random)
+
+        # Generate the initial clans
+        clans = self.generate_clans(world)
+
+        _ = rng.sample(clans, k=config.n_sovereign_clans)
+
+        # settlements = [
+        #     world.gameobjects.get_gameobject(uid)
+        #     for uid, _ in world.get_components((Settlement, Active))
+        # ]
+
+        # unassigned_clans = [*clans]
+        # rng.shuffle(unassigned_clans)
+
+        # unassigned_settlements = [*settlements]
+
+        # for clan in clans:
+        #     if unassigned_settlements:
+        #         home_base = unassigned_settlements.pop()
+        #         set_settlement_controlling_clan(home_base, clan)
+        #         set_clan_home_base(clan, home_base)
+
+        #     home_base = rng.choice(settlements)
+        #     set_clan_home_base(clan, home_base)
+
+    @staticmethod
+    def generate_clans(world: World) -> list[GameObject]:
+        """Generate initial clans."""
+        rng = world.resources.get_resource(random.Random)
+        config = world.resources.get_resource(Config)
+
+        clans: list[GameObject] = []
+
+        for _ in range(config.n_initial_clans):
+            # Create an empty clan
+            clan = generate_clan(world)
+            clans.append(clan)
+
+            # Track the family heads that are generated. The head of the first family
+            # will become the head of the clan. They will be the first in the list.
+            family_heads: list[GameObject] = []
+
+            n_families_to_generate = rng.randint(1, config.max_families_per_clan)
+
+            for _ in range(n_families_to_generate):
+                # Create a new family and add it to the clan
+                family = generate_family(world)
+                family_surname = family.get_component(Family).name
+                set_family_clan(family, clan)
+
+                # Track the household heads that are generated. The head of the first
+                # household will become the family head.
+                household_heads: list[GameObject] = []
+
+                n_household_to_generate: int = rng.randint(
+                    1, config.max_households_per_family
+                )
+
+                for _ in range(n_household_to_generate):
+                    # Create a new household head
+                    household_head = generate_character(
+                        world,
+                        life_stage=LifeStage.ADULT,
+                        sex=Sex.MALE,
+                        sexual_orientation=SexualOrientation.HETEROSEXUAL,
+                    )
+
+                    set_character_surname(household_head, family_surname)
+                    set_character_birth_surname(household_head, family_surname)
+
+                    household_heads.append(household_head)
+
+                    set_character_clan(household_head, clan)
+                    set_character_family(household_head, family)
+
+                    # Generate a new household and add it to the family
+                    household = generate_household(world)
+                    set_household_family(household, family)
+                    set_household_head(household, household_head)
+                    set_character_household(household_head, household)
+
+                    # Generate a spouse for the household head
+                    spouse = generate_spouse_for(household_head)
+
+                    set_character_surname(spouse, family_surname)
+                    set_character_clan(spouse, clan)
+                    set_character_family(spouse, family)
+                    set_character_household(spouse, household)
+
+                    # Update the relationship between the household head and spouse
+                    set_relation_spouse(household_head, spouse)
+                    set_relation_spouse(spouse, household_head)
+
+                    n_children = rng.randint(0, config.max_children_per_household)
+
+                    generated_children: list[GameObject] = []
+
+                    for _ in range(n_children):
+                        child = generate_child_from(spouse, household_head)
+
+                        set_character_surname(child, family_surname)
+
+                        set_character_clan(child, clan)
+                        set_character_family(child, family)
+                        set_character_household(child, household)
+                        set_character_birth_family(child, family)
+
+                        set_relation_child(household_head, child)
+                        set_relation_child(spouse, child)
+                        set_character_father(child, household_head)
+                        set_character_mother(child, spouse)
+                        set_character_biological_father(child, household_head)
+                        set_character_birth_clan(child, clan)
+
+                        generated_children.append(child)
+
+                    for i, c1 in enumerate(generated_children):
+                        if i + 1 >= len(generated_children):
+                            continue
+
+                        c2 = generated_children[i + 1]
+
+                        if c1 != c2:
+                            set_relation_sibling(c1, c2)
+                            set_relation_sibling(c2, c1)
+
+                # Set the family head
+                set_family_head(family, household_heads[0])
+                family_heads.append(household_heads[0])
+
+            # Set the clan head
+            set_clan_head(clan, family_heads[0])
+            set_clan_name(clan, family_heads[0].get_component(Character).surname)
+            set_clan_name(clan, family_heads[0].get_component(Character).surname)
+
+        return clans

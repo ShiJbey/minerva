@@ -59,10 +59,10 @@ CREATE TABLE characters (
 );
 
 CREATE TABLE character_traits (
-    characterID INT,
-    traitID TEXT,
-    PRIMARY KEY(characterID, traitID),
-    FOREIGN KEY (characterID) REFERENCES characters(uid)
+    character_id INT,
+    trait_id TEXT,
+    PRIMARY KEY(character_id, trait_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE settlements (
@@ -127,40 +127,40 @@ CREATE TABLE households (
 );
 
 CREATE TABLE siblings (
-    characterID INT,
-    siblingID INT,
-    PRIMARY KEY(characterID, siblingID),
-    FOREIGN KEY (characterID) REFERENCES characters(uid),
-    FOREIGN KEY (siblingID) REFERENCES characters(uid)
+    character_id INT,
+    sibling_id INT,
+    PRIMARY KEY(character_id, sibling_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (sibling_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE marriages (
-    characterID INT,
-    spouseID INT,
+    character_id INT,
+    spouse_id INT,
     start_date TEXT,
     end_date TEXT,
     times_cheated INT,
     last_cheat_partner_id,
-    PRIMARY KEY(characterID, spouseID),
+    PRIMARY KEY(character_id, spouse_id),
     FOREIGN KEY (last_cheat_partner_id) REFERENCES characters(uid),
-    FOREIGN KEY (characterID) REFERENCES characters(uid),
-    FOREIGN KEY (spouseID) REFERENCES characters(uid)
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (spouse_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE romantic_partners (
-    characterID INT,
-    partnerID INT,
-    PRIMARY KEY(characterID, partnerID),
-    FOREIGN KEY (characterID) REFERENCES characters(uid),
-    FOREIGN KEY (partnerID) REFERENCES characters(uid)
+    character_id INT,
+    partner_id INT,
+    PRIMARY KEY(character_id, partner_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (partner_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE children (
-    characterID INT,
-    childID INT,
-    PRIMARY KEY(characterID, childID),
-    FOREIGN KEY (characterID) REFERENCES characters(uid),
-    FOREIGN KEY (childID) REFERENCES characters(uid)
+    character_id INT,
+    child_id INT,
+    PRIMARY KEY(character_id, child_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (child_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE life_events (

@@ -50,10 +50,13 @@ dependencies = [
     "tqdm==4.*",
     "pydantic==2.*",
     "attrs==23.*",
+    "pygame-ce==2.5.*",
+    "pygame-gui==0.6.12",
+    "numpy==2.0.1",
 ]
 
 [project.optional-dependencies]
-development = ["isort", "ruff", "build", "pytest"]
+development = ["isort", "black", "build", "pytest"]
 
 [project.urls]
 "Homepage" = "https://github.com/ShiJbey/minerva"
@@ -67,11 +70,11 @@ version = { attr = "minerva.__version__" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.ruff]
-line-length = 88
+# [tool.ruff]
+# line-length = 88
 
-[tool.ruff.lint.pydocstyle]
-convention = "numpy"
+# [tool.ruff.lint.pydocstyle]
+# convention = "numpy"
 
 [tool.isort]
 profile = "black"
@@ -95,6 +98,9 @@ max-public-methods = 25
 max-attributes = 10
 # Maximum number of arguments for function / method.
 max-args = 8
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = "c-extension-no-member"
 
 [tool.pylint.basic]
 # Allow us to use "_T1, _T2, _T3, ..." as typevar names

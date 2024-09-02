@@ -1,0 +1,5 @@
+<font size="6"><b>Families</b></font>
+<br><br>
+{% for item in families %}
+<a href="/gameobject?uid={{item["uid"]}}">{{item["name"]}} ({{item["uid"]}})</a><br>
+{% endfor %}

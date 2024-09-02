@@ -3,5 +3,22 @@
   // Hover to view descriptions of existing attributes.
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
-  "configurations": []
+  "configurations": [
+    {
+      "name": "Python Debugger: Shogun",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/samples/shogun.py",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python Debugger: HotD",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/samples/house_of_the_dragon.py",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
 }

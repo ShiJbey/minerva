@@ -35,7 +35,7 @@ if __name__ == "__main__":
     load_settlement_names(sim, DATA_DIR / "japanese_city_names.txt")
     load_species_types(sim, DATA_DIR / "species_types.yaml")
 
-    sim.initialize()
+    sim.initialize_content()
 
     rhaenyra = generate_character(
         sim.world,

@@ -8,6 +8,7 @@ from typing import Optional
 import pydantic
 from ordered_set import OrderedSet
 
+from minerva.constants import CHARACTER_MOTIVE_BASE, CHARACTER_MOTIVE_MAX
 from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
@@ -493,6 +494,8 @@ class Clan(Component):
         "head",
         "members",
         "home_base",
+        "territories",
+        "color",
     )
 
     name: str
@@ -505,6 +508,10 @@ class Clan(Component):
     """All members of this clan."""
     home_base: Optional[GameObject]
     """Set the home base of this clan."""
+    territories: list[GameObject]
+    """The territories controlled by this clan."""
+    color: str
+    """Hex color for this clan."""
 
     def __init__(self, name: str = "") -> None:
         super().__init__()
@@ -513,6 +520,8 @@ class Clan(Component):
         self.head = None
         self.members = []
         self.home_base = None
+        self.territories = []
+        self.color = "#ffffff"
 
 
 class HeadOfClan(Component):
@@ -526,6 +535,32 @@ class HeadOfClan(Component):
     def __init__(self, clan: GameObject) -> None:
         super().__init__()
         self.clan = clan
+
+
+class CharacterStats(Component):
+    """Manages a character's stats."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+
+class CharacterMotives(Component):
+    """Manages a character's motives."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+
+class MoneyMotive(StatComponent):
+    """Tracks a character's want for money."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
 
 
 class Lifespan(StatComponent):

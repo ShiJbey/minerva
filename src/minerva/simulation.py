@@ -26,7 +26,8 @@ from minerva.effects.effects import (
 )
 from minerva.life_events.base_types import GlobalEventHistory
 from minerva.pcg.character import CharacterNameFactory, ClanNameFactory
-from minerva.pcg.settlement import SettlementNameFactory
+from minerva.pcg.settlement import SettlementNameFactory, generate_settlement
+from minerva.pcg.world_map import TerritoryGenerator
 from minerva.preconditions.base_types import PreconditionLibrary
 from minerva.preconditions.preconditions import (
     AreOppositeSexPreconditionFactory,
@@ -45,8 +46,10 @@ from minerva.preconditions.preconditions import (
     TargetStatRequirementFactory,
 )
 from minerva.relationships.base_types import SocialRuleLibrary
+from minerva.settlements.base_types import Settlement
 from minerva.sim_db import SimDB
-from minerva.traits.base_types import TraitLibrary
+from minerva.traits.base_types import TraitLibrary, Trait
+from minerva.world_map.components import WorldMap
 
 
 class Simulation:
@@ -77,12 +80,12 @@ class Simulation:
         # Seed the global rng for third-party packages
         random.seed(self._config.seed)
 
-        self._init_resources()
-        self._init_systems()
-        self._init_logging()
-        self._init_db()
+        self.initialize_resources()
+        self.initialize_systems()
+        self.initialize_logging()
+        self.initialize_database()
 
-    def _init_resources(self) -> None:
+    def initialize_resources(self) -> None:
         """Initialize built-in resources."""
 
         self._world.resources.add_resource(self._date)
@@ -120,30 +123,14 @@ class Simulation:
         precondition_lib.add_factory(OwnerIsSexPreconditionFactory())
         precondition_lib.add_factory(TargetIsSexPreconditionFactory())
 
-    def _init_systems(self) -> None:
+    def initialize_systems(self) -> None:
         """Initialize built-in systems."""
 
-        self.world.systems.add_system(
-            minerva.systems.CompileTraitDefsSystem(),
-        )
-        # self.world.systems.add_system(CompileSpeciesDefsSystem())
-        # self.world.systems.add_system(CompileJobRoleDefsSystem())
-        # self.world.systems.add_system(CompileSkillDefsSystem())
-        # self.world.systems.add_system(CompileDistrictDefsSystem())
-        # self.world.systems.add_system(CompileSettlementDefsSystem())
-        # self.world.systems.add_system(CompileCharacterDefsSystem())
-        # self.world.systems.add_system(CompileBusinessDefsSystem())
         self.world.systems.add_system(
             minerva.systems.TickStatusEffectSystem(),
         )
         self.world.systems.add_system(
             minerva.systems.TimeSystem(),
-        )
-        self.world.systems.add_system(
-            minerva.systems.InitializeWorldMap(),
-        )
-        self.world.systems.add_system(
-            minerva.systems.InitializeClansSystem(),
         )
         self.world.systems.add_system(
             minerva.systems.CharacterAgingSystem(),
@@ -152,7 +139,7 @@ class Simulation:
             minerva.systems.CharacterLifespanSystem(),
         )
 
-    def _init_logging(self) -> None:
+    def initialize_logging(self) -> None:
         """Initialize simulation logging."""
         if self.config.logging_enabled:
             if self.config.log_to_terminal is False:
@@ -178,7 +165,7 @@ class Simulation:
                     force=True,
                 )
 
-    def _init_db(self) -> None:
+    def initialize_database(self) -> None:
         """Initialize the simulation database."""
 
         self._world.resources.add_resource(SimDB(self._config.db_path))
@@ -218,6 +205,11 @@ class Simulation:
         sqlite3.register_adapter(SexualOrientation, adapt_sexual_orientation)
         sqlite3.register_converter("SexualOrientation", convert_sexual_orientation)
 
+    def initialize_content(self) -> None:
+        """Initialize game content from serialized data."""
+        _initialize_trait_data(self)
+        self._world.initialize()
+
     @property
     def date(self) -> SimDate:
         """The current date in the simulation."""
@@ -233,10 +225,6 @@ class Simulation:
         """Config parameters for the simulation."""
         return self._config
 
-    def initialize(self) -> None:
-        """Run initialization systems only."""
-        self._world.initialize()
-
     def step(self) -> None:
         """Advance the simulation by one timestep."""
         self._world.step()
@@ -245,3 +233,77 @@ class Simulation:
         """Export db to file on disk."""
         out = sqlite3.Connection(export_path)
         self.world.resources.get_resource(SimDB).db.backup(out)
+
+
+def _initialize_trait_data(sim: Simulation) -> None:
+    trait_library = sim.world.resources.get_resource(TraitLibrary)
+    effect_library = sim.world.resources.get_resource(EffectLibrary)
+
+    # Add the new definitions and instances to the library.
+    for trait_def in trait_library.definitions.values():
+        trait = Trait(
+            trait_id=trait_def.trait_id,
+            name=trait_def.name,
+            inheritance_chance_both=trait_def.inheritance_chance_both,
+            inheritance_chance_single=trait_def.inheritance_chance_single,
+            is_inheritable=(
+                trait_def.inheritance_chance_single > 0
+                or trait_def.inheritance_chance_both > 0
+            ),
+            description=trait_def.description,
+            effects=[
+                effect_library.create_from_obj(
+                    sim.world, {"reason": f"Has {trait_def.name} trait", **entry}
+                )
+                for entry in trait_def.effects
+            ],
+            conflicting_traits=trait_def.conflicts_with,
+        )
+
+        trait_library.add_trait(trait)
+
+    # Free up some memory
+    trait_library.definitions.clear()
+
+
+def generate_world_map(sim: Simulation) -> None:
+    """Divide the world map into territories and instantiate settlements."""
+
+    world_map = WorldMap(sim.config.world_size)
+
+    sim.world.resources.add_resource(world_map)
+
+    territory_generator = TerritoryGenerator(
+        sim.config.world_size,
+        sim.config.n_territories,
+    )
+
+    territory_generator.generate_territories()
+
+    world_map.territory_grid = territory_generator.territory_grid.copy()
+    world_map.settlements = []
+    world_map.borders = territory_generator.borders.copy()
+
+    territory_id_to_settlement: dict[int, GameObject] = {}
+    settlements: dict[int, GameObject] = {}
+
+    for territory in territory_generator.territories:
+        settlement = generate_settlement(sim.world)
+        territory_id_to_settlement[territory.uid] = settlement
+        settlements[settlement.uid] = settlement
+        world_map.settlements.append(settlement)
+
+        settlement_component = settlement.get_component(Settlement)
+        settlement_component.castle_position = territory.castle_pos
+
+        # Convert the territory IDs to the UIDs of the settlement objects
+        for coord, territory_id in world_map.territory_grid.enumerate():
+            if territory_id == territory.uid:
+                world_map.territory_grid.set(coord, settlement.uid)
+
+    # Generate a the neighbor links
+    for territory in territory_generator.territories:
+        settlement = territory_id_to_settlement[territory.uid]
+        settlement_component = settlement.get_component(Settlement)
+        for neighbor in territory.neighbors:
+            settlement_component.neighbors.append(territory_id_to_settlement[neighbor])

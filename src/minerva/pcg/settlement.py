@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 from minerva.businesses.data import BusinessLibrary
-from minerva.ecs import GameObject, World
+from minerva.ecs import Event, GameObject, World
 from minerva.settlements.base_types import PopulationHappiness, Settlement
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatManager
@@ -79,10 +79,12 @@ def generate_settlement(
     name: str = "",
     n_business_types: int = 5,
 ) -> GameObject:
+    """Construct a new settlement."""
+
     settlement = world.gameobjects.spawn_gameobject()
     settlement_name_factory = world.resources.get_resource(SettlementNameFactory)
     name = name if name else settlement_name_factory.generate_name()
-
+    settlement.metadata["object_type"] = "settlement"
     settlement_component = settlement.add_component(Settlement(name=name))
     settlement.add_component(StatManager())
     settlement.add_component(PopulationHappiness(default_stat_calc_strategy))
@@ -106,5 +108,9 @@ def generate_settlement(
         """INSERT INTO settlements (uid, name) VALUES (?, ?);""", (settlement.uid, name)
     )
     db.commit()
+
+    world.events.dispatch_event(
+        Event(event_type="settlement-added", world=world, settlement=settlement)
+    )
 
     return settlement

@@ -25,6 +25,7 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
-  }
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "pylint.args": ["--ignored-modules=pygame"]
 }

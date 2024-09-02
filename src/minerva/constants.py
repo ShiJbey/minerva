@@ -1,0 +1,83 @@
+"""Minerva Constants."""
+
+# === pygame settings
+
+WINDOW_WIDTH: int = 1280
+"""Width of the game window in pixels (16:9 Aspect ratio)."""
+WINDOW_HEIGHT: int = 720
+"""Height of the game window inf pixels (16:9 Aspect ratio)."""
+FPS: int = 60
+"""Desired frames per second."""
+SHOW_DEBUG: bool = False
+"""Display debug outputs."""
+SIM_UPDATE_FREQ: int = 12
+"""Number of simulation steps per second."""
+BACKGROUND_COLOR = "#42ACAF"
+"""Background color of the pygame window."""
+CAMERA_SPEED = 10
+"""Panning speed of the camera."""
+TILE_SIZE = 32
+"""The size of the game tile grid."""
+
+# === Character Settings ===
+
+CHARACTER_MOTIVE_MAX = 100
+CHARACTER_MOTIVE_BASE = 50
+
+# === Clan/Family Settings ===
+
+CLAN_COLORS_PRIMARY = [
+    "#e90000",  # red
+    "#31d5c8",  # light blue
+    "#a538c6",  # violet
+    "#cccccc",  # grey
+    "#33a7c8",  # darker blue
+    "#05fb00",  # green
+    "#001eba",  # royal blue
+    "#fff500",  # yellow
+]
+
+CLAN_COLORS_SECONDARY = [
+    "#e90000",  # red
+    "#31d5c8",  # light blue
+    "#a538c6",  # violet
+    "#cccccc",  # grey
+    "#33a7c8",  # darker blue
+    "#05fb00",  # green
+    "#001eba",  # royal blue
+    "#fff500",  # yellow
+]
+
+# === Territory Settings ===
+
+MIN_POLITICAL_INFLUENCE = 0
+MAX_POLITICAL_INFLUENCE = 100
+MIN_TERRITORY_HAPPINESS = 100
+MAX_TERRITORY_HAPPINESS = 100
+
+TERRITORY_GENERATION_DEBUG_COLORS = [
+    "#e90000",  # red
+    "#31d5c8",  # light blue
+    "#a538c6",  # violet
+    "#cccccc",  # grey
+    "#33a7c8",  # darker blue
+    "#FF5733",  # (Bright Orange)
+    "#33FF57",  # (Lime Green)
+    "#FF338C",  # (Crimson)
+    "#FFD733",  # (Bright Yellow)
+    "#33FFF3",  # (Cyan)
+    "#8C33FF",  # (Purple)
+    "#FFB833",  # (Amber)
+    "#05fb00",  # green
+    "#001eba",  # royal blue
+    "#fff500",  # yellow
+    "#33FF8C",  # (Mint Green)
+    "#FF3333",  # (Bright Red)
+    "#33A6FF",  # (Sky Blue)
+    "#FF3380",  # (Magenta)
+    "#FFC733",  # (Gold)
+    "#3380FF",  # (Royal Blue)
+    "#FF8333",  # (Coral)
+    "#33FF33",  # (Neon Green)
+    "#33FFB8",  # (Light Green)
+]

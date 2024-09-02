@@ -16,7 +16,7 @@ def set_settlement_controlling_clan(
 
     settlement_component = settlement.get_component(Settlement)
 
-    settlement_component.controlling_clan = clan
+    settlement_component.controlling_family = clan
 
     db = settlement.world.resources.get_resource(SimDB).db
 

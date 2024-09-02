@@ -3,16 +3,9 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Literal, Union
+from typing import Any, Union
 
 import pydantic
-
-WORLD_SIZE = {
-    "small": (2, 3),
-    "medium": (3, 3),
-    "large": (4, 3),
-    "xlarge": (5, 5),
-}
 
 
 class Config(pydantic.BaseModel):
@@ -38,10 +31,14 @@ class Config(pydantic.BaseModel):
 
     # === INITIAL GENERATION ===
 
-    world_size: Literal["small", "medium", "large", "xlarge"] = "small"
+    world_size: tuple[int, int] = (20, 20)
     """The number of settlements to generate."""
+    n_territories: int = 10
+    """The number of map territories"""
+    n_sovereign_clans: int = 4
+    """The number of initial clans start with territory."""
     n_initial_clans: int = 20
-    """How many clans to spawn at start."""
+    """The number of initial clans to generate."""
     chance_noble_family: float = 0.2
     """Chance of a family spawning as a noble family."""
     max_families_per_clan: int = 5

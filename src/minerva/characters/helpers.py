@@ -21,6 +21,7 @@ from minerva.datetime import SimDate
 from minerva.ecs import Event, GameObject
 from minerva.sim_db import SimDB
 
+
 # ===================================
 # Clan Functions
 # ===================================
@@ -801,7 +802,7 @@ def set_relation_spouse(character: GameObject, spouse: Optional[GameObject]) -> 
         )
 
         cur.execute(
-            """UPDATE marriages SET end_date=? WHERE spouseID=? and characterID=?;""",
+            """UPDATE marriages SET end_date=? WHERE spouse_id=? and character_id=?;""",
             (current_date, previous_spouse.uid, character.uid),
         )
 
@@ -810,7 +811,7 @@ def set_relation_spouse(character: GameObject, spouse: Optional[GameObject]) -> 
 
         cur.execute(
             """
-            INSERT INTO marriages (characterID, spouseID, start_date)
+            INSERT INTO marriages (character_id, spouse_id, start_date)
             VALUES (?, ?, ?);
             """,
             (character.uid, spouse.uid, current_date),
@@ -886,7 +887,7 @@ def set_relation_sibling(character: GameObject, sibling: GameObject) -> None:
 
     db.execute(
         """
-        INSERT INTO siblings (characterID, siblingID) VALUES (?, ?);
+        INSERT INTO siblings (character_id, sibling_id) VALUES (?, ?);
         """,
         (character.uid, sibling.uid),
     )
@@ -903,7 +904,7 @@ def set_relation_child(character: GameObject, child: GameObject) -> None:
 
     db.execute(
         """
-        INSERT INTO children (characterID, childID) VALUES (?, ?);
+        INSERT INTO children (character_id, child_id) VALUES (?, ?);
         """,
         (character.uid, child.uid),
     )
