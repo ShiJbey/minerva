@@ -17,8 +17,8 @@ from pygame_gui.ui_manager import UIManager
 
 from minerva.characters.components import Character, Clan, Family
 from minerva.ecs import Active, GameObject
-from minerva.settlements.base_types import Settlement, PopulationHappiness
 from minerva.simulation import Simulation
+from minerva.world_map.components import Settlement, PopulationHappiness
 
 
 class WikiPageGenerator(ABC):
@@ -142,7 +142,7 @@ class FamilyPageGenerator(WikiPageGenerator):
         template = _jinja_env.get_template("family.jinja")
         family: GameObject = kwargs["family"]
 
-        content = template.render(family=family)
+        content = template.render(family=family.get_component(Family))
 
         return content
 

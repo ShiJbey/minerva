@@ -10,7 +10,7 @@ from ordered_set import OrderedSet
 
 from minerva.constants import CHARACTER_MOTIVE_BASE, CHARACTER_MOTIVE_MAX
 from minerva.datetime import SimDate
-from minerva.ecs import Component, GameObject
+from minerva.ecs import Component, GameObject, TagComponent
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
 
@@ -449,7 +449,14 @@ class HeadOfHousehold(Component):
 class Family(Component):
     """A collection of household bearing the same name."""
 
-    __slots__ = ("name", "households", "head", "heir", "members", "clan")
+    __slots__ = (
+        "name",
+        "households",
+        "head",
+        "members",
+        "clan",
+        "home_base",
+    )
 
     name: str
     """The name of the family."""
@@ -461,15 +468,17 @@ class Family(Component):
     """All members of this family."""
     clan: Optional[GameObject]
     """The clan this family belongs to."""
+    home_base: Optional[GameObject]
+    """The settlement this family belongs to."""
 
     def __init__(self, name: str = "") -> None:
         super().__init__()
         self.name = name
         self.households = []
         self.head = None
-        self.heir = None
         self.members = []
         self.clan = None
+        self.home_base = None
 
 
 class HeadOfFamily(Component):
@@ -495,7 +504,8 @@ class Clan(Component):
         "members",
         "home_base",
         "territories",
-        "color",
+        "color_primary",
+        "color_secondary",
     )
 
     name: str
@@ -509,9 +519,11 @@ class Clan(Component):
     home_base: Optional[GameObject]
     """Set the home base of this clan."""
     territories: list[GameObject]
-    """The territories controlled by this clan."""
-    color: str
-    """Hex color for this clan."""
+    """The settlements controlled by this clan."""
+    color_primary: str
+    """Hex string primary color for this clan."""
+    color_secondary: str
+    """Hex string secondary color for the clan."""
 
     def __init__(self, name: str = "") -> None:
         super().__init__()
@@ -521,7 +533,8 @@ class Clan(Component):
         self.members = []
         self.home_base = None
         self.territories = []
-        self.color = "#ffffff"
+        self.color_primary = "#ffffff"
+        self.color_secondary = "#000000"
 
 
 class HeadOfClan(Component):
@@ -537,18 +550,8 @@ class HeadOfClan(Component):
         self.clan = clan
 
 
-class CharacterStats(Component):
-    """Manages a character's stats."""
-
-    def __init__(self) -> None:
-        super().__init__()
-
-
-class CharacterMotives(Component):
-    """Manages a character's motives."""
-
-    def __init__(self) -> None:
-        super().__init__()
+class Emperor(TagComponent):
+    """Tags the character as the emperor of the land."""
 
 
 class MoneyMotive(StatComponent):

@@ -22,7 +22,9 @@ from minerva.loaders import (
     load_surnames,
     load_traits,
 )
-from minerva.simulation import Simulation, generate_world_map
+from minerva.pcg.character import generate_initial_clans
+from minerva.pcg.world_map import generate_world_map
+from minerva.simulation import Simulation
 
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 DB_OUTPUT_PATH = str(pathlib.Path(__file__).parent / "shogun.db")
@@ -40,11 +42,12 @@ def run_simulation_with_profiling(simulation: Simulation) -> None:
     time.sleep(0.1)
 
     print("Generating Map and Territories ...")
-    generate_world_map(simulation)
+    generate_world_map(simulation.world)
 
     time.sleep(0.8)
 
     print("Generating Families ...")
+    generate_initial_clans(sim.world)
 
     time.sleep(0.8)
 
@@ -74,11 +77,12 @@ def run_simulation(simulation: Simulation) -> None:
     time.sleep(0.1)
 
     print("Generating Map and Territories ...")
-    generate_world_map(simulation)
+    generate_world_map(simulation.world)
 
     time.sleep(0.8)
 
     print("Generating Families ...")
+    generate_initial_clans(sim.world)
 
     time.sleep(0.8)
 
@@ -100,11 +104,12 @@ def run_visualization(simulation: Simulation) -> None:
     time.sleep(0.1)
 
     print("Generating Map and Territories ...")
-    generate_world_map(simulation)
+    generate_world_map(simulation.world)
 
     time.sleep(0.8)
 
     print("Generating Families ...")
+    generate_initial_clans(sim.world)
 
     time.sleep(0.8)
 

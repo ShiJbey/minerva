@@ -68,8 +68,8 @@ CREATE TABLE character_traits (
 CREATE TABLE settlements (
     uid INT NOT NULL PRIMARY KEY,
     name TEXT,
-    controlling_clan INT,
-    FOREIGN KEY (controlling_clan) REFERENCES clans(uid)
+    controlling_family INT,
+    FOREIGN KEY (controlling_family) REFERENCES clans(uid)
 );
 
 CREATE TABLE clans (

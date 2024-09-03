@@ -18,6 +18,10 @@ CAMERA_SPEED = 10
 """Panning speed of the camera."""
 TILE_SIZE = 32
 """The size of the game tile grid."""
+SETTLEMENT_BORDER_WIDTH = 1
+"""Pixel width of the border."""
+SETTLEMENT_BORDER_PADDING = 0
+"""Padding between edge of tile and border line."""
 
 # === Character Settings ===
 
@@ -46,14 +50,22 @@ CLAN_COLORS_SECONDARY = [
     "#05fb00",  # green
     "#001eba",  # royal blue
     "#fff500",  # yellow
+    "#FF5733",  # (Bright Orange)
+    "#33FF57",  # (Lime Green)
+    "#FF338C",  # (Crimson)
+    "#FFD733",  # (Bright Yellow)
+    "#33FFF3",  # (Cyan)
+    "#8C33FF",  # (Purple)
+    "#FFB833",  # (Amber)
 ]
 
 # === Territory Settings ===
 
 MIN_POLITICAL_INFLUENCE = 0
 MAX_POLITICAL_INFLUENCE = 100
-MIN_TERRITORY_HAPPINESS = 100
-MAX_TERRITORY_HAPPINESS = 100
+BASE_SETTLEMENT_HAPPINESS = 50
+MIN_SETTLEMENT_HAPPINESS = 0
+MAX_SETTLEMENT_HAPPINESS = 100
 
 TERRITORY_GENERATION_DEBUG_COLORS = [
     "#e90000",  # red

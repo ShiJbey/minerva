@@ -7,10 +7,10 @@ from typing import Optional, Union
 
 from minerva.businesses.data import BusinessLibrary
 from minerva.ecs import Event, GameObject, World
-from minerva.settlements.base_types import PopulationHappiness, Settlement
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatManager
 from minerva.stats.helpers import default_stat_calc_strategy
+from minerva.world_map.components import Settlement, PopulationHappiness
 
 
 class ISettlementFactory(ABC):

@@ -2,15 +2,156 @@
 
 import enum
 import pathlib
-from typing import Any, Optional
+from typing import Any
 
 import pygame
+import pygame.gfxdraw
+from pygame import SRCALPHA
 from pygame.sprite import Sprite
 
-from minerva.constants import TILE_SIZE
+from minerva.constants import (
+    TILE_SIZE,
+    SETTLEMENT_BORDER_PADDING,
+    SETTLEMENT_BORDER_WIDTH,
+)
 from minerva.ecs import GameObject
-from minerva.settlements.base_types import Settlement
-from minerva.world_map.components import CompassDir
+from minerva.viz.game_events import gameobject_wiki_shown
+from minerva.world_map.components import CompassDir, Settlement
+
+
+class ClanFlagSprite(Sprite):
+    """A sprite showing the flag of a clan."""
+
+    def __init__(
+        self,
+        primary_color: pygame.color.Color,
+        secondary_color: pygame.color.Color,
+        parent: Sprite,
+        *groups,
+    ) -> None:
+        super().__init__(*groups)
+        self.primary_color = primary_color
+        self.secondary_color = secondary_color
+        self.parent = parent
+        self.redraw_image()
+
+    def set_primary_color(self, color: pygame.color.Color) -> None:
+        """Set the primary color of the flag."""
+        self.primary_color = color
+        self.redraw_image()
+
+    def set_secondary_color(self, color: pygame.color.Color) -> None:
+        """Set the secondary color of the flag."""
+        self.secondary_color = color
+        self.redraw_image()
+
+    def redraw_image(self) -> None:
+        """Re-render the sprite image."""
+        self.image = pygame.surface.Surface((TILE_SIZE, TILE_SIZE), SRCALPHA)
+        self.rect = self.image.get_rect()
+
+        # Draw the top bar
+        pygame.gfxdraw.box(
+            self.image,
+            (0, 0, TILE_SIZE, 4),
+            pygame.color.Color("#010101"),
+        )
+
+        # Draw the flag pole
+        pygame.gfxdraw.box(
+            self.image,
+            (14, 0, 4, TILE_SIZE),
+            pygame.color.Color("#010101"),
+        )
+
+        # Draw the flag secondary color outline
+        pygame.gfxdraw.filled_polygon(
+            self.image,
+            [
+                (28, 0),
+                (28, 20),
+                (18, 28),
+                (14, 28),
+                (4, 20),
+                (4, 0),
+            ],  # Counter clockwise
+            self.secondary_color,
+        )
+
+        # Draw the flag primary color
+        pygame.gfxdraw.filled_polygon(
+            self.image,
+            [
+                (24, 4),
+                (24, 20),
+                (18, 24),
+                (14, 24),
+                (8, 20),
+                (8, 4),
+            ],  # Counter clockwise
+            self.primary_color,
+        )
+
+        # Draw the flag black outline
+        pygame.gfxdraw.polygon(
+            self.image,
+            [
+                (28, 0),
+                (28, 20),
+                (18, 28),
+                (14, 28),
+                (4, 20),
+                (4, 0),
+            ],  # Counter clockwise
+            pygame.color.Color("#010101"),
+        )
+
+        # Draw the flag symbol (secondary-colored circle)
+        pygame.gfxdraw.filled_circle(self.image, 16, 12, 4, self.secondary_color)
+
+        # Fix positioning
+        self.rect.centerx = self.parent.rect.centerx
+        self.rect.top = self.parent.rect.top - TILE_SIZE
+
+
+class LabelSprite(Sprite):
+    def __init__(
+        self,
+        text: str,
+        font: pygame.font.Font,
+        parent: Sprite,
+        color: str = "#ffffff",
+        *groups,
+    ) -> None:
+        super().__init__(*groups)
+        self.parent = parent
+        self.text = text
+        self.image = font.render(f"   {text}   ", True, color, bgcolor="#000000")
+        self.rect = self.image.get_rect()
+        self.rect.centerx = self.parent.rect.centerx
+        self.rect.centery = self.parent.rect.bottom + TILE_SIZE // 3
+
+    # def update(self, *args, **kwargs):
+    #     self.rect = self.image.get_rect()
+    #     self.rect.centerx = self.parent.rect.centerx
+    #     self.rect.centery = self.parent.rect.bottom + TILE_SIZE // 3
+
+
+class CrownSprite(Sprite):
+    """Crown sprite to denote location of royal family."""
+
+    def __init__(self, parent: Sprite, *groups: Any) -> None:
+        super().__init__(*groups)
+        self.image = pygame.transform.scale(
+            pygame.image.load(
+                str(pathlib.Path(__file__).parent / "resources/images/crown.png"),
+            ).convert_alpha(),
+            (TILE_SIZE, TILE_SIZE),
+        )
+        self.rect = self.image.get_rect()
+        self.parent = parent
+        parent_x, parent_y = self.parent.rect.topleft
+        self.rect.topleft = (parent_x - TILE_SIZE, parent_y)
 
 
 class CastleSprite(Sprite):
@@ -24,24 +165,123 @@ class CastleSprite(Sprite):
             ).convert_alpha(),
             (TILE_SIZE, TILE_SIZE),
         )
+        self.settlement = settlement
         self.rect = self.image.get_rect()
         settlement_component = settlement.get_component(Settlement)
         pos_x, pos_y = settlement_component.castle_position
         self.rect.topleft = (pos_x * TILE_SIZE, pos_y * TILE_SIZE)
 
+    def on_click(self) -> None:
+        gameobject_wiki_shown.emit(self.settlement.uid)
 
-class WallTileSprite(Sprite):
-    """Spite for a wall tile."""
+
+class BorderSprite(Sprite):
+    """A sprite showing the flag of a clan."""
 
     def __init__(
-        self, position: tuple[int, int], image_path: str, *groups: Any
+        self,
+        position: tuple[int, int],
+        primary_color: pygame.color.Color,
+        secondary_color: pygame.color.Color,
+        border_flags: CompassDir,
+        *groups,
     ) -> None:
         super().__init__(*groups)
-        self.image = pygame.transform.scale(
-            pygame.image.load(image_path).convert_alpha(), (32, 32)
-        )
+        self.position = position
+        self.primary_color = primary_color
+        self.secondary_color = secondary_color
+        self.border_flags = border_flags
+        self.redraw_image()
+
+    def set_primary_color(self, color: pygame.color.Color) -> None:
+        """Set the primary color of the flag."""
+        self.primary_color = color
+        self.redraw_image()
+
+    def set_secondary_color(self, color: pygame.color.Color) -> None:
+        """Set the secondary color of the flag."""
+        self.secondary_color = color
+        self.redraw_image()
+
+    def redraw_image(self) -> None:
+        """Re-render the sprite image."""
+        self.image = pygame.surface.Surface((TILE_SIZE, TILE_SIZE)).convert_alpha()
+        self.image.set_colorkey((0, 0, 0))  # Some section will be transparent.
         self.rect = self.image.get_rect()
-        self.rect.topleft = position
+        self.rect.topleft = (self.position[0], self.position[1])
+
+        # Draw the primary color as a box
+        pygame.gfxdraw.box(
+            self.image,
+            (
+                SETTLEMENT_BORDER_PADDING,
+                SETTLEMENT_BORDER_PADDING,
+                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
+                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
+            ),
+            self.primary_color,
+        )
+
+        # Draw the secondary vertical and horizontal boxes
+        pygame.gfxdraw.box(
+            self.image,
+            (
+                SETTLEMENT_BORDER_PADDING,
+                SETTLEMENT_BORDER_PADDING + 11,
+                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
+                TILE_SIZE // 3,
+            ),
+            self.secondary_color,
+        )
+
+        pygame.gfxdraw.box(
+            self.image,
+            (
+                SETTLEMENT_BORDER_PADDING + 11,
+                SETTLEMENT_BORDER_PADDING,
+                TILE_SIZE // 3,
+                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
+            ),
+            self.secondary_color,
+        )
+
+        top_offset: int = (
+            SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+            if CompassDir.NORTH in self.border_flags
+            else 0
+        )
+
+        left_offset: int = (
+            SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+            if CompassDir.WEST in self.border_flags
+            else 0
+        )
+
+        width: int = (
+            TILE_SIZE
+            - left_offset
+            - (
+                SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+                if CompassDir.EAST in self.border_flags
+                else 0
+            )
+        )
+
+        height: int = (
+            TILE_SIZE
+            - top_offset
+            - (
+                SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+                if CompassDir.SOUTH in self.border_flags
+                else 0
+            )
+        )
+
+        pygame.gfxdraw.box(
+            self.image,
+            (left_offset, top_offset, width, height),
+            pygame.color.Color("#000000"),
+        )
 
 
 class TerrainTileSprite(Sprite):
@@ -80,126 +320,3 @@ def get_terrain_tile(
         )
 
     raise ValueError(f"Unsupported terrain type: {terrain_type}")
-
-
-def get_wall_spite(
-    position: tuple[int, int], wall_flags: CompassDir
-) -> Optional[WallTileSprite]:
-    """Create a new wall sprite given the flags."""
-    if wall_flags == CompassDir.SOUTH:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_B.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.WEST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_L.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.NORTH:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_T.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.EAST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_R.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.SOUTH | CompassDir.WEST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_BL.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.SOUTH | CompassDir.EAST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_BR.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.WEST | CompassDir.EAST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_LR.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.NORTH | CompassDir.SOUTH:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_TB.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.NORTH | CompassDir.WEST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_TL.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.NORTH | CompassDir.EAST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent / "resources/images/WallTiles/Wall_TR.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.NORTH | CompassDir.EAST | CompassDir.WEST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent
-                / "resources/images/WallTiles/Wall_TRL.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.NORTH | CompassDir.EAST | CompassDir.SOUTH:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent
-                / "resources/images/WallTiles/Wall_TRB.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.EAST | CompassDir.SOUTH | CompassDir.WEST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent
-                / "resources/images/WallTiles/Wall_RBL.png"
-            ),
-        )
-
-    if wall_flags == CompassDir.NORTH | CompassDir.SOUTH | CompassDir.WEST:
-        return WallTileSprite(
-            position,
-            str(
-                pathlib.Path(__file__).parent
-                / "resources/images/WallTiles/Wall_TBL.png"
-            ),
-        )
-
-    return None

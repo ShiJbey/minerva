@@ -10,6 +10,7 @@ import pygame_gui
 import pygame_gui.elements.ui_panel
 import pygame_gui.ui_manager
 
+from minerva.characters.components import Family, Clan
 from minerva.constants import (
     BACKGROUND_COLOR,
     CAMERA_SPEED,
@@ -20,17 +21,22 @@ from minerva.constants import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+from minerva.engine import Engine
 from minerva.simulation import Simulation
 from minerva.viz.camera import Camera
+from minerva.viz.game_events import gameobject_wiki_shown
 from minerva.viz.tile_sprites import (
     CastleSprite,
     TerrainType,
     get_terrain_tile,
-    get_wall_spite,
+    LabelSprite,
+    ClanFlagSprite,
+    BorderSprite,
+    CrownSprite,
 )
 from minerva.viz.utils import draw_text
 from minerva.viz.wiki import WikiWindow
-from minerva.world_map.components import WorldMap
+from minerva.world_map.components import WorldMap, Settlement, CompassDir
 
 
 class YSortCameraGroup(pygame.sprite.Group):  # type: ignore
@@ -108,9 +114,12 @@ class Game:
         self.visible_sprites = YSortCameraGroup(self.display)
         self.terrain_tiles = YSortCameraGroup(self.display)
         self.world_map = simulation.world.resources.get_resource(WorldMap)
+        self._castle_sprites: list[CastleSprite] = []
         self._create_terrain_sprites()
         self._create_border_sprites()
         self._create_castle_sprites()
+
+        gameobject_wiki_shown.add_listener(self._on_show_gameobject_wiki)
 
     def on_play_simulation(self) -> None:
         """."""
@@ -226,14 +235,82 @@ class Game:
                 )
 
     def _create_castle_sprites(self) -> None:
+        engine = self.simulation.world.resources.get_resource(Engine)
+
         for settlement in self.world_map.settlements:
-            self.visible_sprites.add(CastleSprite(settlement))  # type: ignore
+            castle_sprite = CastleSprite(settlement)
+            castle_label = LabelSprite(
+                text=settlement.name,
+                font=self.font,
+                parent=castle_sprite,
+            )
+
+            flag_sprite = ClanFlagSprite(
+                pygame.color.Color("white"),
+                pygame.color.Color("white"),
+                castle_sprite,
+            )
+
+            settlement_component = settlement.get_component(Settlement)
+            if settlement_component.controlling_family:
+
+                if settlement_component.controlling_family == engine.royal_family:
+                    crown_sprite = CrownSprite(castle_sprite)
+                    self.visible_sprites.add(crown_sprite)  # type: ignore
+
+                family_component = (
+                    settlement_component.controlling_family.get_component(Family)
+                )
+                if family_component.clan:
+                    clan_component = family_component.clan.get_component(Clan)
+                    flag_sprite.set_primary_color(
+                        pygame.color.Color(clan_component.color_primary)
+                    )
+                    flag_sprite.set_secondary_color(
+                        pygame.color.Color(clan_component.color_secondary)
+                    )
+
+            self.visible_sprites.add(flag_sprite)  # type: ignore
+            self.visible_sprites.add(castle_sprite)  # type: ignore
+            self.visible_sprites.add(castle_label)  # type: ignore
+            self._castle_sprites.append(castle_sprite)
 
     def _create_border_sprites(self) -> None:
         for (x, y), wall_flags in self.world_map.borders.enumerate():
-            sprite = get_wall_spite((x * TILE_SIZE, y * TILE_SIZE), wall_flags)
-            if sprite is not None:
-                self.visible_sprites.add(sprite)  # type: ignore
+
+            if wall_flags == CompassDir.NONE:
+                continue
+
+            # settlement_id = self.world_map.territory_grid.get((x, y))
+
+            sprite = BorderSprite(
+                (x * TILE_SIZE, y * TILE_SIZE),
+                pygame.color.Color("blue"),
+                pygame.color.Color("yellow"),
+                wall_flags,
+            )
+
+            # if settlement_id != -1:
+            #     controlling_family = (
+            #         self.simulation.world.gameobjects.get_gameobject(settlement_id)
+            #         .get_component(Settlement)
+            #         .controlling_family
+            #     )
+            #
+            #     if controlling_family is not None:
+            #         family_clan = controlling_family.get_component(Family).clan
+            #         if family_clan is not None:
+            #             clan_component = family_clan.get_component(Clan)
+            #
+            #             sprite.set_primary_color(
+            #                 pygame.color.Color(clan_component.color_primary)
+            #             )
+            #
+            #             sprite.set_secondary_color(
+            #                 pygame.color.Color(clan_component.color_secondary)
+            #             )
+
+            self.visible_sprites.add(sprite)  # type: ignore
 
     def _create_terrain_sprites(self) -> None:
         for (x, y), _ in self.simulation.world.resources.get_resource(
@@ -293,3 +370,23 @@ class Game:
                     else:
                         self.on_play_simulation()
                 continue
+
+            if event.type == pygame.constants.MOUSEBUTTONUP:
+                pos = pygame.mouse.get_pos()
+                adjusted_pos = (
+                    pos[0] - int(self.visible_sprites.offset.x),
+                    pos[1] - int(self.visible_sprites.offset.y),
+                )
+
+                for sprite in self._castle_sprites:
+                    sprite_rect = sprite.rect
+                    if sprite_rect.collidepoint(adjusted_pos):
+                        sprite.on_click()
+                        break
+
+    def _on_show_gameobject_wiki(self, uid: int):
+
+        if not self.wiki_window.alive():
+            self.wiki_window = WikiWindow(manager=self.ui_manager, sim=self.simulation)
+
+        self.wiki_window.set_page(f"/gameobject?uid={uid}")

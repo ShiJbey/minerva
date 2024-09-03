@@ -21,6 +21,11 @@ class EventEmitter(Generic[_ET]):
         super().__init__()
         self._listeners = []
 
+    def emit(self, data: _ET) -> None:
+        """Invoke the event and dispatch the data."""
+        for listener in self._listeners:
+            listener(data)
+
     def add_listener(self, listener: Callable[[_ET], None]) -> None:
         """Add a new listener."""
         self._listeners.append(listener)
@@ -37,3 +42,5 @@ class EventEmitter(Generic[_ET]):
 simulation_started = EventEmitter[None]()
 
 simulation_paused = EventEmitter[None]()
+
+gameobject_wiki_shown = EventEmitter[int]()

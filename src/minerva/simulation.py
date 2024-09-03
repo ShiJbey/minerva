@@ -24,10 +24,10 @@ from minerva.effects.effects import (
     AddRelationshipModifierFactory,
     AddStatModifierFactory,
 )
+from minerva.engine import Engine
 from minerva.life_events.base_types import GlobalEventHistory
 from minerva.pcg.character import CharacterNameFactory, ClanNameFactory
-from minerva.pcg.settlement import SettlementNameFactory, generate_settlement
-from minerva.pcg.world_map import TerritoryGenerator
+from minerva.pcg.settlement import SettlementNameFactory
 from minerva.preconditions.base_types import PreconditionLibrary
 from minerva.preconditions.preconditions import (
     AreOppositeSexPreconditionFactory,
@@ -46,10 +46,8 @@ from minerva.preconditions.preconditions import (
     TargetStatRequirementFactory,
 )
 from minerva.relationships.base_types import SocialRuleLibrary
-from minerva.settlements.base_types import Settlement
 from minerva.sim_db import SimDB
 from minerva.traits.base_types import TraitLibrary, Trait
-from minerva.world_map.components import WorldMap
 
 
 class Simulation:
@@ -91,6 +89,7 @@ class Simulation:
         self._world.resources.add_resource(self._date)
         self._world.resources.add_resource(self._config)
         self._world.resources.add_resource(random.Random(self._config.seed))
+        self._world.resources.add_resource(Engine())
         self._world.resources.add_resource(CharacterNameFactory(seed=self.config.seed))
         self._world.resources.add_resource(SettlementNameFactory(seed=self.config.seed))
         self._world.resources.add_resource(ClanNameFactory(seed=self.config.seed))
@@ -207,7 +206,7 @@ class Simulation:
 
     def initialize_content(self) -> None:
         """Initialize game content from serialized data."""
-        _initialize_trait_data(self)
+        self._initialize_trait_data()
         self._world.initialize()
 
     @property
@@ -234,76 +233,32 @@ class Simulation:
         out = sqlite3.Connection(export_path)
         self.world.resources.get_resource(SimDB).db.backup(out)
 
+    def _initialize_trait_data(self) -> None:
+        trait_library = self.world.resources.get_resource(TraitLibrary)
+        effect_library = self.world.resources.get_resource(EffectLibrary)
 
-def _initialize_trait_data(sim: Simulation) -> None:
-    trait_library = sim.world.resources.get_resource(TraitLibrary)
-    effect_library = sim.world.resources.get_resource(EffectLibrary)
+        # Add the new definitions and instances to the library.
+        for trait_def in trait_library.definitions.values():
+            trait = Trait(
+                trait_id=trait_def.trait_id,
+                name=trait_def.name,
+                inheritance_chance_both=trait_def.inheritance_chance_both,
+                inheritance_chance_single=trait_def.inheritance_chance_single,
+                is_inheritable=(
+                    trait_def.inheritance_chance_single > 0
+                    or trait_def.inheritance_chance_both > 0
+                ),
+                description=trait_def.description,
+                effects=[
+                    effect_library.create_from_obj(
+                        self.world, {"reason": f"Has {trait_def.name} trait", **entry}
+                    )
+                    for entry in trait_def.effects
+                ],
+                conflicting_traits=trait_def.conflicts_with,
+            )
 
-    # Add the new definitions and instances to the library.
-    for trait_def in trait_library.definitions.values():
-        trait = Trait(
-            trait_id=trait_def.trait_id,
-            name=trait_def.name,
-            inheritance_chance_both=trait_def.inheritance_chance_both,
-            inheritance_chance_single=trait_def.inheritance_chance_single,
-            is_inheritable=(
-                trait_def.inheritance_chance_single > 0
-                or trait_def.inheritance_chance_both > 0
-            ),
-            description=trait_def.description,
-            effects=[
-                effect_library.create_from_obj(
-                    sim.world, {"reason": f"Has {trait_def.name} trait", **entry}
-                )
-                for entry in trait_def.effects
-            ],
-            conflicting_traits=trait_def.conflicts_with,
-        )
+            trait_library.add_trait(trait)
 
-        trait_library.add_trait(trait)
-
-    # Free up some memory
-    trait_library.definitions.clear()
-
-
-def generate_world_map(sim: Simulation) -> None:
-    """Divide the world map into territories and instantiate settlements."""
-
-    world_map = WorldMap(sim.config.world_size)
-
-    sim.world.resources.add_resource(world_map)
-
-    territory_generator = TerritoryGenerator(
-        sim.config.world_size,
-        sim.config.n_territories,
-    )
-
-    territory_generator.generate_territories()
-
-    world_map.territory_grid = territory_generator.territory_grid.copy()
-    world_map.settlements = []
-    world_map.borders = territory_generator.borders.copy()
-
-    territory_id_to_settlement: dict[int, GameObject] = {}
-    settlements: dict[int, GameObject] = {}
-
-    for territory in territory_generator.territories:
-        settlement = generate_settlement(sim.world)
-        territory_id_to_settlement[territory.uid] = settlement
-        settlements[settlement.uid] = settlement
-        world_map.settlements.append(settlement)
-
-        settlement_component = settlement.get_component(Settlement)
-        settlement_component.castle_position = territory.castle_pos
-
-        # Convert the territory IDs to the UIDs of the settlement objects
-        for coord, territory_id in world_map.territory_grid.enumerate():
-            if territory_id == territory.uid:
-                world_map.territory_grid.set(coord, settlement.uid)
-
-    # Generate a the neighbor links
-    for territory in territory_generator.territories:
-        settlement = territory_id_to_settlement[territory.uid]
-        settlement_component = settlement.get_component(Settlement)
-        for neighbor in territory.neighbors:
-            settlement_component.neighbors.append(territory_id_to_settlement[neighbor])
+        # Free up some memory
+        trait_library.definitions.clear()

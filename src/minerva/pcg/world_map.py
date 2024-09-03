@@ -1,11 +1,21 @@
 """World Map Generation."""
 
+from __future__ import annotations
+
 import random
 from itertools import product
 from typing import Generator, Any
 
+from minerva.config import Config
 from minerva.constants import TERRITORY_GENERATION_DEBUG_COLORS
-from minerva.world_map.components import CartesianGrid, TerritoryInfo, CompassDir
+from minerva.ecs import GameObject, World
+from minerva.pcg.settlement import generate_settlement
+from minerva.world_map.components import (
+    CartesianGrid,
+    TerritoryInfo,
+    CompassDir,
+    WorldMap, Settlement,
+)
 
 
 class TerritoryGenerator:
@@ -190,3 +200,48 @@ class TerritoryGenerator:
                 )
 
             self.borders.set((x, y), wall_flags)
+
+
+def generate_world_map(world: World) -> None:
+    """Divide the world map into territories and instantiate settlements."""
+
+    config = world.resources.get_resource(Config)
+
+    world_map = WorldMap(config.world_size)
+
+    world.resources.add_resource(world_map)
+
+    territory_generator = TerritoryGenerator(
+        config.world_size,
+        config.n_territories,
+    )
+
+    territory_generator.generate_territories()
+
+    world_map.territory_grid = territory_generator.territory_grid.copy()
+    world_map.settlements = []
+    world_map.borders = territory_generator.borders.copy()
+
+    territory_id_to_settlement: dict[int, GameObject] = {}
+    settlements: dict[int, GameObject] = {}
+
+    for territory in territory_generator.territories:
+        settlement = generate_settlement(world)
+        territory_id_to_settlement[territory.uid] = settlement
+        settlements[settlement.uid] = settlement
+        world_map.settlements.append(settlement)
+
+        settlement_component = settlement.get_component(Settlement)
+        settlement_component.castle_position = territory.castle_pos
+
+        # Convert the territory IDs to the UIDs of the settlement objects
+        for coord, territory_id in world_map.territory_grid.enumerate():
+            if territory_id == territory.uid:
+                world_map.territory_grid.set(coord, settlement.uid)
+
+    # Generate a the neighbor links
+    for territory in territory_generator.territories:
+        settlement = territory_id_to_settlement[territory.uid]
+        settlement_component = settlement.get_component(Settlement)
+        for neighbor in territory.neighbors:
+            settlement_component.neighbors.append(territory_id_to_settlement[neighbor])

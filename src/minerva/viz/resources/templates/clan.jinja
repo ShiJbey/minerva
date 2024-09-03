@@ -19,6 +19,16 @@ N/A
 </font>
 <br>
 <br>
+<font size="4"><b>Territories: </b></font><br>
+{% if clan.territories %}
+{% for territory in clan.territories %}
+- <a href="/gameobject?uid={{territory.uid}}">{{territory.name}} ({{territory.uid}})</a><br>
+{% endfor %}
+{% else %}
+N/A<br>
+{% endif %}
+<br>
+<br>
 <font size="4"><b>Families:<b></font>
 <br>
 {% for family in clan.families%}

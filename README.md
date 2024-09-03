@@ -21,3 +21,8 @@ The SQLite data exported by the simulation uses the following naming conventions
 2. Column names are snake_case
 
 The SQL configuration commands can be found in [engine.py](./src/minerva/sim_db.py)
+
+## Acknowledgements
+
+- Castle Pixel Art by [Merchant Shade](https://merchant-shade.itch.io/16x16-mini-world-sprites)
+- Crown Pixel Art by [Maman Suryaman](https://www.vecteezy.com/members/msystudio2022)

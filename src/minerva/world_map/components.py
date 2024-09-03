@@ -10,7 +10,11 @@ from typing import Any, Callable, Generic, Iterator, Optional, TypeVar
 import attrs
 from ordered_set import OrderedSet
 
-from minerva.constants import MAX_TERRITORY_HAPPINESS, MIN_TERRITORY_HAPPINESS
+from minerva.constants import (
+    MAX_SETTLEMENT_HAPPINESS,
+    MIN_SETTLEMENT_HAPPINESS,
+    BASE_SETTLEMENT_HAPPINESS,
+)
 from minerva.ecs import Component, GameObject
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
@@ -229,45 +233,6 @@ class WorldMap:
         return self._size
 
 
-class Territory(Component):
-    """A territory in the world map."""
-
-    __slots__ = (
-        "position",
-        "sovereign_clan",
-        "political_influence",
-        "color",
-    )
-
-    position: tuple[int, int]
-    sovereign_clan: Optional[GameObject]
-    political_influence: dict[int, int]
-    color: str
-
-    def __init__(self, position: tuple[int, int]) -> None:
-        super().__init__()
-        self.position = position
-        self.sovereign_clan = None
-        self.political_influence = {}
-        self.color = "#000000"
-
-
-class TerritoryHappiness(StatComponent):
-    """A measure of how happy the territory is with their sovereign clan."""
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(
-            calculation_strategy,
-            base_value,
-            (MIN_TERRITORY_HAPPINESS, MAX_TERRITORY_HAPPINESS),
-            True,
-        )
-
-
 @attrs.define
 class TerritoryInfo:
     """Information about a territory."""
@@ -287,3 +252,61 @@ class CompassDir(enum.IntFlag):
     WEST = enum.auto()
     EAST = enum.auto()
     NORTH = enum.auto()
+
+
+class Settlement(Component):
+    """A settlement where character's live."""
+
+    __slots__ = (
+        "name",
+        "controlling_family",
+        "business_types",
+        "territory_id",
+        "neighbors",
+        "castle_position",
+        "political_influence",
+        "families",
+    )
+
+    name: str
+    """The settlement's name."""
+    controlling_family: Optional[GameObject]
+    """ID of the family that controls this settlement."""
+    business_types: list[str]
+    """Types of businesses that exist in this settlement."""
+    neighbors: OrderedSet[GameObject]
+    """Neighboring settlements."""
+    castle_position: tuple[int, int]
+    """The position of the castle on the screen."""
+    political_influence: dict[GameObject, int]
+    """The Political influence held by all families in the settlement."""
+    families: OrderedSet[GameObject]
+    """The families that reside at this settlement."""
+
+    def __init__(
+        self,
+        name: str,
+        controlling_family: Optional[GameObject] = None,
+        business_types: Optional[list[str]] = None,
+    ) -> None:
+        super().__init__()
+        self.name = name
+        self.controlling_family = controlling_family
+        self.business_types = business_types if business_types else []
+        self.neighbors = OrderedSet([])
+        self.castle_position: tuple[int, int] = (0, 0)
+        self.families = OrderedSet([])
+
+
+class PopulationHappiness(StatComponent):
+    """A settlement where character's live."""
+
+    __stat_name__ = "PopulationHappiness"
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            base_value=BASE_SETTLEMENT_HAPPINESS,
+            bounds=(MIN_SETTLEMENT_HAPPINESS, MAX_SETTLEMENT_HAPPINESS),
+            is_discrete=True,
+        )

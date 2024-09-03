@@ -20,6 +20,7 @@ from minerva.characters.components import (
 from minerva.datetime import SimDate
 from minerva.ecs import Event, GameObject
 from minerva.sim_db import SimDB
+from minerva.world_map.components import Settlement
 
 
 # ===================================
@@ -400,6 +401,22 @@ def set_character_family(
             character=character,
         )
     )
+
+
+def set_family_home_base(family: GameObject, settlement: Optional[GameObject]) -> None:
+    """Set the homebase for the given family."""
+    family_component = family.get_component(Family)
+
+    if family_component.home_base is not None:
+        former_home_base = family_component.home_base
+        settlement_component = former_home_base.get_component(Settlement)
+        settlement_component.families.remove(family)
+        family_component.home_base = None
+
+    if settlement is not None:
+        settlement_component = settlement.get_component(Settlement)
+        settlement_component.families.append(family)
+        family_component.home_base = settlement
 
 
 def set_character_birth_family(
