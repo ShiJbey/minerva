@@ -32,12 +32,16 @@ def set_settlement_controlling_family(
 
     if settlement_component.controlling_family is not None:
         former_sovereign = settlement_component.controlling_family
-        clan_component = former_sovereign.get_component(Family).clan.get_component(Clan)
+        family_component = former_sovereign.get_component(Family)
+        assert family_component.clan
+        clan_component = family_component.clan.get_component(Clan)
         clan_component.territories.remove(settlement)
         settlement_component.controlling_family = None
 
     if family is not None:
-        clan_component = family.get_component(Family).clan.get_component(Clan)
+        family_component = family.get_component(Family)
+        assert family_component.clan
+        clan_component = family_component.clan.get_component(Clan)
         clan_component.territories.append(settlement)
         settlement_component.controlling_family = family
 

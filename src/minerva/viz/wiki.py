@@ -2,23 +2,19 @@
 
 import pathlib
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import parse_qs, urlparse
 
 import pygame
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from pygame_gui import (
-    UI_BUTTON_PRESSED,
-    UI_TEXT_BOX_LINK_CLICKED,
-    UI_TEXT_ENTRY_FINISHED,
-)
-from pygame_gui.elements import UIButton, UILabel, UITextBox, UITextEntryLine, UIWindow
+from pygame_gui import UI_TEXT_BOX_LINK_CLICKED
+from pygame_gui.elements import UIButton, UITextBox, UIWindow
 from pygame_gui.ui_manager import UIManager
 
 from minerva.characters.components import Character, Clan, Family
 from minerva.ecs import Active, GameObject
 from minerva.simulation import Simulation
-from minerva.world_map.components import Settlement, PopulationHappiness
+from minerva.world_map.components import PopulationHappiness, Settlement
 
 
 class WikiPageGenerator(ABC):
@@ -130,7 +126,9 @@ class CharacterPageGenerator(WikiPageGenerator):
         template = _jinja_env.get_template("character.jinja")
         character: GameObject = kwargs["character"]
 
-        content = template.render(character=character)
+        character_component = character.get_component(Character)
+
+        content = template.render(character=character_component)
 
         return content
 
@@ -197,42 +195,67 @@ _page_generators: dict[str, WikiPageGenerator] = {
 class WikiWindow(UIWindow):
     """A window that displays information about all the characters."""
 
-    def __init__(self, manager: UIManager, sim: Simulation):
+    TOOLBAR_HEIGHT: ClassVar[int] = 30
+    TOOLBAR_PADDING_TOP: ClassVar[int] = 6
+    TOOLBAR_PADDING_BOTTOM: ClassVar[int] = 6
+    WINDOW_WIDTH: ClassVar[int] = 420
+    WINDOW_HEIGHT: ClassVar[int] = 520
+
+    def __init__(self, manager: UIManager, sim: Simulation) -> None:
         super().__init__(
-            pygame.Rect((200, 50), (420, 520)),
+            pygame.Rect((200, 50), (self.WINDOW_WIDTH, self.WINDOW_HEIGHT)),
             manager,
             window_display_title="Minerva World Wiki",
-            resizable=True,
+            resizable=False,
             object_id="#wiki_window",
         )
         self.sim = sim
-        search_bar_top_margin = 2
-        search_bar_bottom_margin = 2
-        self.search_box = UITextEntryLine(
-            pygame.Rect((150, search_bar_top_margin), (230, 30)),
-            manager=manager,
-            container=self,
-            parent_element=self,
-        )
-
-        self.search_label = UILabel(
-            pygame.Rect(
-                (90, search_bar_top_margin),
-                (56, self.search_box.rect.height),  # type: ignore
-            ),
-            "Search:",
-            manager=manager,
-            container=self,
-            parent_element=self,
-        )
+        # self.search_box = UITextEntryLine(
+        #     pygame.Rect((150, search_bar_top_margin), (230, 30)),
+        #     manager=manager,
+        #     container=self,
+        #     parent_element=self,
+        # )
+        #
+        # self.search_label = UILabel(
+        #     pygame.Rect(
+        #         (90, search_bar_top_margin),
+        #         (56, self.search_box.rect.height),  # type: ignore
+        #     ),
+        #     "Search:",
+        #     manager=manager,
+        #     container=self,
+        #     parent_element=self,
+        # )
 
         self.home_button = UIButton(
-            pygame.Rect((20, search_bar_top_margin), (29, 29)),
+            pygame.Rect((20, self.TOOLBAR_PADDING_TOP), (32, 32)),
             "",
             manager=manager,
             container=self,
             parent_element=self,
             object_id="#home_button",
+            command=self.go_home,
+        )
+
+        self.back_button = UIButton(
+            pygame.Rect((60, self.TOOLBAR_PADDING_TOP), (32, 32)),
+            "",
+            manager=manager,
+            container=self,
+            parent_element=self,
+            object_id="#back_button",
+            command=self.go_back,
+        )
+
+        self.forward_button = UIButton(
+            pygame.Rect((100, self.TOOLBAR_PADDING_TOP), (32, 32)),
+            "",
+            manager=manager,
+            container=self,
+            parent_element=self,
+            object_id="#forward_button",
+            command=self.go_forward,
         )
 
         self.remaining_window_size: tuple[int, int] = (
@@ -240,53 +263,60 @@ class WikiWindow(UIWindow):
             (
                 self.get_container().get_size()[1]
                 - (
-                    self.search_box.rect.height  # type: ignore
-                    + search_bar_top_margin
-                    + search_bar_bottom_margin
+                    self.TOOLBAR_HEIGHT
+                    + self.TOOLBAR_PADDING_TOP
+                    + self.TOOLBAR_PADDING_BOTTOM
                 )
             ),
         )
         self.page_y_start_pos: int = (
-            self.search_box.rect.height  # type: ignore
-            + search_bar_top_margin
-            + search_bar_bottom_margin
+            self.TOOLBAR_HEIGHT + self.TOOLBAR_PADDING_TOP + self.TOOLBAR_PADDING_BOTTOM
         )
         self.page_display = UITextBox(
             "",
             pygame.Rect(
-                (0, self.page_y_start_pos),  # type: ignore
+                (0, self.page_y_start_pos),
                 self.remaining_window_size,
             ),
             manager=manager,
             container=self,
             parent_element=self,
-            # pre_parsing_enabled=False,
         )
-        self.set_page("/index")
+        self.current_page: str = ""
+        self.back_stack: list[str] = []
+        self.forward_stack: list[str] = []
+        self.go_home()
 
     def process_event(self, event: pygame.event.Event):
         handled = super().process_event(event)
 
         if event.type == UI_TEXT_BOX_LINK_CLICKED:
-            self.set_page(event.link_target)
-            handled = True
-
-        if event.type == UI_TEXT_ENTRY_FINISHED and event.ui_element == self.search_box:
-            # results = self.search_pages(event.text)
-            # self.create_search_results_page(results)
-            # self.open_new_page("results")
-            handled = True
-
-        if (
-            event.type == UI_BUTTON_PRESSED
-            and event.ui_object_id == "#wiki_window.#home_button"
-        ):
-            self.set_page("/index")
+            self.back_stack.append(self.current_page)
+            self.forward_stack.clear()
+            self.go_to_page(event.link_target)
             handled = True
 
         return handled
 
-    def set_page(self, uri: str) -> None:
+    def go_home(self) -> None:
+        """Go to the home page."""
+        self.back_stack.clear()
+        self.forward_stack.clear()
+        self.go_to_page("/index")
+
+    def go_forward(self) -> None:
+        """Go forward a page."""
+        destination = self.forward_stack.pop()
+        self.back_stack.append(self.current_page)
+        self.go_to_page(destination)
+
+    def go_back(self) -> None:
+        """Go to previous page."""
+        destination = self.back_stack.pop()
+        self.forward_stack.append(self.current_page)
+        self.go_to_page(destination)
+
+    def go_to_page(self, uri: str) -> None:
         """Sets the current page to display in the wiki window."""
 
         uri_data = urlparse(uri)
@@ -304,5 +334,17 @@ class WikiWindow(UIWindow):
             manager=self.ui_manager,
             container=self,
             parent_element=self,
-            # pre_parsing_enabled=False,
         )
+
+        self.current_page = uri
+
+        # Update forward and back button states
+        if not self.back_stack:
+            self.back_button.disable()
+        else:
+            self.back_button.enable()
+
+        if not self.forward_stack:
+            self.forward_button.disable()
+        else:
+            self.forward_button.enable()

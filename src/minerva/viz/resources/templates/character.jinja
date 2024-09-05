@@ -1,19 +1,118 @@
-<font size="6"><b>{{character.name}} ({{character.uid}})</b></font>
+<font size="6"><b>{{character.gameobject.name}} ({{character.gameobject.uid}})</b></font>
 <br>
-<font size="4"><b>First Name: </b>N/A</font>
+<font size="4"><b>Alive: </b></font>
+{% if character.is_alive %}
+Yes
+{% else %}
+No
+{% endif %}
 <br>
-<font size="4"><b>Surname: </b>N/A</font>
+<font size="4"><b>First Name: </b>{{character.first_name}}</font>
 <br>
-<font size="4"><b>Age: </b>0 (Adult)</font>
+<font size="4"><b>Surname: </b>{{character.surname}}</font>
 <br>
-<font size="4"><b>Species: </b>Human</font>
+<font size="4"><b>Surname At Birth: </b>{{character.birth_surname}}</font>
 <br>
-<font size="4"><b>Sex: </b>Male</font>
+<font size="4"><b>Age: </b>{{character.age}} ({{character.life_stage.name}})</font>
 <br>
-<font size="4"><b>Birth Date: </b>N/A</font>
+<font size="4"><b>Species: </b>{{character.species.name}}</font>
 <br>
-<font size="4"><b>Death Date: </b>N/A</font>
+<font size="4"><b>Sex: </b>{{character.sex.name}}</font>
 <br>
-<font size="4"><b>Clan: </b>N/A</font>
+<font size="4"><b>Birth Date: </b>{{character.birth_date}}</font>
 <br>
-<font size="4"><b>Family: </b>N/A</font>
+<font size="4"><b>Death Date: </b>{{character.death_date}}</font>
+<br>
+<font size="4"><b>Clan: </b></font>
+{% if character.clan is not none %}
+<a href="/gameobject?uid={{character.clan.uid}}">{{character.clan.name}} ({{character.clan.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Clan at Birth: </b></font>
+{% if character.birth_clan is not none %}
+<a href="/gameobject?uid={{character.birth_clan.uid}}">{{character.birth_clan.name}} ({{character.birth_clan.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Family: </b></font>
+{% if character.family is not none %}
+<a href="/gameobject?uid={{character.family.uid}}">{{character.family.name}} ({{character.family.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Family at Birth: </b></font>
+{% if character.birth_family is not none %}
+<a href="/gameobject?uid={{character.birth_family.uid}}">{{character.birth_family.name}} ({{character.birth_family.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Mother: </b></font>
+{% if character.mother is not none %}
+<a href="/gameobject?uid={{character.mother.uid}}">{{character.mother.name}} ({{character.mother.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Father: </b></font>
+{% if character.father is not none %}
+<a href="/gameobject?uid={{character.father.uid}}">{{character.father.name}} ({{character.father.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Biological Father: </b></font>
+{% if character.biological_father is not none %}
+<a href="/gameobject?uid={{character.biological_father.uid}}">{{character.biological_father.name}} ({{character.biological_father.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Siblings: </b></font>
+{% if character.siblings %}
+{% for character in character.siblings%}
+- <a href="/gameobject?uid={{character.uid}}">{{character.name}} ({{character.uid}})</a><br>
+{% endfor %}
+{% else %}
+N/A<br>
+{% endif %}
+<font size="4"><b>Spouse: </b></font>
+{% if character.spouse is not none %}
+<a href="/gameobject?uid={{character.spouse.uid}}">{{character.spouse.name}} ({{character.spouse.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Romantic Partner: </b></font>
+{% if character.partner is not none %}
+<a href="/gameobject?uid={{character.partner.uid}}">{{character.partner.name}} ({{character.partner.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Lover: </b></font>
+{% if character.lover is not none %}
+<a href="/gameobject?uid={{character.lover.uid}}">{{character.lover.name}} ({{character.lover.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<font size="4"><b>Children: </b></font><br>
+{% if character.children %}
+{% for character in character.children%}
+- <a href="/gameobject?uid={{character.uid}}">{{character.name}} ({{character.uid}})</a><br>
+{% endfor %}
+{% else %}
+N/A<br>
+{% endif %}
+<font size="4"><b>Heir: </b></font>
+{% if character.heir is not none %}
+<a href="/gameobject?uid={{character.heir.uid}}">{{character.heir.name}} ({{character.heir.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>

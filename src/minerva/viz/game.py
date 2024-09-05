@@ -10,7 +10,7 @@ import pygame_gui
 import pygame_gui.elements.ui_panel
 import pygame_gui.ui_manager
 
-from minerva.characters.components import Family, Clan
+from minerva.characters.components import Clan, Family
 from minerva.constants import (
     BACKGROUND_COLOR,
     CAMERA_SPEED,
@@ -26,17 +26,17 @@ from minerva.simulation import Simulation
 from minerva.viz.camera import Camera
 from minerva.viz.game_events import gameobject_wiki_shown
 from minerva.viz.tile_sprites import (
+    BorderSprite,
     CastleSprite,
+    ClanFlagSprite,
+    CrownSprite,
+    LabelSprite,
     TerrainType,
     get_terrain_tile,
-    LabelSprite,
-    ClanFlagSprite,
-    BorderSprite,
-    CrownSprite,
 )
 from minerva.viz.utils import draw_text
 from minerva.viz.wiki import WikiWindow
-from minerva.world_map.components import WorldMap, Settlement, CompassDir
+from minerva.world_map.components import CompassDir, Settlement, WorldMap
 
 
 class YSortCameraGroup(pygame.sprite.Group):  # type: ignore
@@ -379,6 +379,7 @@ class Game:
                 )
 
                 for sprite in self._castle_sprites:
+                    assert sprite.rect
                     sprite_rect = sprite.rect
                     if sprite_rect.collidepoint(adjusted_pos):
                         sprite.on_click()
@@ -389,4 +390,4 @@ class Game:
         if not self.wiki_window.alive():
             self.wiki_window = WikiWindow(manager=self.ui_manager, sim=self.simulation)
 
-        self.wiki_window.set_page(f"/gameobject?uid={uid}")
+        self.wiki_window.go_to_page(f"/gameobject?uid={uid}")

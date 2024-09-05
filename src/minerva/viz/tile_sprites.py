@@ -10,9 +10,9 @@ from pygame import SRCALPHA
 from pygame.sprite import Sprite
 
 from minerva.constants import (
-    TILE_SIZE,
     SETTLEMENT_BORDER_PADDING,
     SETTLEMENT_BORDER_WIDTH,
+    TILE_SIZE,
 )
 from minerva.ecs import GameObject
 from minerva.viz.game_events import gameobject_wiki_shown
@@ -27,7 +27,7 @@ class ClanFlagSprite(Sprite):
         primary_color: pygame.color.Color,
         secondary_color: pygame.color.Color,
         parent: Sprite,
-        *groups,
+        *groups: Any,
     ) -> None:
         super().__init__(*groups)
         self.primary_color = primary_color
@@ -110,24 +110,29 @@ class ClanFlagSprite(Sprite):
         pygame.gfxdraw.filled_circle(self.image, 16, 12, 4, self.secondary_color)
 
         # Fix positioning
+        assert self.parent.rect
         self.rect.centerx = self.parent.rect.centerx
         self.rect.top = self.parent.rect.top - TILE_SIZE
 
 
 class LabelSprite(Sprite):
+    """A string label associated with a sprite."""
+
     def __init__(
         self,
         text: str,
         font: pygame.font.Font,
         parent: Sprite,
-        color: str = "#ffffff",
-        *groups,
+        *groups: Any,
+        text_color: str = "#ffffff",
+        bg_color: str = "#000000",
     ) -> None:
         super().__init__(*groups)
         self.parent = parent
         self.text = text
-        self.image = font.render(f"   {text}   ", True, color, bgcolor="#000000")
+        self.image = font.render(f"   {text}   ", True, text_color, bgcolor=bg_color)
         self.rect = self.image.get_rect()
+        assert self.parent.rect
         self.rect.centerx = self.parent.rect.centerx
         self.rect.centery = self.parent.rect.bottom + TILE_SIZE // 3
 
@@ -150,6 +155,7 @@ class CrownSprite(Sprite):
         )
         self.rect = self.image.get_rect()
         self.parent = parent
+        assert self.parent.rect
         parent_x, parent_y = self.parent.rect.topleft
         self.rect.topleft = (parent_x - TILE_SIZE, parent_y)
 
@@ -172,6 +178,7 @@ class CastleSprite(Sprite):
         self.rect.topleft = (pos_x * TILE_SIZE, pos_y * TILE_SIZE)
 
     def on_click(self) -> None:
+        """Function called when this castle is clicked by the player."""
         gameobject_wiki_shown.emit(self.settlement.uid)
 
 
@@ -184,7 +191,7 @@ class BorderSprite(Sprite):
         primary_color: pygame.color.Color,
         secondary_color: pygame.color.Color,
         border_flags: CompassDir,
-        *groups,
+        *groups: Any,
     ) -> None:
         super().__init__(*groups)
         self.position = position

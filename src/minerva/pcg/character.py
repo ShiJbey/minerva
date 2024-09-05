@@ -14,6 +14,7 @@ from minerva.characters.components import (
     Clan,
     Compassion,
     Diplomacy,
+    Emperor,
     Family,
     Fertility,
     Greed,
@@ -41,34 +42,33 @@ from minerva.characters.components import (
     WantForPower,
     WantToWork,
     Zeal,
-    Emperor,
 )
 from minerva.characters.helpers import (
-    set_family_clan,
-    set_character_surname,
+    set_character_biological_father,
+    set_character_birth_clan,
+    set_character_birth_family,
     set_character_birth_surname,
     set_character_clan,
     set_character_family,
+    set_character_father,
+    set_character_household,
+    set_character_mother,
+    set_character_surname,
+    set_clan_head,
+    set_clan_home_base,
+    set_clan_name,
+    set_family_clan,
+    set_family_head,
+    set_family_home_base,
     set_household_family,
     set_household_head,
-    set_character_household,
-    set_relation_spouse,
-    set_character_birth_family,
     set_relation_child,
-    set_character_father,
-    set_character_mother,
-    set_character_biological_father,
-    set_character_birth_clan,
     set_relation_sibling,
-    set_family_head,
-    set_clan_head,
-    set_clan_name,
-    set_clan_home_base,
-    set_family_home_base,
+    set_relation_spouse,
 )
 from minerva.config import Config
 from minerva.constants import CLAN_COLORS_PRIMARY, CLAN_COLORS_SECONDARY
-from minerva.ecs import Event, GameObject, World, Active
+from minerva.ecs import Active, Event, GameObject, World
 from minerva.engine import Engine
 from minerva.life_events.base_types import EventHistory
 from minerva.relationships.base_types import RelationshipManager
@@ -544,7 +544,7 @@ class ClanNameFactory:
 def generate_initial_clans(world: World) -> None:
     """Generates initial clans and families."""
 
-    config = world.resources.get_resource(Config)
+    # config = world.resources.get_resource(Config)
     rng = world.resources.get_resource(random.Random)
 
     # Generate the initial clans
@@ -569,7 +569,7 @@ def generate_initial_clans(world: World) -> None:
     # Designate a family as the royal family
     clan_heads = [
         clan.head
-        for uid, (clan, _) in world.get_components((Clan, Active))
+        for _, (clan, _) in world.get_components((Clan, Active))
         if clan.head is not None
     ]
 
@@ -585,6 +585,7 @@ def generate_initial_clans(world: World) -> None:
             home_base = unassigned_settlements.pop()
             set_settlement_controlling_family(home_base, family)
             clan = family.get_component(Family).clan
+            assert clan
             set_clan_home_base(clan, home_base)
             set_family_home_base(family, home_base)
             continue

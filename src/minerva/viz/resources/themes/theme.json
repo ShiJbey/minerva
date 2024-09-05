@@ -26,6 +26,28 @@
       "shape": "ellipse"
     }
   },
+  "#wiki_window.#back_button": {
+    "images": {
+      "normal_image": {
+        "package": "minerva.viz",
+        "resource": "resources/images/arrow-left.png"
+      }
+    },
+    "misc": {
+      "shape": "ellipse"
+    }
+  },
+  "#wiki_window.#forward_button": {
+    "images": {
+      "normal_image": {
+        "package": "minerva.viz",
+        "resource": "resources/images/arrow-right.png"
+      }
+    },
+    "misc": {
+      "shape": "ellipse"
+    }
+  },
   "#wiki_window.label": {
     "colours": {
       "dark_bg": "#4c5052"
