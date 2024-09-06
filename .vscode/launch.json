@@ -10,7 +10,8 @@
       "request": "launch",
       "program": "${workspaceFolder}/samples/shogun.py",
       "console": "integratedTerminal",
-      "justMyCode": false
+      "justMyCode": false,
+      "args": ["--enable-logging"]
     },
     {
       "name": "Python Debugger: HotD",

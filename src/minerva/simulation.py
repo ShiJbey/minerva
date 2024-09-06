@@ -142,6 +142,15 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.CharacterLifespanSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.FallbackFamilySuccessionSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.FallbackClanSuccessionSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.EmptyFamilyCleanUpSystem(),
+        )
 
     def initialize_logging(self) -> None:
         """Initialize simulation logging."""

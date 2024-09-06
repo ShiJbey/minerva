@@ -178,6 +178,34 @@ CREATE TABLE life_stage_change_events (
     FOREIGN KEY (character_id) REFERENCES characters(uid)
 );
 
+CREATE TABLE became_family_head_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    family_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (family_id) REFERENCES families(uid)
+);
+
+CREATE TABLE became_clan_head_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    clan_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (clan_id) REFERENCES clans(uid)
+);
+
+CREATE TABLE became_emperor_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid)
+);
+
 CREATE TABLE death_events (
     event_id INT NOT NULL PRIMARY KEY,
     character_id INT,
