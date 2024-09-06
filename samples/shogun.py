@@ -1,11 +1,11 @@
 """Minerva Sample: House of the Dragon/Game of Thrones."""
 
+import argparse
 import pathlib
 import pstats
 import time
 from cProfile import Profile
 from datetime import datetime
-from pickle import TRUE
 
 import tqdm
 
@@ -27,37 +27,54 @@ from minerva.pcg.world_map import generate_world_map
 from minerva.simulation import Simulation
 
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
-DB_OUTPUT_PATH = str(pathlib.Path(__file__).parent / "shogun.db")
-YEARS = 10
-ENABLE_PROFILING = False
-USE_VIZ = True
-LOGGING_ENABLED = False
 
 
-def run_simulation_with_profiling(simulation: Simulation) -> None:
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+
+    parser = argparse.ArgumentParser(
+        prog="Shogun Minerva Sample",
+        description="Minerva simulation sample based on the Shogun board game.",
+    )
+
+    parser.add_argument(
+        "-y", "--years", type=int, default=100, help="Number of years to simulate."
+    )
+
+    parser.add_argument(
+        "--pygame", action="store_true", help="Run the PyGame visualization"
+    )
+
+    parser.add_argument(
+        "--enable-logging", action="store_true", help="Enable simulation logging"
+    )
+
+    parser.add_argument(
+        "--enable-profiling", action="store_true", help="Enable simulation profiling"
+    )
+
+    parser.add_argument(
+        "--db-out",
+        type=str,
+        default=str(pathlib.Path(__file__).parent / "shogun.db"),
+        help="The output location for the simulation database.",
+    )
+
+    return parser.parse_args()
+
+
+def run_simulation_with_profiling(simulation: Simulation, years: int) -> None:
     """Run the simulation with profiling enabled."""
-    print("Initializing Data ...")
-    simulation.initialize_content()
 
-    time.sleep(0.1)
-
-    print("Generating Map and Territories ...")
-    generate_world_map(simulation.world)
-
-    time.sleep(0.8)
-
-    print("Generating Families ...")
-    generate_initial_clans(sim.world)
-
-    time.sleep(0.8)
-
-    total_time_steps: int = YEARS * MONTHS_PER_YEAR
+    total_time_steps: int = years * MONTHS_PER_YEAR
 
     with Profile() as profile:
         for _ in tqdm.trange(total_time_steps):  # type: ignore
             simulation.step()
 
-        profile_path = f"profile_{datetime.now().strftime('%Y%m%d_%H_%M')}.prof"
+        profile_path = "profile_{}_{}.prof".format(  # pylint: disable=C0209
+            simulation.config.seed, datetime.now().strftime("%Y%m%d_%H_%M")
+        )
 
         (
             pstats.Stats(profile)
@@ -67,24 +84,9 @@ def run_simulation_with_profiling(simulation: Simulation) -> None:
         )
 
 
-def run_simulation(simulation: Simulation) -> None:
+def run_simulation(simulation: Simulation, years: int) -> None:
     """Runs the simulation."""
-    total_time_steps: int = YEARS * MONTHS_PER_YEAR
-
-    print("Initializing Data ...")
-    simulation.initialize_content()
-
-    time.sleep(0.1)
-
-    print("Generating Map and Territories ...")
-    generate_world_map(simulation.world)
-
-    time.sleep(0.8)
-
-    print("Generating Families ...")
-    generate_initial_clans(sim.world)
-
-    time.sleep(0.8)
+    total_time_steps: int = years * MONTHS_PER_YEAR
 
     for _ in tqdm.trange(total_time_steps):  # type: ignore
         simulation.step()
@@ -96,33 +98,20 @@ def run_visualization(simulation: Simulation) -> None:
     import minerva.constants  # pylint: disable=C0415
     from minerva.viz.game import Game  # pylint: disable=C0415
 
-    minerva.constants.SHOW_DEBUG = TRUE
-
-    print("Initializing Data ...")
-    simulation.initialize_content()
-
-    time.sleep(0.1)
-
-    print("Generating Map and Territories ...")
-    generate_world_map(simulation.world)
-
-    time.sleep(0.8)
-
-    print("Generating Families ...")
-    generate_initial_clans(sim.world)
-
-    time.sleep(0.8)
+    minerva.constants.SHOW_DEBUG = True
 
     game = Game(simulation)
     game.run()
 
 
 if __name__ == "__main__":
+    args = parse_args()
+
     sim = Simulation(
         Config(
             n_sovereign_clans=12,
             world_size=(25, 15),
-            logging_enabled=LOGGING_ENABLED,
+            logging_enabled=bool(args.enable_logging),
             log_to_terminal=False,
         )
     )
@@ -137,11 +126,28 @@ if __name__ == "__main__":
     load_businesses_types(sim, DATA_DIR / "ds_business_types.yaml")
     load_occupation_types(sim, DATA_DIR / "ds_occupation_types.yaml")
 
-    if ENABLE_PROFILING:
-        run_simulation_with_profiling(sim)
-    elif USE_VIZ:
+    print(f"World Seed: {sim.config.seed}")
+
+    print("Initializing Data ...")
+    sim.initialize_content()
+
+    time.sleep(0.1)
+
+    print("Generating Map and Territories ...")
+    generate_world_map(sim.world)
+
+    time.sleep(0.8)
+
+    print("Generating Families ...")
+    generate_initial_clans(sim.world)
+
+    time.sleep(0.8)
+
+    if args.enable_profiling:
+        run_simulation_with_profiling(sim, int(args.years))
+    elif args.pygame:
         run_visualization(sim)
     else:
-        run_simulation(sim)
+        run_simulation(sim, int(args.years))
 
-    sim.export_db(DB_OUTPUT_PATH)
+    sim.export_db(str(args.db_out))
