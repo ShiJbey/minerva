@@ -22,7 +22,6 @@ from minerva.ecs import Event, GameObject
 from minerva.sim_db import SimDB
 from minerva.world_map.components import Settlement
 
-
 # ===================================
 # Clan Functions
 # ===================================
@@ -297,6 +296,10 @@ def set_household_family(
         family_component.households.append(household)
         household_component.family = family
 
+    # Update family tracking for all characters in the household
+    for member in household_component.members:
+        set_character_family(member, family)
+
     db = household.world.resources.get_resource(SimDB).db
     cur = db.cursor()
     cur.execute(
@@ -457,6 +460,17 @@ def set_character_birth_family(
     )
 
 
+def merge_family_with(
+    source_family: GameObject, destination_family: GameObject
+) -> None:
+    """Merge a source family into a destination family."""
+
+    # Move all households over to the new family and remove them from the old
+    source_family_component = source_family.get_component(Family)
+    for household in source_family_component.households:
+        set_household_family(household, destination_family)
+
+
 # ===================================
 # Household Functions
 # ===================================
@@ -564,6 +578,31 @@ def set_character_household(
             household=household,
         )
     )
+
+
+def merge_household_with(
+    source_household: GameObject, destination_household: GameObject
+) -> None:
+    """Merge a source household into a destination household.
+
+    This function moves character from the source household to the destination
+    household and it updates their current family and clan affiliations to match
+    that of the destination household.
+    """
+
+    # Move all members over to the new household and remove them from the old
+    source_household_component = source_household.get_component(Household)
+    destination_household_component = destination_household.get_component(Household)
+
+    for member in source_household_component.members:
+        set_character_household(member, destination_household)
+        set_character_family(member, destination_household_component.family)
+
+        if destination_household_component.family is not None:
+            family_component = destination_household_component.family.get_component(
+                Family
+            )
+            set_character_clan(member, family_component.clan)
 
 
 # ===================================
