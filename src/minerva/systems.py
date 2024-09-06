@@ -4,13 +4,13 @@ from minerva.actions.actions import Die
 from minerva.characters.components import (
     Character,
     Fertility,
+    HeadOfFamily,
     Lifespan,
     LifeStage,
     Sex,
 )
-from minerva.characters.helpers import (
-    set_character_age,
-)
+from minerva.characters.helpers import set_character_age
+from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, System, World
 from minerva.life_events.aging import LifeStageChangeEvent
@@ -148,3 +148,17 @@ class CharacterLifespanSystem(System):
         ):
             if character.age >= life_span.value:
                 Die(character.gameobject).execute()
+
+
+class SuccessionDepthChartUpdateSystem(System):
+    """Updates the succession depth chart for all family heads."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        chart_cache = world.resources.get_resource(SuccessionChartCache)
+
+        for _, (character, _, _) in world.get_components(
+            (Character, HeadOfFamily, Active)
+        ):
+            chart_cache.get_chart_for(character.gameobject, recalculate=True)

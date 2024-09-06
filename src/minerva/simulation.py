@@ -16,6 +16,7 @@ from minerva.characters.components import (
     SexualOrientation,
     SpeciesLibrary,
 )
+from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject, World
@@ -47,7 +48,7 @@ from minerva.preconditions.preconditions import (
 )
 from minerva.relationships.base_types import SocialRuleLibrary
 from minerva.sim_db import SimDB
-from minerva.traits.base_types import TraitLibrary, Trait
+from minerva.traits.base_types import Trait, TraitLibrary
 
 
 class Simulation:
@@ -99,6 +100,7 @@ class Simulation:
         self._world.resources.add_resource(BusinessLibrary())
         self._world.resources.add_resource(SocialRuleLibrary())
         self._world.resources.add_resource(GlobalEventHistory())
+        self._world.resources.add_resource(SuccessionChartCache())
 
         effect_lib = EffectLibrary()
         self._world.resources.add_resource(effect_lib)
@@ -133,6 +135,9 @@ class Simulation:
         )
         self.world.systems.add_system(
             minerva.systems.CharacterAgingSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.SuccessionDepthChartUpdateSystem(),
         )
         self.world.systems.add_system(
             minerva.systems.CharacterLifespanSystem(),

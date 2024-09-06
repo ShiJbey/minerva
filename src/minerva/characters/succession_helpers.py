@@ -78,6 +78,38 @@ class SuccessionDepthChart:
         return iter(self._rows)
 
 
+class SuccessionChartCache:
+    """Singleton class that manages depth charts for all current family heads."""
+
+    __slots__ = ("_charts",)
+
+    _charts: dict[int, SuccessionDepthChart]
+
+    def __init__(self) -> None:
+        self._charts = {}
+
+    def get_chart_for(
+        self, character: GameObject, recalculate: bool = False
+    ) -> SuccessionDepthChart:
+        """Get the chart for the given character"""
+        if character.uid in self._charts and not recalculate:
+            return self._charts[character.uid]
+
+        depth_chart = get_succession_depth_chart(character)
+        self._charts[character.uid] = depth_chart
+
+        return depth_chart
+
+    def remove_chart_for(self, character: GameObject) -> bool:
+        """Removes the depth chart for the given character."""
+
+        if character.uid in self._charts:
+            del self._charts[character.uid]
+            return True
+
+        return False
+
+
 def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
     """Calculate the succession depth chart for the given character."""
 
