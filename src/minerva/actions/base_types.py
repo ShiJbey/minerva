@@ -9,148 +9,160 @@ how likely the action is to succeed if it is attempted.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections import defaultdict
-from typing import Any, ClassVar, Iterable, Protocol
+from typing import Callable, Generic, Iterator, Optional, TypeVar, cast
 
-from ordered_set import OrderedSet
+from minerva.characters.motive_helpers import MotiveVector
+from minerva.ecs import GameObject, World
+from minerva.preconditions.base_types import Precondition
 
-from minerva.ecs import World
 
+class IAIBehavior(ABC):
+    """Abstract interface implemented by all AI behaviors."""
 
-class ActionConsideration(Protocol):
-    """A callable that accepts an action and returns a probability value."""
+    @abstractmethod
+    def get_name(self) -> str:
+        """Get the name of the behavior."""
+        raise NotImplementedError()
 
-    def __call__(self, action: Action) -> float:
-        """Calculate a probability for the action."""
+    @abstractmethod
+    def get_motive_vect(self) -> MotiveVector:
+        """Get the motive vector for this behavior."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def passes_preconditions(self, character: GameObject) -> bool:
+        """check if the given character passes all the preconditions."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def execute(self, character: GameObject) -> bool:
+        """Execute the behavior with the given character."""
         raise NotImplementedError()
 
 
-def invert_cons(consideration: ActionConsideration) -> ActionConsideration:
-    """Invert the probability by subtracting it from one."""
+class AIBehavior(IAIBehavior):
+    """A behavior that can be performed by a character."""
 
-    def wrapped_fn(action: Action) -> float:
-        return 1 - consideration(action)
+    __slots__ = ("name", "motives", "preconditions", "execution_strategy")
 
-    return wrapped_fn
+    name: str
+    motives: MotiveVector
+    preconditions: list[Precondition]
+    execution_strategy: Callable[[GameObject], bool]
 
-
-def cons_pow(consideration: ActionConsideration, pow_exp: int) -> ActionConsideration:
-    """Invert the probability by subtracting it from one."""
-
-    def wrapped_fn(action: Action) -> float:
-        return consideration(action) ** pow_exp
-
-    return wrapped_fn
-
-
-class Action(ABC):
-    """An abstract base class for all actions that agents may perform."""
-
-    __action_id__: ClassVar[str] = ""
-
-    __slots__ = ("world", "is_silent", "data")
-
-    world: World
-    """The simulation's World instance."""
-    is_silent: bool
-    """Should this event or sub-events emit life events."""
-    data: dict[str, Any]
-    """General metadata."""
-
-    def __init__(self, world: World, is_silent: bool = False, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        name: str,
+        motives: MotiveVector,
+        preconditions: list[Precondition],
+        execution_strategy: Callable[[GameObject], bool],
+    ) -> None:
         super().__init__()
-        self.world = world
-        self.is_silent = is_silent
-        self.data = {**kwargs}
+        self.name = name
+        self.motives = motives
+        self.preconditions = preconditions
+        self.execution_strategy = execution_strategy
 
-        if not self.__action_id__:
-            raise ValueError("Please specify the __action_id__ class variable.")
+    def get_name(self) -> str:
+        """Get the name of the behavior."""
+        return self.name
 
-    @classmethod
-    def action_id(cls) -> str:
-        """The action's ID."""
-        return cls.__action_id__
+    def get_motive_vect(self) -> MotiveVector:
+        """Get the motive vector for this behavior."""
+        return self.motives
+
+    def passes_preconditions(self, character: GameObject) -> bool:
+        """check if the given character passes all the preconditions."""
+        return all(p.check(character) for p in self.preconditions)
+
+    def execute(self, character: GameObject) -> bool:
+        """Execute the behavior with the given character."""
+        return self.execution_strategy(character)
+
+
+class AIBehaviorLibrary:
+    """The library of AI behaviors."""
+
+    __slots__ = ("behaviors",)
+
+    behaviors: dict[str, IAIBehavior]
+
+    def __init__(self) -> None:
+        self.behaviors = {}
+
+    def add_behavior(self, behavior: IAIBehavior) -> None:
+        """Add behavior to the library."""
+        self.behaviors[behavior.get_name()] = behavior
+
+    def iter_behaviors(self) -> Iterator[IAIBehavior]:
+        """Return iterator to behaviors."""
+        return iter(self.behaviors.values())
+
+    def get_behavior(self, name: str) -> IAIBehavior:
+        """Get a behavior by name."""
+        return self.behaviors[name]
+
+
+class IAIAction(ABC):
+    """An abstract interface for all actions executed by behaviors."""
+
+    @abstractmethod
+    def get_probability_success(self) -> float:
+        """Get probability of the action being successful."""
+        raise NotImplementedError()
 
     @abstractmethod
     def execute(self) -> bool:
-        """Executes the action.
-
-        Returns
-        -------
-        bool
-            True, if the action completed successfully.
-        """
-
+        """Execute the action and return true if successful."""
         raise NotImplementedError()
 
 
-def get_action_probability(action: Action) -> float:
-    """Calculate the probability of a given action being successful."""
-
-    consideration_library = action.world.resources.get_resource(
-        ActionConsiderationLibrary
-    )
-
-    considerations = consideration_library.get_success_considerations(
-        action.action_id()
-    )
-
-    # We set the starting score to 1 since we are multiplying probabilities
-    score: float = 1
-    consideration_count: int = 0
-
-    for consideration in considerations:
-        utility_score = consideration(action)
-
-        if utility_score < 0.0:
-            continue
-
-        elif utility_score == 0.0:
-            return 0.0
-
-        # Update the current score and counts
-        score = score * utility_score
-        consideration_count += 1
-
-    if consideration_count == 0:
-        return 0.5
-    else:
-        return score ** (1 / consideration_count)
+_AD = TypeVar("_AD", bound="Action")
 
 
-class ActionConsiderationLibrary:
-    """Manages all considerations that calculate the probability of a potential action.
+class Action(IAIAction, Generic[_AD]):
+    """An action that a character can take."""
 
-    All considerations are grouped by action ID. End-users are responsible for casting
-    the action instance if they care about type hints and such.
-    """
+    __slots__ = ("world", "data", "considerations")
 
-    __slots__ = ("success_considerations",)
+    world: World
+    data: _AD
+    considerations: list[Callable[[Action[_AD]], float]]
 
-    success_considerations: defaultdict[str, OrderedSet[ActionConsideration]]
-    """Considerations for calculating success probabilities."""
-
-    def __init__(self) -> None:
-        self.success_considerations = defaultdict(lambda: OrderedSet([]))
-
-    def add_success_consideration(
-        self, action_id: str, consideration: ActionConsideration
+    def __init__(
+        self,
+        world: World,
+        considerations: Optional[list[Callable[[Action[_AD]], float]]] = None,
     ) -> None:
-        """Add a success consideration to the library."""
-        self.success_considerations[action_id].add(consideration)
+        self.world = world
+        self.data = cast(_AD, self)
+        self.considerations = considerations if considerations else []
 
-    def remove_success_consideration(
-        self, action_id: str, consideration: ActionConsideration
-    ) -> None:
-        """Remove a success consideration from the library."""
-        self.success_considerations[action_id].remove(consideration)
+    def get_probability_success(self) -> float:
+        """Get probability success of an action."""
+        # We set the starting score to 1 since we are multiplying probabilities
+        score: float = 1
+        consideration_count: int = 0
 
-    def remove_all_success_considerations(self, action_id: str) -> None:
-        """Add a success consideration to the library."""
-        del self.success_considerations[action_id]
+        for consideration in self.considerations:
+            utility_score = consideration(self)
 
-    def get_success_considerations(
-        self, action_id: str
-    ) -> Iterable[ActionConsideration]:
-        """Get all success considerations for an action."""
-        return self.success_considerations[action_id]
+            if utility_score < 0.0:
+                continue
+
+            elif utility_score == 0.0:
+                return 0.0
+
+            # Update the current score and counts
+            score = score * utility_score
+            consideration_count += 1
+
+        if consideration_count == 0:
+            return 0.5
+        else:
+            return score ** (1 / consideration_count)
+
+    @abstractmethod
+    def execute(self) -> bool:
+        """Execute the action type."""
+        raise NotImplementedError

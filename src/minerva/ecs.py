@@ -276,6 +276,11 @@ class GameObject:
         """Set the GameObject's name"""
         self._name = f"{value}"
 
+    @property
+    def name_with_uid(self) -> str:
+        """Get the name of the gameobject with the UID."""
+        return f"{self._name} ({self._uid})"
+
     def activate(self) -> None:
         """Tag the GameObject as active."""
         self.add_component(Active())

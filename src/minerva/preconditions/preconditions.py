@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import enum
-from typing import Any
+from typing import Any, Callable
 
 from minerva.characters.components import Character, LifeStage, Sex
 from minerva.ecs import GameObject, World
@@ -11,6 +11,27 @@ from minerva.preconditions.base_types import Precondition, PreconditionFactory
 from minerva.relationships.base_types import Relationship
 from minerva.stats.helpers import get_stat, has_stat_with_name
 from minerva.traits.helpers import has_trait
+
+
+class LambdaPrecondition(Precondition):
+    """A precondition defined using a lambda."""
+
+    __slots__ = ("_description", "_func")
+
+    _description: str
+    _func: Callable[[GameObject], bool]
+
+    def __init__(self, description: str, func: Callable[[GameObject], bool]) -> None:
+        super().__init__()
+        self._description = description
+        self._func = func
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    def check(self, gameobject: GameObject) -> bool:
+        return self._func(gameobject)
 
 
 class HasTraitPrecondition(Precondition):

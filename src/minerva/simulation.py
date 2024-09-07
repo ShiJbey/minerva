@@ -9,6 +9,7 @@ import sqlite3
 from typing import Optional
 
 import minerva.systems
+from minerva.actions.base_types import AIBehaviorLibrary
 from minerva.businesses.data import BusinessLibrary, OccupationLibrary
 from minerva.characters.components import (
     LifeStage,
@@ -101,6 +102,7 @@ class Simulation:
         self._world.resources.add_resource(SocialRuleLibrary())
         self._world.resources.add_resource(GlobalEventHistory())
         self._world.resources.add_resource(SuccessionChartCache())
+        self._world.resources.add_resource(AIBehaviorLibrary())
 
         effect_lib = EffectLibrary()
         self._world.resources.add_resource(effect_lib)
@@ -150,6 +152,9 @@ class Simulation:
         )
         self.world.systems.add_system(
             minerva.systems.EmptyFamilyCleanUpSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.CharacterBehaviorSystem(),
         )
 
     def initialize_logging(self) -> None:

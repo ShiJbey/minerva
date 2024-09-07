@@ -1,6 +1,7 @@
 """Minerva Sample: House of the Dragon/Game of Thrones."""
 
 import argparse
+import logging
 import pathlib
 import pstats
 import time
@@ -9,8 +10,13 @@ from datetime import datetime
 
 import tqdm
 
+from minerva.actions.base_types import AIBehavior, AIBehaviorLibrary
+from minerva.characters.components import HeadOfClan
+from minerva.characters.motive_helpers import MotiveVector
 from minerva.config import Config
 from minerva.datetime import MONTHS_PER_YEAR
+from minerva.ecs import GameObject
+from minerva.inspection import SimulationInspector
 from minerva.loaders import (
     load_businesses_types,
     load_clan_names,
@@ -24,8 +30,10 @@ from minerva.loaders import (
 )
 from minerva.pcg.character import generate_initial_clans
 from minerva.pcg.world_map import generate_world_map
+from minerva.preconditions.preconditions import LambdaPrecondition
 from minerva.simulation import Simulation
 
+LOGGER = logging.getLogger(__file__)
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 
 
@@ -104,6 +112,29 @@ def run_visualization(simulation: Simulation) -> None:
     game.run()
 
 
+def add_simple_ai_behavior(simulation: Simulation) -> None:
+    """Add a simple AI behavior to the simulation."""
+
+    ai_behavior_library = simulation.world.resources.get_resource(AIBehaviorLibrary)
+
+    def say_hi_behavior(character: GameObject) -> bool:
+        LOGGER.info("%s says hi to the other leaders.", character.name_with_uid)
+        return True
+
+    ai_behavior_library.add_behavior(
+        AIBehavior(
+            name="Say Hi",
+            motives=MotiveVector(happiness=1.0),
+            preconditions=[
+                LambdaPrecondition(
+                    "Is clan head", lambda g: g.has_component(HeadOfClan)
+                ),
+            ],
+            execution_strategy=say_hi_behavior,
+        )
+    )
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -125,6 +156,8 @@ if __name__ == "__main__":
     load_traits(sim, DATA_DIR / "ck3_traits.yaml")
     load_businesses_types(sim, DATA_DIR / "ds_business_types.yaml")
     load_occupation_types(sim, DATA_DIR / "ds_occupation_types.yaml")
+
+    add_simple_ai_behavior(sim)
 
     print(f"World Seed: {sim.config.seed}")
 
@@ -151,3 +184,6 @@ if __name__ == "__main__":
         run_simulation(sim, int(args.years))
 
     sim.export_db(str(args.db_out))
+
+    # Create inspector for when the script is run with the python "-i" flag
+    inspector = SimulationInspector(sim)

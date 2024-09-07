@@ -2,7 +2,11 @@
 
 import random
 
+from ordered_set import OrderedSet
+
 from minerva.actions.actions import Die
+from minerva.actions.base_types import AIBehaviorLibrary, IAIBehavior
+from minerva.actions.behavior_helpers import get_behavior_utility
 from minerva.characters.components import (
     Character,
     Clan,
@@ -20,7 +24,12 @@ from minerva.characters.helpers import (
     set_family_clan,
     set_family_head,
 )
-from minerva.characters.succession_helpers import SuccessionChartCache
+from minerva.characters.motive_helpers import get_character_motives
+from minerva.characters.succession_helpers import (
+    SuccessionChartCache,
+    get_succession_depth_chart,
+)
+from minerva.constants import BEHAVIOR_UTILITY_THRESHOLD
 from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, GameObject, System, World
 from minerva.life_events.aging import LifeStageChangeEvent
@@ -291,3 +300,48 @@ class EmptyFamilyCleanUpSystem(System):
                     if len(former_clan_component.families) == 0:
                         former_clan_component.gameobject.deactivate()
                         ClanRemovedFromPlay(former_clan_component.gameobject).dispatch()
+
+
+class CharacterBehaviorSystem(System):
+    """Family heads and those high on the depth chart take actions."""
+
+    def on_update(self, world: World) -> None:
+        rng = world.resources.get_resource(random.Random)
+        behavior_library = world.resources.get_resource(AIBehaviorLibrary)
+
+        family_heads = [
+            world.gameobjects.get_gameobject(uid)
+            for uid, _ in world.get_components((HeadOfFamily, Active))
+        ]
+
+        all_acting_characters: OrderedSet[GameObject] = OrderedSet([*family_heads])
+
+        for head in family_heads:
+            depth_chart = get_succession_depth_chart(head)
+            eligible_character_ids = [
+                entry.character_id for entry in depth_chart if entry.is_eligible
+            ]
+            for uid in eligible_character_ids[:5]:
+                all_acting_characters.add(world.gameobjects.get_gameobject(uid))
+
+        acting_order = list(all_acting_characters)
+        rng.shuffle(acting_order)
+
+        for character in acting_order:
+            if character.is_active:
+                character_motives = get_character_motives(character)
+                potential_behaviors: list[IAIBehavior] = []
+                behavior_scores: list[float] = []
+                for behavior in behavior_library.iter_behaviors():
+                    if behavior.passes_preconditions(character):
+                        _, utility = get_behavior_utility(character_motives, behavior)
+                        if utility >= BEHAVIOR_UTILITY_THRESHOLD:
+                            potential_behaviors.append(behavior)
+                            behavior_scores.append(utility)
+
+                if behavior_scores:
+                    selected_behavior = rng.choices(
+                        potential_behaviors, behavior_scores, k=1
+                    )[0]
+
+                    selected_behavior.execute(character)

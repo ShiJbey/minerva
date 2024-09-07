@@ -34,24 +34,29 @@ from minerva.life_events.succession import (
 from minerva.relationships.helpers import deactivate_relationships
 
 
-class Die(Action):
+class Die(Action["Die"]):
     """A character dies."""
-
-    __action_id__ = "die"
 
     __slots__ = ("character",)
 
     character: GameObject
 
-    def __init__(self, character: GameObject, is_silent: bool = False) -> None:
-        super().__init__(character.world, is_silent=is_silent, performer=character)
+    def __init__(self, character: GameObject) -> None:
+        super().__init__(
+            world=character.world, considerations=[self._empty_consideration]
+        )
         self.character = character
+
+    @staticmethod
+    def _empty_consideration(action: Action[Die]) -> float:
+        assert action.data.character
+        return 1.0
 
     def execute(self) -> bool:
         """Have a character die."""
-        depth_chart_cache = self.world.resources.get_resource(SuccessionChartCache)
-        current_date = self.world.resources.get_resource(SimDate).copy()
-        rng = self.world.resources.get_resource(random.Random)
+        depth_chart_cache = self.data.world.resources.get_resource(SuccessionChartCache)
+        current_date = self.data.world.resources.get_resource(SimDate).copy()
+        rng = self.data.world.resources.get_resource(random.Random)
 
         set_character_alive(self.character, False)
         self.character.deactivate()

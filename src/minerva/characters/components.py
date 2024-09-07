@@ -566,6 +566,90 @@ class MoneyMotive(StatComponent):
         )
 
 
+class PowerMotive(StatComponent):
+    """Tracks a character's want for power."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
+
+
+class RespectMotive(StatComponent):
+    """Tracks a character's want for respect."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
+
+
+class HappinessMotive(StatComponent):
+    """Tracks a character's want for happiness."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
+
+
+class FamilyMotive(StatComponent):
+    """Tracks a character's want for family."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
+
+
+class HonorMotive(StatComponent):
+    """Tracks a character's want for honor."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
+
+
+class SexMotive(StatComponent):
+    """Tracks a character's want for sex."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
+
+
+class DreadMotive(StatComponent):
+    """Tracks a character's want for dread."""
+
+    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+        super().__init__(
+            calculation_strategy,
+            CHARACTER_MOTIVE_BASE,
+            (0, CHARACTER_MOTIVE_MAX),
+            True,
+        )
+
+
 class Lifespan(StatComponent):
     """Tracks a GameObject's lifespan."""
 

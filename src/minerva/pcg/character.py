@@ -14,11 +14,15 @@ from minerva.characters.components import (
     Clan,
     Compassion,
     Diplomacy,
+    DreadMotive,
     Emperor,
     Family,
+    FamilyMotive,
     Fertility,
     Greed,
+    HappinessMotive,
     Honor,
+    HonorMotive,
     Household,
     Intrigue,
     Learning,
@@ -26,10 +30,14 @@ from minerva.characters.components import (
     LifeStage,
     Luck,
     Martial,
+    MoneyMotive,
+    PowerMotive,
     Prowess,
     Rationality,
+    RespectMotive,
     RomancePropensity,
     Sex,
+    SexMotive,
     SexualOrientation,
     Sociability,
     SpeciesLibrary,
@@ -290,59 +298,45 @@ def generate_character(
     obj.add_component(StatusEffectManager())
     obj.add_component(RelationshipManager())
     obj.add_component(EventHistory())
-    stats = obj.add_component(StatManager())
+    obj.add_component(StatManager())
 
     # Create all the stat components and add them to the stats class for str look-ups
-    stats.stats["Lifespan"] = obj.add_component(
+    obj.add_component(
         Lifespan(
             default_stat_calc_strategy,
             rng.randint(chosen_species.lifespan[0], chosen_species.lifespan[1]),
         )
     )
-    stats.stats["Fertility"] = obj.add_component(Fertility(default_stat_calc_strategy))
-    stats.stats["Diplomacy"] = obj.add_component(Diplomacy(default_stat_calc_strategy))
-    stats.stats["Martial"] = obj.add_component(Martial(default_stat_calc_strategy))
-    stats.stats["Stewardship"] = obj.add_component(
-        Stewardship(default_stat_calc_strategy)
-    )
-    stats.stats["Intrigue"] = obj.add_component(Intrigue(default_stat_calc_strategy))
-    stats.stats["Learning"] = obj.add_component(Learning(default_stat_calc_strategy))
-    stats.stats["Prowess"] = obj.add_component(Prowess(default_stat_calc_strategy))
-    stats.stats["Boldness"] = obj.add_component(Boldness(default_stat_calc_strategy))
-    stats.stats["Compassion"] = obj.add_component(
-        Compassion(default_stat_calc_strategy)
-    )
-    stats.stats["Greed"] = obj.add_component(Greed(default_stat_calc_strategy))
-    stats.stats["Honor"] = obj.add_component(Honor(default_stat_calc_strategy))
-    stats.stats["Rationality"] = obj.add_component(
-        Rationality(default_stat_calc_strategy)
-    )
-    stats.stats["Sociability"] = obj.add_component(
-        Sociability(default_stat_calc_strategy)
-    )
-    stats.stats["Vengefulness"] = obj.add_component(
-        Vengefulness(default_stat_calc_strategy)
-    )
-    stats.stats["Zeal"] = obj.add_component(Zeal(default_stat_calc_strategy))
-    stats.stats["Luck"] = obj.add_component(Luck(default_stat_calc_strategy))
-    stats.stats["RomancePropensity"] = obj.add_component(
-        RomancePropensity(default_stat_calc_strategy)
-    )
-    stats.stats["ViolencePropensity"] = obj.add_component(
-        ViolencePropensity(default_stat_calc_strategy)
-    )
-    stats.stats["WantForPower"] = obj.add_component(
-        WantForPower(default_stat_calc_strategy)
-    )
-    stats.stats["WantForChildren"] = obj.add_component(
-        WantForChildren(default_stat_calc_strategy)
-    )
-    stats.stats["WantToWork"] = obj.add_component(
-        WantToWork(default_stat_calc_strategy)
-    )
-    stats.stats["WantForMarriage"] = obj.add_component(
-        WantForMarriage(default_stat_calc_strategy)
-    )
+    obj.add_component(Fertility(default_stat_calc_strategy))
+    obj.add_component(Diplomacy(default_stat_calc_strategy))
+    obj.add_component(Martial(default_stat_calc_strategy))
+    obj.add_component(Stewardship(default_stat_calc_strategy))
+    obj.add_component(Intrigue(default_stat_calc_strategy))
+    obj.add_component(Learning(default_stat_calc_strategy))
+    obj.add_component(Prowess(default_stat_calc_strategy))
+    obj.add_component(Boldness(default_stat_calc_strategy))
+    obj.add_component(Compassion(default_stat_calc_strategy))
+    obj.add_component(Greed(default_stat_calc_strategy))
+    obj.add_component(Honor(default_stat_calc_strategy))
+    obj.add_component(Rationality(default_stat_calc_strategy))
+    obj.add_component(Sociability(default_stat_calc_strategy))
+    obj.add_component(Vengefulness(default_stat_calc_strategy))
+    obj.add_component(Zeal(default_stat_calc_strategy))
+    obj.add_component(Luck(default_stat_calc_strategy))
+    obj.add_component(RomancePropensity(default_stat_calc_strategy))
+    obj.add_component(ViolencePropensity(default_stat_calc_strategy))
+    obj.add_component(WantForPower(default_stat_calc_strategy))
+    obj.add_component(WantForChildren(default_stat_calc_strategy))
+    obj.add_component(WantToWork(default_stat_calc_strategy))
+    obj.add_component(WantForMarriage(default_stat_calc_strategy))
+    obj.add_component(MoneyMotive(default_stat_calc_strategy))
+    obj.add_component(PowerMotive(default_stat_calc_strategy))
+    obj.add_component(RespectMotive(default_stat_calc_strategy))
+    obj.add_component(HappinessMotive(default_stat_calc_strategy))
+    obj.add_component(FamilyMotive(default_stat_calc_strategy))
+    obj.add_component(HonorMotive(default_stat_calc_strategy))
+    obj.add_component(SexMotive(default_stat_calc_strategy))
+    obj.add_component(DreadMotive(default_stat_calc_strategy))
 
     db = world.resources.get_resource(SimDB).db
 
