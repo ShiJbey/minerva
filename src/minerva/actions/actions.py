@@ -34,6 +34,30 @@ from minerva.life_events.succession import (
 from minerva.relationships.helpers import deactivate_relationships
 
 
+class GetMarried(Action["GetMarried"]):
+    """Two characters get married."""
+
+    __slot__ = ("initiator", "partner")
+
+    initiator: GameObject
+    partner: GameObject
+
+    def __init__(self, initiator: GameObject, partner: GameObject) -> None:
+        super().__init__(world=initiator.world)
+        self.initiator = initiator
+        self.partner = partner
+
+    def execute(self) -> bool:
+        return True
+
+
+@GetMarried.consideration
+def marriage_empty_consideration(action: Action[GetMarried]) -> float:
+    """Empty marriage consideration"""
+    assert action.data.initiator
+    return 1.0
+
+
 class Die(Action["Die"]):
     """A character dies."""
 
@@ -42,15 +66,8 @@ class Die(Action["Die"]):
     character: GameObject
 
     def __init__(self, character: GameObject) -> None:
-        super().__init__(
-            world=character.world, considerations=[self._empty_consideration]
-        )
+        super().__init__(world=character.world)
         self.character = character
-
-    @staticmethod
-    def _empty_consideration(action: Action[Die]) -> float:
-        assert action.data.character
-        return 1.0
 
     def execute(self) -> bool:
         """Have a character die."""

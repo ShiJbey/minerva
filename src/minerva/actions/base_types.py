@@ -9,7 +9,7 @@ how likely the action is to succeed if it is attempted.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Callable, Generic, Iterator, Optional, TypeVar, cast
+from typing import Callable, ClassVar, Generic, Iterator, TypeVar, cast
 
 from minerva.characters.motive_helpers import MotiveVector
 from minerva.ecs import GameObject, World
@@ -117,26 +117,22 @@ class IAIAction(ABC):
         raise NotImplementedError()
 
 
-_AD = TypeVar("_AD", bound="Action")
+_AD = TypeVar("_AD", bound="IAIAction")
 
 
 class Action(IAIAction, Generic[_AD]):
     """An action that a character can take."""
 
-    __slots__ = ("world", "data", "considerations")
+    __slots__ = ("world", "data")
+
+    considerations: ClassVar[list[Callable[[Action[IAIAction]], float]]] = []
 
     world: World
     data: _AD
-    considerations: list[Callable[[Action[_AD]], float]]
 
-    def __init__(
-        self,
-        world: World,
-        considerations: Optional[list[Callable[[Action[_AD]], float]]] = None,
-    ) -> None:
+    def __init__(self, world: World) -> None:
         self.world = world
         self.data = cast(_AD, self)
-        self.considerations = considerations if considerations else []
 
     def get_probability_success(self) -> float:
         """Get probability success of an action."""
@@ -145,7 +141,7 @@ class Action(IAIAction, Generic[_AD]):
         consideration_count: int = 0
 
         for consideration in self.considerations:
-            utility_score = consideration(self)
+            utility_score = consideration(cast(Action[IAIAction], self))
 
             if utility_score < 0.0:
                 continue
@@ -166,3 +162,11 @@ class Action(IAIAction, Generic[_AD]):
     def execute(self) -> bool:
         """Execute the action type."""
         raise NotImplementedError
+
+    @classmethod
+    def consideration(
+        cls, fn: Callable[[Action[_AD]], float]
+    ) -> Callable[[Action[_AD]], float]:
+        """A decorator function for considerations."""
+        cls.considerations.append(cast(Callable[[Action[IAIAction]], float], fn))
+        return fn
