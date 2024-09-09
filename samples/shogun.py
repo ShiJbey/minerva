@@ -1,21 +1,30 @@
-"""Minerva Sample: House of the Dragon/Game of Thrones."""
+"""Minerva Sample: Shogun.
+
+This minerva sample generates a world inspired by the Shogun board game, based on the
+novel of the same name. This sample is the core testing script for the headless and
+pygame version.
+
+Usage:
+    "python path/to/shogun.py -h".............Show commandline help
+    "python path/to/shogun.py"................Run headless sim
+    "python path/to/shogun.py --pygame".......Run the pygame visualization
+"""
 
 import argparse
 import logging
 import pathlib
 import pstats
+import random
 import time
 from cProfile import Profile
 from datetime import datetime
 
 import tqdm
 
-from minerva.actions.base_types import AIBehavior, AIBehaviorLibrary
-from minerva.characters.components import HeadOfClan
-from minerva.characters.motive_helpers import MotiveVector
+import minerva
+import minerva.constants
 from minerva.config import Config
 from minerva.datetime import MONTHS_PER_YEAR
-from minerva.ecs import GameObject
 from minerva.inspection import SimulationInspector
 from minerva.loaders import (
     load_businesses_types,
@@ -30,7 +39,6 @@ from minerva.loaders import (
 )
 from minerva.pcg.character import generate_initial_clans
 from minerva.pcg.world_map import generate_world_map
-from minerva.preconditions.preconditions import LambdaPrecondition
 from minerva.simulation import Simulation
 
 LOGGER = logging.getLogger(__file__)
@@ -46,12 +54,22 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-s",
+        "--seed",
+        type=str,
+        default=str(random.randint(0, 999_999)),
+        help="A world seed for random number generation.",
+    )
+
+    parser.add_argument(
         "-y", "--years", type=int, default=100, help="Number of years to simulate."
     )
 
     parser.add_argument(
         "--pygame", action="store_true", help="Run the PyGame visualization"
     )
+
+    parser.add_argument("--debug", action="store_true", help="Enable debug output")
 
     parser.add_argument(
         "--enable-logging", action="store_true", help="Enable simulation logging"
@@ -76,6 +94,8 @@ def run_simulation_with_profiling(simulation: Simulation, years: int) -> None:
 
     total_time_steps: int = years * MONTHS_PER_YEAR
 
+    print(f"Simulating {years} years ({total_time_steps} timesteps) ...")
+
     with Profile() as profile:
         for _ in tqdm.trange(total_time_steps):  # type: ignore
             simulation.step()
@@ -96,43 +116,21 @@ def run_simulation(simulation: Simulation, years: int) -> None:
     """Runs the simulation."""
     total_time_steps: int = years * MONTHS_PER_YEAR
 
+    print(f"Simulating {years} years ({total_time_steps} timesteps) ...")
+
     for _ in tqdm.trange(total_time_steps):  # type: ignore
         simulation.step()
 
 
-def run_visualization(simulation: Simulation) -> None:
+def run_visualization(simulation: Simulation, enable_debug: bool = False) -> None:
     """Runs the simulation within a PyGame game."""
     # Import game below since PyGame requires addition loading time
-    import minerva.constants  # pylint: disable=C0415
     from minerva.viz.game import Game  # pylint: disable=C0415
 
-    minerva.constants.SHOW_DEBUG = True
+    minerva.constants.SHOW_DEBUG = enable_debug
 
     game = Game(simulation)
     game.run()
-
-
-def add_simple_ai_behavior(simulation: Simulation) -> None:
-    """Add a simple AI behavior to the simulation."""
-
-    ai_behavior_library = simulation.world.resources.get_resource(AIBehaviorLibrary)
-
-    def say_hi_behavior(character: GameObject) -> bool:
-        LOGGER.info("%s says hi to the other leaders.", character.name_with_uid)
-        return True
-
-    ai_behavior_library.add_behavior(
-        AIBehavior(
-            name="Say Hi",
-            motives=MotiveVector(happiness=1.0),
-            preconditions=[
-                LambdaPrecondition(
-                    "Is clan head", lambda g: g.has_component(HeadOfClan)
-                ),
-            ],
-            execution_strategy=say_hi_behavior,
-        )
-    )
 
 
 if __name__ == "__main__":
@@ -140,6 +138,7 @@ if __name__ == "__main__":
 
     sim = Simulation(
         Config(
+            seed=args.seed,
             n_sovereign_clans=12,
             world_size=(25, 15),
             logging_enabled=bool(args.enable_logging),
@@ -157,8 +156,7 @@ if __name__ == "__main__":
     load_businesses_types(sim, DATA_DIR / "ds_business_types.yaml")
     load_occupation_types(sim, DATA_DIR / "ds_occupation_types.yaml")
 
-    add_simple_ai_behavior(sim)
-
+    print(f"Minerva version: {minerva.__version__}")
     print(f"World Seed: {sim.config.seed}")
 
     print("Initializing Data ...")
@@ -166,20 +164,20 @@ if __name__ == "__main__":
 
     time.sleep(0.1)
 
-    print("Generating Map and Territories ...")
+    print("Generating Map and Settlements ...")
     generate_world_map(sim.world)
 
     time.sleep(0.8)
 
-    print("Generating Families ...")
+    print("Generating Initial Families and Clans ...")
     generate_initial_clans(sim.world)
 
     time.sleep(0.8)
 
-    if args.enable_profiling:
+    if bool(args.enable_profiling):
         run_simulation_with_profiling(sim, int(args.years))
-    elif args.pygame:
-        run_visualization(sim)
+    elif bool(args.pygame):
+        run_visualization(sim, enable_debug=bool(args.debug))
     else:
         run_simulation(sim, int(args.years))
 
@@ -187,3 +185,5 @@ if __name__ == "__main__":
 
     # Create inspector for when the script is run with the python "-i" flag
     inspector = SimulationInspector(sim)
+
+    print("Done.")
