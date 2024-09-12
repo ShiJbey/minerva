@@ -12,6 +12,7 @@ import minerva.systems
 from minerva.actions.base_types import AIBehaviorLibrary
 from minerva.businesses.data import BusinessLibrary, OccupationLibrary
 from minerva.characters.components import (
+    DynastyTracker,
     LifeStage,
     Sex,
     SexualOrientation,
@@ -26,8 +27,6 @@ from minerva.effects.effects import (
     AddRelationshipModifierFactory,
     AddStatModifierFactory,
 )
-from minerva.engine import Engine
-from minerva.life_events.base_types import GlobalEventHistory
 from minerva.pcg.character import CharacterNameFactory, ClanNameFactory
 from minerva.pcg.settlement import SettlementNameFactory
 from minerva.preconditions.base_types import PreconditionLibrary
@@ -91,7 +90,6 @@ class Simulation:
         self._world.resources.add_resource(self._date)
         self._world.resources.add_resource(self._config)
         self._world.resources.add_resource(random.Random(self._config.seed))
-        self._world.resources.add_resource(Engine())
         self._world.resources.add_resource(CharacterNameFactory(seed=self.config.seed))
         self._world.resources.add_resource(SettlementNameFactory(seed=self.config.seed))
         self._world.resources.add_resource(ClanNameFactory(seed=self.config.seed))
@@ -100,9 +98,9 @@ class Simulation:
         self._world.resources.add_resource(OccupationLibrary())
         self._world.resources.add_resource(BusinessLibrary())
         self._world.resources.add_resource(SocialRuleLibrary())
-        self._world.resources.add_resource(GlobalEventHistory())
         self._world.resources.add_resource(SuccessionChartCache())
         self._world.resources.add_resource(AIBehaviorLibrary())
+        self._world.resources.add_resource(DynastyTracker())
 
         effect_lib = EffectLibrary()
         self._world.resources.add_resource(effect_lib)
@@ -152,6 +150,9 @@ class Simulation:
         )
         self.world.systems.add_system(
             minerva.systems.EmptyFamilyCleanUpSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.EmptyClanCleanUpSystem(),
         )
         self.world.systems.add_system(
             minerva.systems.CharacterBehaviorSystem(),

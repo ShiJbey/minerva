@@ -99,47 +99,6 @@ class SpeciesType(pydantic.BaseModel):
         return LifeStage.CHILD
 
 
-class SpeciesDef(pydantic.BaseModel):
-    """A definition for a species type."""
-
-    name: str
-    """The name of this species."""
-    description: str = ""
-    """A short description of the trait."""
-    adolescent_age: int
-    """Age this species reaches adolescence."""
-    young_adult_age: int
-    """Age this species reaches young adulthood."""
-    adult_age: int
-    """Age this species reaches main adulthood."""
-    senior_age: int
-    """Age this species becomes a senior/elder."""
-    lifespan: str
-    """A range of of years that this species lives (e.g. 'MIN - MAX')."""
-    adolescent_male_fertility: int
-    """Max fertility for adolescent males."""
-    young_adult_male_fertility: int
-    """Max fertility for young adult males."""
-    adult_male_fertility: int
-    """Max fertility for adult males."""
-    senior_male_fertility: int
-    """Max fertility for senior males."""
-    adolescent_female_fertility: int
-    """Max fertility for adolescent females."""
-    young_adult_female_fertility: int
-    """Max fertility for young adult females."""
-    adult_female_fertility: int
-    """Max fertility for adult females."""
-    senior_female_fertility: int
-    """Max fertility for senior females."""
-    fertility_cost_per_child: int
-    """Fertility reduction each time a character births a child."""
-    can_physically_age: bool = True
-    """Does this character go through the various life stages."""
-    traits: list[str] = pydantic.Field(default_factory=list)
-    """Traits to apply to characters of this species."""
-
-
 class SpeciesLibrary:
     """Manages species definitions and instances."""
 
@@ -226,7 +185,6 @@ class Character(Component):
         surname: str,
         sex: Sex,
         species: SpeciesType,
-        *,
         birth_surname: str = "",
         sexual_orientation: SexualOrientation = SexualOrientation.HETEROSEXUAL,
         life_stage: LifeStage = LifeStage.CHILD,
@@ -281,84 +239,6 @@ class Character(Component):
     def full_name(self) -> str:
         """The combined full name of the character."""
         return f"{self.first_name} {self.surname}"
-
-
-class KeyRelations(Component):
-    """Cache of key people in a character's life, indexed by relationship type."""
-
-    __slots__ = (
-        "mother",
-        "father",
-        "biological_father",
-        "spouse",
-        "partner",
-        "lover",
-        "betrothed",
-        "heir",
-        "heir_to",
-        "children",
-        "siblings",
-        "biological_siblings",
-        "biological_children",
-        "friends",
-        "enemies",
-        "crush",
-        "best_friends",
-        "worst_enemies",
-    )
-
-    mother: Optional[GameObject]
-    father: Optional[GameObject]
-    biological_father: Optional[GameObject]
-    spouse: Optional[GameObject]
-    partner: Optional[GameObject]
-    lover: Optional[GameObject]
-    betrothed: Optional[GameObject]
-    heir: Optional[GameObject]
-    heir_to: Optional[GameObject]
-    children: OrderedSet[GameObject]
-    biological_children: OrderedSet[GameObject]
-    siblings: OrderedSet[GameObject]
-    biological_siblings: OrderedSet[GameObject]
-    friends: OrderedSet[GameObject]
-    enemies: OrderedSet[GameObject]
-    crush: Optional[GameObject]
-    best_friends: OrderedSet[GameObject]
-    worst_enemies: OrderedSet[GameObject]
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.mother = None
-        self.father = None
-        self.biological_father = None
-        self.spouse = None
-        self.partner = None
-        self.lover = None
-        self.betrothed = None
-        self.heir = None
-        self.heir_to = None
-        self.children = OrderedSet([])
-        self.biological_children = OrderedSet([])
-        self.siblings = OrderedSet([])
-        self.biological_siblings = OrderedSet([])
-        self.friends = OrderedSet([])
-        self.enemies = OrderedSet([])
-        self.crush = None
-        self.best_friends = OrderedSet([])
-        self.worst_enemies = OrderedSet([])
-
-
-class Species(Component):
-    """Tracks the species a character belongs to."""
-
-    __slots__ = ("species",)
-
-    species: SpeciesType
-    """The species the character belongs to."""
-
-    def __init__(self, species: SpeciesType) -> None:
-        super().__init__()
-        self.species = species
 
 
 class Pregnancy(Component):
@@ -454,8 +334,11 @@ class Family(Component):
         "households",
         "head",
         "members",
+        "active_members",
+        "former_members",
         "clan",
         "home_base",
+        "territories",
     )
 
     name: str
@@ -465,11 +348,17 @@ class Family(Component):
     head: Optional[GameObject]
     """The character that is currently in charge of the family."""
     members: list[GameObject]
-    """All members of this family."""
+    """All members current and deceased members."""
+    former_members: OrderedSet[GameObject]
+    """All people who have left the family."""
     clan: Optional[GameObject]
     """The clan this family belongs to."""
     home_base: Optional[GameObject]
     """The settlement this family belongs to."""
+    territories: list[GameObject]
+    """The settlements this family has control over."""
+    active_members: OrderedSet[GameObject]
+    """Characters actively a part of this family."""
 
     def __init__(self, name: str = "") -> None:
         super().__init__()
@@ -479,6 +368,9 @@ class Family(Component):
         self.members = []
         self.clan = None
         self.home_base = None
+        self.territories = []
+        self.active_members = OrderedSet([])
+        self.former_members = OrderedSet([])
 
 
 class HeadOfFamily(Component):
@@ -500,26 +392,32 @@ class Clan(Component):
     __slots__ = (
         "name",
         "families",
+        "active_families",
+        "former_families",
         "head",
+        "former_head",
         "members",
-        "home_base",
-        "territories",
+        "active_members",
         "color_primary",
         "color_secondary",
     )
 
     name: str
     """The name of the clan."""
+    active_families: OrderedSet[GameObject]
+    """Families who are active in the clan."""
     families: list[GameObject]
-    """Families that belong to the clan."""
+    """All families that have ever that belong to the clan."""
+    former_families: OrderedSet[GameObject]
+    """Families who were formerly part of the clan."""
     head: Optional[GameObject]
     """The character that is currently in charge of the clan."""
+    former_head: Optional[GameObject]
+    """The last character in charge of the family."""
     members: list[GameObject]
-    """All members of this clan."""
-    home_base: Optional[GameObject]
-    """Set the home base of this clan."""
-    territories: list[GameObject]
-    """The settlements controlled by this clan."""
+    """All characters who have ever belonged to the clan."""
+    active_members: OrderedSet[GameObject]
+    """characters who are actively a part of the clan."""
     color_primary: str
     """Hex string primary color for this clan."""
     color_secondary: str
@@ -529,10 +427,12 @@ class Clan(Component):
         super().__init__()
         self.name = name
         self.families = []
+        self.active_families = OrderedSet([])
+        self.former_families = OrderedSet([])
         self.head = None
+        self.former_head = None
         self.members = []
-        self.home_base = None
-        self.territories = []
+        self.active_members = OrderedSet([])
         self.color_primary = "#ffffff"
         self.color_secondary = "#000000"
 
@@ -552,6 +452,72 @@ class HeadOfClan(Component):
 
 class Emperor(TagComponent):
     """Tags the character as the emperor of the land."""
+
+
+class Dynasty(Component):
+    """Information about a dynasty."""
+
+    __slots__ = (
+        "founder",
+        "family",
+        "founding_date",
+        "current_ruler",
+        "previous_rulers",
+        "ending_date",
+        "previous_dynasty",
+    )
+
+    founder: GameObject
+    family: GameObject
+    founding_date: SimDate
+    current_ruler: Optional[GameObject]
+    previous_rulers: OrderedSet[GameObject]
+    ending_date: Optional[SimDate]
+    previous_dynasty: Optional[GameObject]
+
+    def __init__(
+        self,
+        founder: GameObject,
+        family: GameObject,
+        founding_date: SimDate,
+        previous_dynasty: Optional[GameObject] = None,
+    ) -> None:
+        super().__init__()
+        self.founder = founder
+        self.family = family
+        self.founding_date = founding_date.copy()
+        self.current_ruler = None
+        self.previous_rulers = OrderedSet([])
+        self.ending_date = None
+        self.previous_dynasty = previous_dynasty
+
+    @property
+    def last_ruler(self) -> Optional[GameObject]:
+        """Get the last ruler of the dynasty."""
+        if self.previous_rulers:
+            return self.previous_rulers[-1]
+        return None
+
+
+class DynastyTracker:
+    """A shared singleton that tracks the current royal family and dynasty."""
+
+    __slots__ = ("current_dynasty", "previous_dynasties")
+
+    current_dynasty: Optional[GameObject]
+    previous_dynasties: OrderedSet[GameObject]
+
+    def __init__(self) -> None:
+        self.current_dynasty = None
+        self.previous_dynasties = OrderedSet([])
+
+    @property
+    def previous_dynasty(self) -> Optional[GameObject]:
+        """Get the previous dynasty."""
+        if self.previous_dynasties:
+            return self.previous_dynasties[-1]
+
+        return None
 
 
 class MoneyMotive(StatComponent):

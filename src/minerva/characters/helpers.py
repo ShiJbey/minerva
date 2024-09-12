@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import math
+import random
 from typing import Optional
 
 from minerva.characters.components import (
     Character,
     Clan,
+    Emperor,
     Family,
     HeadOfClan,
     HeadOfFamily,
@@ -17,10 +20,22 @@ from minerva.characters.components import (
     Sex,
     SexualOrientation,
 )
+from minerva.characters.succession_helpers import get_succession_depth_chart
 from minerva.datetime import SimDate
-from minerva.ecs import Event, GameObject
+from minerva.ecs import Active, Event, GameObject
+from minerva.life_events.succession import (
+    BecameClanHeadEvent,
+    BecameEmperorEvent,
+    BecameFamilyHeadEvent,
+    ClanRemovedFromPlay,
+    FamilyRemovedFromPlay,
+)
+from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
 from minerva.world_map.components import Settlement
+from minerva.world_map.helpers import set_settlement_controlling_family
+
+_logger = logging.getLogger(__name__)
 
 # ===================================
 # Clan Functions
@@ -233,20 +248,6 @@ def set_family_clan(
         set_character_clan(m, clan)
 
 
-def set_clan_home_base(clan: GameObject, settlement: Optional[GameObject]) -> None:
-    """Set the home base for this clan."""
-
-    clan_component = clan.get_component(Clan)
-
-    clan_component.home_base = settlement
-
-    db = clan.world.resources.get_resource(SimDB).db
-
-    db.execute("""UPDATE clans SET home_base=? WHERE uid=?;""", (settlement, clan))
-
-    db.commit()
-
-
 # ===================================
 # Family Functions
 # ===================================
@@ -407,19 +408,152 @@ def set_character_family(
 
 
 def set_family_home_base(family: GameObject, settlement: Optional[GameObject]) -> None:
-    """Set the homebase for the given family."""
+    """Set the home base for the given family."""
     family_component = family.get_component(Family)
+
+    db = family.world.resources.get_resource(SimDB).db
+    cur = db.cursor()
 
     if family_component.home_base is not None:
         former_home_base = family_component.home_base
         settlement_component = former_home_base.get_component(Settlement)
         settlement_component.families.remove(family)
         family_component.home_base = None
+        cur.execute("""UPDATE families SET home_base_id=NULL WHERE uid=?""", (family,))
+        if family in settlement_component.political_influence:
+            del settlement_component.political_influence[family]
 
     if settlement is not None:
         settlement_component = settlement.get_component(Settlement)
         settlement_component.families.append(family)
         family_component.home_base = settlement
+        cur.execute(
+            """UPDATE families SET home_base_id=? WHERE uid=?""",
+            (settlement.uid, family),
+        )
+        if family not in settlement_component.political_influence:
+            settlement_component.political_influence[family] = 0
+
+    db.commit()
+
+
+def remove_clan_from_play(clan: GameObject) -> None:
+    """Remove a clan from play."""
+    clan_component = clan.get_component(Clan)
+
+    if len(clan_component.active_families) != 0:
+        _logger.debug(
+            "%s is not empty. Removing families from the clan.",
+            clan.name_with_uid,
+        )
+
+        for member in [*clan_component.active_families]:
+            clan_component.active_families.remove(member)
+            clan_component.former_families.add(member)
+            set_family_clan(member, None)
+
+    clan.deactivate()
+    ClanRemovedFromPlay(clan).dispatch()
+
+
+def remove_family_from_play(family: GameObject) -> None:
+    """Remove a family from play."""
+    world = family.world
+    family_component = family.get_component(Family)
+
+    # Remove any remaining characters from play
+    if len(family_component.active_members) != 0:
+        _logger.debug(
+            "%s is not empty. Removing remaining characters from play.",
+            family.name_with_uid,
+        )
+
+        for member in [*family_component.active_members]:
+            remove_character_from_play(member)
+
+    # Remove the family from play
+    set_family_home_base(family, None)
+
+    for _, (settlement, _) in world.get_components((Settlement, Active)):
+        if family in settlement.political_influence:
+            del settlement.political_influence[family]
+
+        if settlement.controlling_family == family:
+            set_settlement_controlling_family(settlement.gameobject, None)
+
+    set_family_clan(family, None)
+
+    family.deactivate()
+
+    FamilyRemovedFromPlay(family).dispatch()
+
+
+def remove_character_from_play(character: GameObject) -> None:
+    """Remove a character from play."""
+    world = character.world
+    current_date = world.resources.get_resource(SimDate).copy()
+    rng = world.resources.get_resource(random.Random)
+
+    character.deactivate()
+
+    heir: Optional[GameObject] = None
+
+    depth_chart = get_succession_depth_chart(character)
+
+    # Get top 3 the eligible heirs
+    eligible_heirs = [entry.character_id for entry in depth_chart if entry.is_eligible][
+        :3
+    ]
+
+    if eligible_heirs:
+        # Add selection weights to heirs
+        # The second bracket slices the proceeding list to the number of
+        # eligible heirs
+        heir_weights = [0.8, 0.15, 0.5][: len(eligible_heirs)]
+
+        # Select a random heir from the top 3 with most emphasis on the first
+        heir_id = rng.choices(eligible_heirs, heir_weights, k=1)[0]
+
+        heir = world.gameobjects.get_gameobject(heir_id)
+
+    if family_head_component := character.try_component(HeadOfFamily):
+        # Perform succession
+        family = family_head_component.family
+        set_family_head(family, heir)
+        if heir is not None:
+            BecameFamilyHeadEvent(heir, family).dispatch()
+
+    if clan_head_component := character.try_component(HeadOfClan):
+        # Perform succession
+        clan = clan_head_component.clan
+        set_clan_head(clan, heir)
+        if heir is not None:
+            BecameClanHeadEvent(heir, clan).dispatch()
+
+    if _ := character.try_component(Emperor):
+        # Perform succession
+        character.remove_component(Emperor)
+        if heir is not None:
+            heir.add_component(Emperor())
+            BecameEmperorEvent(heir).dispatch()
+
+    character_component = character.get_component(Character)
+
+    if character_component.household is not None:
+        former_household = character_component.household
+        household_component = former_household.get_component(Household)
+        if household_component.head == character:
+            set_household_head(former_household, None)
+
+    set_character_household(character, None)
+
+    set_character_death_date(character, current_date)
+
+    if character_component.spouse is not None:
+        set_relation_spouse(character_component.spouse, None)
+        set_relation_spouse(character, None)
+
+    deactivate_relationships(character)
 
 
 def set_character_birth_family(

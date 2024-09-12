@@ -18,6 +18,8 @@ DROP TABLE IF EXISTS romantic_partners;
 DROP TABLE IF EXISTS life_events;
 DROP TABLE IF EXISTS life_stage_change_events;
 DROP TABLE IF EXISTS death_events;
+DROP TABLE IF EXISTS rulers;
+DROP TABLE IF EXISTS dynasties;
 
 CREATE TABLE characters (
     uid INT NOT NULL PRIMARY KEY,
@@ -100,10 +102,11 @@ CREATE TABLE families (
     name TEXT,
     head INT,
     clan INT,
-    is_noble INT,
     founding_date TEXT,
+    home_base_id INT,
     FOREIGN KEY (head) REFERENCES characters(uid),
-    FOREIGN KEY (clan) REFERENCES clans(uid)
+    FOREIGN KEY (clan) REFERENCES clans(uid),
+    FOREIGN KEY (home_base_id) REFERENCES settlements(uid)
 );
 
 CREATE TABLE family_heads (
@@ -166,7 +169,8 @@ CREATE TABLE children (
 CREATE TABLE life_events (
     event_id INT NOT NULL PRIMARY KEY,
     event_type TEXT,
-    timestamp TEXT
+    timestamp TEXT,
+    description TEXT
 );
 
 CREATE TABLE life_stage_change_events (
@@ -214,6 +218,29 @@ CREATE TABLE death_events (
     FOREIGN KEY (character_id) REFERENCES characters(uid)
 );
 
+CREATE TABLE rulers (
+    character_id INT NOT NULL,
+    dynasty_id INT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    previous_ruler_id INT,
+    PRIMARY KEY (character_id, start_date),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (dynasty_id) REFERENCES dynasties(uid),
+    FOREIGN KEY (previous_ruler_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE dynasties (
+    uid INT PRIMARY KEY,
+    family_id INT,
+    founder_id INT,
+    start_date TEXT,
+    end_date TEXT,
+    previous_dynasty_id INT,
+    FOREIGN KEY (family_id) REFERENCES families(uid),
+    FOREIGN KEY (founder_id) REFERENCES characters(uid),
+    FOREIGN KEY (previous_dynasty_id) REFERENCES dynasties(uid)
+);
 """
 
 

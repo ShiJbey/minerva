@@ -11,7 +11,7 @@ import tabulate
 from minerva import __version__
 from minerva.characters.components import Character, Family, Household, Pregnancy
 from minerva.ecs import Active, GameObject, GameObjectNotFoundError
-from minerva.life_events.base_types import EventHistory
+from minerva.life_events.base_types import LifeEventHistory
 from minerva.relationships.base_types import Relationship, RelationshipManager
 from minerva.simulation import Simulation
 from minerva.stats.base_types import StatManager
@@ -77,7 +77,7 @@ def _settlement_section(obj: GameObject) -> str:
         f"Resident Families: {','.join(f.name_with_uid for f in settlement.families)}"
     )
 
-    # Add Political Influeces:
+    # Add Political Influences:
     output.append("Political Influences:")
 
     output += tabulate.tabulate(
@@ -204,7 +204,7 @@ def _get_traits_table(obj: GameObject) -> str:
 
 def _get_personal_history_table(obj: GameObject) -> str:
     """Generate a string table for a PersonalEventHistory component."""
-    history = obj.try_component(EventHistory)
+    history = obj.try_component(LifeEventHistory)
 
     if history is None:
         return ""
@@ -383,8 +383,6 @@ class SimulationInspector:
 
         Parameters
         ----------
-        sim
-            A simulation instance.
         obj
             The GameObject instance or ID to inspect.
         """

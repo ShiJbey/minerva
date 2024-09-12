@@ -11,9 +11,9 @@ import attrs
 from ordered_set import OrderedSet
 
 from minerva.constants import (
+    BASE_SETTLEMENT_HAPPINESS,
     MAX_SETTLEMENT_HAPPINESS,
     MIN_SETTLEMENT_HAPPINESS,
-    BASE_SETTLEMENT_HAPPINESS,
 )
 from minerva.ecs import Component, GameObject
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
@@ -295,6 +295,7 @@ class Settlement(Component):
         self.business_types = business_types if business_types else []
         self.neighbors = OrderedSet([])
         self.castle_position: tuple[int, int] = (0, 0)
+        self.political_influence = {}
         self.families = OrderedSet([])
 
 

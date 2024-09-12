@@ -10,7 +10,7 @@ import pygame_gui
 import pygame_gui.elements.ui_panel
 import pygame_gui.ui_manager
 
-from minerva.characters.components import Clan, Family
+from minerva.characters.components import Clan, Dynasty, DynastyTracker, Family
 from minerva.constants import (
     BACKGROUND_COLOR,
     CAMERA_SPEED,
@@ -21,7 +21,6 @@ from minerva.constants import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
-from minerva.engine import Engine
 from minerva.simulation import Simulation
 from minerva.viz.camera import Camera
 from minerva.viz.game_events import gameobject_wiki_shown
@@ -235,7 +234,12 @@ class Game:
                 )
 
     def _create_castle_sprites(self) -> None:
-        engine = self.simulation.world.resources.get_resource(Engine)
+        dynasty_tracker = self.simulation.world.resources.get_resource(DynastyTracker)
+        royal_family = (
+            dynasty_tracker.current_dynasty.get_component(Dynasty).family
+            if dynasty_tracker.current_dynasty
+            else None
+        )
 
         for settlement in self.world_map.settlements:
             castle_sprite = CastleSprite(settlement)
@@ -254,7 +258,7 @@ class Game:
             settlement_component = settlement.get_component(Settlement)
             if settlement_component.controlling_family:
 
-                if settlement_component.controlling_family == engine.royal_family:
+                if settlement_component.controlling_family == royal_family:
                     crown_sprite = CrownSprite(castle_sprite)
                     self.visible_sprites.add(crown_sprite)  # type: ignore
 

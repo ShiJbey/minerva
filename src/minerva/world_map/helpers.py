@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from minerva.characters.components import Clan, Family
+from minerva.characters.components import Family
 from minerva.ecs import GameObject
 from minerva.sim_db import SimDB
 from minerva.world_map.components import Settlement
@@ -33,16 +33,12 @@ def set_settlement_controlling_family(
     if settlement_component.controlling_family is not None:
         former_sovereign = settlement_component.controlling_family
         family_component = former_sovereign.get_component(Family)
-        assert family_component.clan
-        clan_component = family_component.clan.get_component(Clan)
-        clan_component.territories.remove(settlement)
+        family_component.territories.remove(settlement)
         settlement_component.controlling_family = None
 
     if family is not None:
         family_component = family.get_component(Family)
-        assert family_component.clan
-        clan_component = family_component.clan.get_component(Clan)
-        clan_component.territories.append(settlement)
+        family_component.territories.append(settlement)
         settlement_component.controlling_family = family
 
     db = settlement.world.resources.get_resource(SimDB).db

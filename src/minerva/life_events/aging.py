@@ -2,7 +2,7 @@
 
 from minerva.characters.components import LifeStage
 from minerva.ecs import GameObject
-from minerva.life_events.base_types import EventHistory, LifeEvent
+from minerva.life_events.base_types import LifeEvent, LifeEventHistory
 from minerva.sim_db import SimDB
 
 
@@ -26,16 +26,21 @@ class LifeStageChangeEvent(LifeEvent):
 
     def on_dispatch(self) -> None:
         self.character.dispatch_event(self)
-        self.character.get_component(EventHistory).append(self)
+        self.character.get_component(LifeEventHistory).history.append(self)
 
         db = self.world.resources.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
-            INSERT INTO life_events (event_id, event_type, timestamp)
-            VALUES (?, ?, ?);
+            INSERT INTO life_events (event_id, event_type, timestamp, description)
+            VALUES (?, ?, ?, ?);
             """,
-            (self.event_id, self.event_type, self.timestamp.to_iso_str()),
+            (
+                self.event_id,
+                self.event_type,
+                self.timestamp.to_iso_str(),
+                self.get_description(),
+            ),
         )
         cur.execute(
             """
@@ -52,7 +57,7 @@ class LifeStageChangeEvent(LifeEvent):
         )
         db.commit()
 
-    def __str__(self) -> str:
+    def get_description(self) -> str:
         return f"{self.character.name} became an {self.life_stage.name.lower()}."
 
 
@@ -73,16 +78,21 @@ class CharacterDeathEvent(LifeEvent):
 
     def on_dispatch(self) -> None:
         self.character.dispatch_event(self)
-        self.character.get_component(EventHistory).append(self)
+        self.character.get_component(LifeEventHistory).history.append(self)
 
         db = self.world.resources.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
-            INSERT INTO life_events (event_id, event_type, timestamp)
-            VALUES (?, ?, ?);
+            INSERT INTO life_events (event_id, event_type, timestamp, description)
+            VALUES (?, ?, ?, ?);
             """,
-            (self.event_id, self.event_type, self.timestamp.to_iso_str()),
+            (
+                self.event_id,
+                self.event_type,
+                self.timestamp.to_iso_str(),
+                self.get_description(),
+            ),
         )
         cur.execute(
             """
@@ -93,5 +103,5 @@ class CharacterDeathEvent(LifeEvent):
         )
         db.commit()
 
-    def __str__(self) -> str:
+    def get_description(self) -> str:
         return f"{self.character.name} died."

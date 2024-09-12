@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import enum
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -53,62 +54,64 @@ class MotiveVector:
     @property
     def money(self) -> float:
         """Get the money motive value."""
-        return self.vect[0]
+        return float(self.vect[0])
 
     @property
     def power(self) -> float:
         """Get the power motive value."""
-        return self.vect[1]
+        return float(self.vect[1])
 
     @property
     def respect(self) -> float:
         """Get the money respect value."""
-        return self.vect[2]
+        return float(self.vect[2])
 
     @property
     def family(self) -> float:
         """Get the family motive value."""
-        return self.vect[3]
+        return float(self.vect[3])
 
     @property
     def happiness(self) -> float:
         """Get the happiness motive value."""
-        return self.vect[4]
+        return float(self.vect[4])
 
     @property
     def honor(self) -> float:
         """Get the honor motive value."""
-        return self.vect[5]
+        return float(self.vect[5])
 
     @property
     def romance(self) -> float:
         """Get the romance motive value."""
-        return self.vect[6]
+        return float(self.vect[6])
 
     @property
     def sex(self) -> float:
         """Get the sex motive value."""
-        return self.vect[7]
+        return float(self.vect[7])
 
     @property
     def dread(self) -> float:
         """Get the dread motive value."""
-        return self.vect[8]
+        return float(self.vect[8])
 
     @staticmethod
-    def from_array(arr: npt.NDArray[np.float32]) -> MotiveVector:
+    def from_array(
+        arr: Union[npt.NDArray[np.float32], npt.NDArray[np.signedinteger]]
+    ) -> MotiveVector:
         """Create a motive vector from a numpy array."""
         assert arr.shape[0] == 9, "Array is not the proper shape for motives"
         return MotiveVector(
-            money=arr[0],
-            power=arr[1],
-            respect=arr[2],
-            family=arr[3],
-            happiness=arr[4],
-            honor=arr[5],
-            romance=arr[6],
-            sex=arr[7],
-            dread=arr[8],
+            money=float(arr[0]),
+            power=float(arr[1]),
+            respect=float(arr[2]),
+            family=float(arr[3]),
+            happiness=float(arr[4]),
+            honor=float(arr[5]),
+            romance=float(arr[6]),
+            sex=float(arr[7]),
+            dread=float(arr[8]),
         )
 
 

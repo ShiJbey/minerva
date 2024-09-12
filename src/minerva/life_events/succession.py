@@ -1,7 +1,7 @@
 """Life Events Associated with Power Succession."""
 
 from minerva.ecs import GameObject
-from minerva.life_events.base_types import EventHistory, LifeEvent
+from minerva.life_events.base_types import LifeEvent, LifeEventHistory
 from minerva.sim_db import SimDB
 
 
@@ -23,12 +23,9 @@ class BecameFamilyHeadEvent(LifeEvent):
         self.character = character
         self.family = family
 
-    def on_dispatch(self) -> None:
-        self.character.dispatch_event(self)
-        self.character.get_component(EventHistory).append(self)
-
-        db = self.world.resources.get_resource(SimDB).db
-        cur = db.cursor()
+    def record_in_database(self, db: SimDB) -> None:
+        """Record event within the database."""
+        cur = db.db.cursor()
         cur.execute(
             """
             INSERT INTO life_events (event_id, event_type, timestamp)
@@ -49,9 +46,14 @@ class BecameFamilyHeadEvent(LifeEvent):
                 self.timestamp.to_iso_str(),
             ),
         )
-        db.commit()
+        db.db.commit()
 
-    def __str__(self) -> str:
+    def on_dispatch(self) -> None:
+        self.character.dispatch_event(self)
+        self.character.get_component(LifeEventHistory).history.append(self)
+        self.record_in_database(self.world.resources.get_resource(SimDB))
+
+    def get_description(self) -> str:
         return (
             f"{self.character.name} became the head of the {self.family.name} family."
         )
@@ -77,7 +79,7 @@ class BecameClanHeadEvent(LifeEvent):
 
     def on_dispatch(self) -> None:
         self.character.dispatch_event(self)
-        self.character.get_component(EventHistory).append(self)
+        self.character.get_component(LifeEventHistory).history.append(self)
 
         db = self.world.resources.get_resource(SimDB).db
         cur = db.cursor()
@@ -103,7 +105,7 @@ class BecameClanHeadEvent(LifeEvent):
         )
         db.commit()
 
-    def __str__(self) -> str:
+    def get_description(self) -> str:
         return f"{self.character.name} became the head of the {self.clan.name} clan."
 
 
@@ -124,16 +126,21 @@ class BecameEmperorEvent(LifeEvent):
 
     def on_dispatch(self) -> None:
         self.character.dispatch_event(self)
-        self.character.get_component(EventHistory).append(self)
+        self.character.get_component(LifeEventHistory).history.append(self)
 
         db = self.world.resources.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
-            INSERT INTO life_events (event_id, event_type, timestamp)
-            VALUES (?, ?, ?);
+            INSERT INTO life_events (event_id, event_type, timestamp, description)
+            VALUES (?, ?, ?, ?);
             """,
-            (self.event_id, self.event_type, self.timestamp.to_iso_str()),
+            (
+                self.event_id,
+                self.event_type,
+                self.timestamp.to_iso_str(),
+                self.get_description(),
+            ),
         )
         cur.execute(
             """
@@ -149,7 +156,7 @@ class BecameEmperorEvent(LifeEvent):
         )
         db.commit()
 
-    def __str__(self) -> str:
+    def get_description(self) -> str:
         return f"{self.character.name} became emperor."
 
 
@@ -171,7 +178,7 @@ class FamilyRemovedFromPlay(LifeEvent):
     def on_dispatch(self) -> None:
         pass
 
-    def __str__(self) -> str:
+    def get_description(self) -> str:
         return f"The {self.family.name} family has been removed from play."
 
 
@@ -193,5 +200,5 @@ class ClanRemovedFromPlay(LifeEvent):
     def on_dispatch(self) -> None:
         pass
 
-    def __str__(self) -> str:
+    def get_description(self) -> str:
         return f"The {self.clan.name} clan has been removed from play."

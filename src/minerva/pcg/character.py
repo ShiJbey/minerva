@@ -15,7 +15,6 @@ from minerva.characters.components import (
     Compassion,
     Diplomacy,
     DreadMotive,
-    Emperor,
     Family,
     FamilyMotive,
     Fertility,
@@ -63,7 +62,6 @@ from minerva.characters.helpers import (
     set_character_mother,
     set_character_surname,
     set_clan_head,
-    set_clan_home_base,
     set_clan_name,
     set_family_clan,
     set_family_head,
@@ -74,11 +72,11 @@ from minerva.characters.helpers import (
     set_relation_sibling,
     set_relation_spouse,
 )
+from minerva.characters.succession_helpers import start_new_dynasty
 from minerva.config import Config
 from minerva.constants import CLAN_COLORS_PRIMARY, CLAN_COLORS_SECONDARY
 from minerva.ecs import Active, Event, GameObject, World
-from minerva.engine import Engine
-from minerva.life_events.base_types import EventHistory
+from minerva.life_events.base_types import LifeEventHistory
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatManager, StatusEffectManager
@@ -297,7 +295,7 @@ def generate_character(
     obj.add_component(TraitManager())
     obj.add_component(StatusEffectManager())
     obj.add_component(RelationshipManager())
-    obj.add_component(EventHistory())
+    obj.add_component(LifeEventHistory())
     obj.add_component(StatManager())
 
     # Create all the stat components and add them to the stats class for str look-ups
@@ -423,7 +421,7 @@ def generate_household(world: World) -> GameObject:
     return household
 
 
-def generate_family(world: World) -> GameObject:
+def generate_family(world: World, name: str = "") -> GameObject:
     """Create a new family."""
 
     character_name_factory = world.resources.get_resource(CharacterNameFactory)
@@ -431,9 +429,9 @@ def generate_family(world: World) -> GameObject:
 
     family = world.gameobjects.spawn_gameobject()
     family.metadata["object_type"] = "family"
-    family_name = character_name_factory.generate_surname()
+    family_name = name if name else character_name_factory.generate_surname()
     family.add_component(Family(name=family_name))
-    family.name = family_name
+    family.name = f"The {family_name} family"
 
     db.execute(
         """
@@ -457,7 +455,7 @@ def generate_family(world: World) -> GameObject:
     return family
 
 
-def generate_clan(world: World) -> GameObject:
+def generate_clan(world: World, name: str = "") -> GameObject:
     """Create a new clan."""
     rng = world.resources.get_resource(random.Random)
     character_name_factory = world.resources.get_resource(ClanNameFactory)
@@ -465,11 +463,11 @@ def generate_clan(world: World) -> GameObject:
 
     clan = world.gameobjects.spawn_gameobject()
     clan.metadata["object_type"] = "clan"
-    clan_name = character_name_factory.generate_name()
+    clan_name = name if name else character_name_factory.generate_name()
     clan_component = clan.add_component(Clan(name=clan_name))
     clan_component.color_primary = rng.choice(CLAN_COLORS_PRIMARY)
     clan_component.color_secondary = rng.choice(CLAN_COLORS_SECONDARY)
-    clan.name = clan_name
+    clan.name = f"The {clan_name} clan"
 
     db.execute(
         """
@@ -567,20 +565,17 @@ def generate_initial_clans(world: World) -> None:
         if clan.head is not None
     ]
 
+    # Start the first dynasty
     chosen_emperor = rng.choice(clan_heads)
-    chosen_emperor.add_component(Emperor())
+    start_new_dynasty(chosen_emperor)
 
     emperor_family = chosen_emperor.get_component(Character).family
     assert emperor_family is not None, "Emperor family cannot be none"
-    world.resources.get_resource(Engine).royal_family = emperor_family
 
     for family in OrderedSet([emperor_family, *families]):
         if unassigned_settlements:
             home_base = unassigned_settlements.pop()
             set_settlement_controlling_family(home_base, family)
-            clan = family.get_component(Family).clan
-            assert clan
-            set_clan_home_base(clan, home_base)
             set_family_home_base(family, home_base)
             continue
 

@@ -19,9 +19,10 @@ from minerva.characters.components import (
     Sex,
 )
 from minerva.characters.helpers import (
+    remove_clan_from_play,
+    remove_family_from_play,
     set_character_age,
     set_clan_head,
-    set_family_clan,
     set_family_head,
 )
 from minerva.characters.motive_helpers import get_character_motives
@@ -37,8 +38,6 @@ from minerva.life_events.succession import (
     BecameClanHeadEvent,
     BecameEmperorEvent,
     BecameFamilyHeadEvent,
-    ClanRemovedFromPlay,
-    FamilyRemovedFromPlay,
 )
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
@@ -211,7 +210,7 @@ class FallbackFamilySuccessionSystem(System):
                 ):
                     eligible_members.append(character_component)
 
-            eligible_members.sort(key=lambda m: m.age)
+            eligible_members.sort(key=lambda _m: _m.age)
 
             if eligible_members:
                 oldest_member = eligible_members[-1]
@@ -245,7 +244,7 @@ class FallbackClanSuccessionSystem(System):
                 ):
                     eligible_heads.append(character_component)
 
-            eligible_heads.sort(key=lambda m: m.age)
+            eligible_heads.sort(key=lambda _m: _m.age)
 
             if eligible_heads:
                 oldest_member = eligible_heads[-1]
@@ -289,21 +288,25 @@ class EmptyFamilyCleanUpSystem(System):
 
     def on_update(self, world: World) -> None:
         for _, (family, _) in world.get_components((Family, Active)):
-            if len([m for m in family.members if m.is_active]) == 0:
-                family.gameobject.deactivate()
-                FamilyRemovedFromPlay(family.gameobject).dispatch()
+            if len(family.active_members) == 0:
+                remove_family_from_play(family.gameobject)
 
-                if family.clan is not None:
-                    former_clan_component = family.clan.get_component(Clan)
-                    set_family_clan(family.gameobject, None)
 
-                    if len(former_clan_component.families) == 0:
-                        former_clan_component.gameobject.deactivate()
-                        ClanRemovedFromPlay(former_clan_component.gameobject).dispatch()
+class EmptyClanCleanUpSystem(System):
+    """Removes empty clans from play."""
+
+    __system_group__ = "LateUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        for _, (clan, _) in world.get_components((Clan, Active)):
+            if len(clan.active_families) == 0:
+                remove_clan_from_play(clan.gameobject)
 
 
 class CharacterBehaviorSystem(System):
     """Family heads and those high on the depth chart take actions."""
+
+    __system_group__ = "UpdateSystems"
 
     def on_update(self, world: World) -> None:
         rng = world.resources.get_resource(random.Random)
