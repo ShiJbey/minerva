@@ -33,32 +33,35 @@ BEHAVIOR_UTILITY_THRESHOLD = 0
 # === Clan/Family Settings ===
 
 CLAN_COLORS_PRIMARY = [
-    "#e90000",  # red
-    "#31d5c8",  # light blue
-    "#a538c6",  # violet
-    "#cccccc",  # grey
-    "#33a7c8",  # darker blue
-    "#05fb00",  # green
-    "#001eba",  # royal blue
-    "#fff500",  # yellow
+    "#01161E",  # Rich Black
+    "#124559",  # Midnight Green
+    "#598392",  # Air Force Blue
+    "#AEC3B0",  # Ash Grey
+    "#654236",  # Liver
 ]
 
 CLAN_COLORS_SECONDARY = [
     "#e90000",  # red
     "#31d5c8",  # light blue
     "#a538c6",  # violet
-    "#cccccc",  # grey
-    "#33a7c8",  # darker blue
     "#05fb00",  # green
     "#001eba",  # royal blue
-    "#fff500",  # yellow
-    "#FF5733",  # (Bright Orange)
-    "#33FF57",  # (Lime Green)
-    "#FF338C",  # (Crimson)
-    "#FFD733",  # (Bright Yellow)
-    "#33FFF3",  # (Cyan)
-    "#8C33FF",  # (Purple)
-    "#FFB833",  # (Amber)
+]
+
+FAMILY_COLORS_TERTIARY = [
+    "#FF338C",  # Crimson
+    "#33FF57",  # Bittersweet
+    "#ffffff",  # Orange
+    "#FB62F6",  # Pink
+    "#fff500",  # Yellow
+]
+
+FAMILY_BANNER_SHAPES = [
+    "circle",
+    "square",
+    "diamond",
+    "triangle_up",
+    "triangle_down",
 ]
 
 # === Territory Settings ===

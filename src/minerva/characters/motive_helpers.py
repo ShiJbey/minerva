@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import enum
-from typing import Union
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -98,7 +98,7 @@ class MotiveVector:
 
     @staticmethod
     def from_array(
-        arr: Union[npt.NDArray[np.float32], npt.NDArray[np.signedinteger]]
+        arr: Union[npt.NDArray[np.float32], npt.NDArray[np.signedinteger[Any]]]
     ) -> MotiveVector:
         """Create a motive vector from a numpy array."""
         assert arr.shape[0] == 9, "Array is not the proper shape for motives"

@@ -12,7 +12,7 @@ from minerva.characters.helpers import (
     set_character_mother,
     set_relation_child,
     set_relation_sibling,
-    set_relation_spouse,
+    start_marriage,
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
 from minerva.loaders import (
@@ -122,12 +122,12 @@ def test_get_succession_depth_chart(test_sim: Simulation):
     set_relation_child(viserys, aemond)
     set_relation_child(alicent, aegon_2)
     set_relation_child(alicent, aemond)
-    set_relation_spouse(viserys, alicent)
-    set_relation_spouse(alicent, viserys)
+    start_marriage(viserys, alicent)
+    start_marriage(alicent, viserys)
     set_relation_sibling(viserys, daemon)
     set_relation_sibling(daemon, viserys)
-    set_relation_spouse(rhaenyra, daemon)
-    set_relation_spouse(daemon, rhaenyra)
+    start_marriage(rhaenyra, daemon)
+    start_marriage(daemon, rhaenyra)
     set_character_father(rhaenyra, viserys)
     set_character_biological_father(rhaenyra, viserys)
     set_character_mother(aegon_2, alicent)

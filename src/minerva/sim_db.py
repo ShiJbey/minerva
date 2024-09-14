@@ -35,7 +35,6 @@ CREATE TABLE characters (
     heir INT,
     biological_father INT,
     spouse INT,
-    partner INT,
     lover INT,
     is_alive INT,
     household INT,
@@ -50,7 +49,6 @@ CREATE TABLE characters (
     FOREIGN KEY (heir) REFERENCES characters(uid),
     FOREIGN KEY (biological_father) REFERENCES characters(uid),
     FOREIGN KEY (spouse) REFERENCES characters(uid),
-    FOREIGN KEY (partner) REFERENCES characters(uid),
     FOREIGN KEY (lover) REFERENCES characters(uid),
     FOREIGN KEY (uid) REFERENCES entities(uid),
     FOREIGN KEY (household) REFERENCES households(uid),
@@ -138,13 +136,13 @@ CREATE TABLE siblings (
 );
 
 CREATE TABLE marriages (
-    character_id INT,
-    spouse_id INT,
-    start_date TEXT,
+    uid INT NOT NULL PRIMARY KEY,
+    character_id INT NOT NULL,
+    spouse_id INT NOT NULL,
+    start_date TEXT NOT NULL,
     end_date TEXT,
     times_cheated INT,
     last_cheat_partner_id,
-    PRIMARY KEY(character_id, spouse_id),
     FOREIGN KEY (last_cheat_partner_id) REFERENCES characters(uid),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (spouse_id) REFERENCES characters(uid)

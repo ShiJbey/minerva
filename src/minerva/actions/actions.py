@@ -14,13 +14,13 @@ from minerva.characters.components import (
     Household,
 )
 from minerva.characters.helpers import (
+    end_marriage,
     set_character_alive,
     set_character_death_date,
     set_character_household,
     set_clan_head,
     set_family_head,
     set_household_head,
-    set_relation_spouse,
 )
 from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.datetime import SimDate
@@ -134,8 +134,7 @@ class Die(Action["Die"]):
         set_character_death_date(self.character, current_date)
 
         if character_component.spouse is not None:
-            set_relation_spouse(character_component.spouse, None)
-            set_relation_spouse(self.character, None)
+            end_marriage(self.character, character_component.spouse)
 
         deactivate_relationships(self.character)
 

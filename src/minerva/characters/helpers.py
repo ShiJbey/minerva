@@ -17,6 +17,8 @@ from minerva.characters.components import (
     HeadOfHousehold,
     Household,
     LifeStage,
+    Marriage,
+    MarriageTracker,
     Sex,
     SexualOrientation,
 )
@@ -550,8 +552,7 @@ def remove_character_from_play(character: GameObject) -> None:
     set_character_death_date(character, current_date)
 
     if character_component.spouse is not None:
-        set_relation_spouse(character_component.spouse, None)
-        set_relation_spouse(character, None)
+        end_marriage(character, character_component.spouse)
 
     deactivate_relationships(character)
 
@@ -974,60 +975,149 @@ def set_character_biological_father(
     db.commit()
 
 
-def set_relation_spouse(character: GameObject, spouse: Optional[GameObject]) -> None:
-    """Set the spouse of a character."""
+def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
+    """Set the current spouse of a character and create a new marriage."""
+    world = character_a.world
+    character_a_component = character_a.get_component(Character)
+    character_b_component = character_b.get_component(Character)
 
-    character_component = character.get_component(Character)
-    current_date = character.world.resources.get_resource(SimDate).to_iso_str()
-    db = character.world.resources.get_resource(SimDB).db
+    # Check that both characters are not married
+    if character_a_component.spouse:
+        raise RuntimeError(f"Error: {character_a.name_with_uid} is already married.")
+
+    if character_b_component.spouse:
+        raise RuntimeError(f"Error: {character_b.name_with_uid} is already married.")
+
+    current_date = world.resources.get_resource(SimDate)
+    db = world.resources.get_resource(SimDB).db
     cur = db.cursor()
 
-    if character_component.spouse is not None:
-        previous_spouse = character_component.spouse
-        character_component.spouse = None
+    # Set the spouse references in the component data
+    character_a_component.spouse = character_b
+    character_b_component.spouse = character_a
 
-        cur.execute(
-            """UPDATE characters SET spouse=? WHERE uid=?;""",
-            (None, character.uid),
-        )
+    # Update the spouse IDs in the database
+    cur.execute(
+        """UPDATE characters SET spouse=? WHERE uid=?;""",
+        (character_b.uid, character_a.uid),
+    )
+    cur.execute(
+        """UPDATE characters SET spouse=? WHERE uid=?;""",
+        (character_a.uid, character_b.uid),
+    )
 
-        cur.execute(
-            """UPDATE marriages SET end_date=? WHERE spouse_id=? and character_id=?;""",
-            (current_date, previous_spouse.uid, character.uid),
-        )
+    # Create a new marriage entries into the database
+    a_to_b = world.gameobjects.spawn_gameobject(
+        components=[
+            Marriage(character_a, character_b, current_date),
+        ]
+    )
+    character_a.get_component(MarriageTracker).current_marriage = a_to_b
+    cur.execute(
+        """
+        INSERT INTO marriages (uid, character_id, spouse_id, start_date)
+        VALUES (?, ?, ?, ?);
+        """,
+        (a_to_b.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
+    )
 
-    if spouse is not None:
-        character_component.spouse = spouse
-
-        cur.execute(
-            """
-            INSERT INTO marriages (character_id, spouse_id, start_date)
-            VALUES (?, ?, ?);
-            """,
-            (character.uid, spouse.uid, current_date),
-        )
-
-        cur.execute(
-            """UPDATE characters SET spouse=? WHERE uid=?;""",
-            (spouse.uid, character.uid),
-        )
-
-    db.commit()
-
-
-def set_relation_partner(character: GameObject, partner: Optional[GameObject]) -> None:
-    """Set the partner of a character."""
-
-    character.get_component(Character).partner = partner
-
-    db = character.world.resources.get_resource(SimDB).db
-
-    db.execute(
-        """UPDATE characters SET partner=? WHERE uid=?;""",
-        (partner, character.uid),
+    b_to_a = world.gameobjects.spawn_gameobject(
+        components=[
+            Marriage(character_b, character_a, current_date),
+        ]
+    )
+    character_b.get_component(MarriageTracker).current_marriage = b_to_a
+    cur.execute(
+        """
+        INSERT INTO marriages (uid, character_id, spouse_id, start_date)
+        VALUES (?, ?, ?, ?);
+        """,
+        (b_to_a.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
     )
 
     db.commit()
+
+
+def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
+    """Unset the current spouse of a character and end the marriage."""
+
+    world = character_a.world
+    character_a_component = character_a.get_component(Character)
+    character_b_component = character_b.get_component(Character)
+
+    # Check that both characters are married to each other
+    if character_a_component.spouse != character_b:
+        raise RuntimeError(
+            f"Error: {character_a.name_with_uid} is not married to"
+            f" {character_b.name_with_uid}."
+        )
+
+    if character_b_component.spouse != character_a:
+        raise RuntimeError(
+            f"Error: {character_b.name_with_uid} is not married to"
+            f" {character_a.name_with_uid}."
+        )
+
+    # Set the spouse references in the component data
+    character_a_component.spouse = None
+    character_b_component.spouse = None
+
+    current_date = world.resources.get_resource(SimDate).to_iso_str()
+    db = world.resources.get_resource(SimDB).db
+    cur = db.cursor()
+
+    # Update the spouse IDs in the database
+    cur.execute(
+        """UPDATE characters SET spouse=? WHERE uid=?;""",
+        (None, character_a.uid),
+    )
+    cur.execute(
+        """UPDATE characters SET spouse=? WHERE uid=?;""",
+        (None, character_b.uid),
+    )
+
+    # Update marriage entries in the database
+    character_a_marriages = character_a.get_component(MarriageTracker)
+    assert character_a_marriages.current_marriage
+
+    cur.execute(
+        """
+        UPDATE marriages SET end_date=?
+        WHERE uid=?;
+        """,
+        (current_date, character_a_marriages.current_marriage.uid),
+    )
+    character_a_marriages.past_marriage_ids.append(
+        character_a_marriages.current_marriage.uid
+    )
+    character_a_marriages.current_marriage = None
+
+    character_b_marriages = character_b.get_component(MarriageTracker)
+    assert character_b_marriages.current_marriage
+
+    cur.execute(
+        """
+        UPDATE marriages SET end_date=?
+        WHERE uid=?;
+        """,
+        (current_date, character_b_marriages.current_marriage.uid),
+    )
+    character_b_marriages.past_marriage_ids.append(
+        character_b_marriages.current_marriage.uid
+    )
+    character_b_marriages.current_marriage = None
+
+    db.commit()
+
+
+def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
+    """Start a romantic affair between two characters."""
+    raise NotImplementedError()
+
+
+def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
+    """End a romantic affair between two characters."""
+    raise NotImplementedError()
 
 
 def set_relation_lover(character: GameObject, lover: Optional[GameObject]) -> None:

@@ -140,7 +140,6 @@ class Character(Component):
         "siblings",
         "children",
         "spouse",
-        "partner",
         "lover",
         "is_alive",
         "clan",
@@ -168,7 +167,6 @@ class Character(Component):
     siblings: list[GameObject]
     children: list[GameObject]
     spouse: Optional[GameObject]
-    partner: Optional[GameObject]
     lover: Optional[GameObject]
     is_alive: bool
     clan: Optional[GameObject]
@@ -196,7 +194,6 @@ class Character(Component):
         biological_father: Optional[GameObject] = None,
         siblings: Optional[list[GameObject]] = None,
         spouse: Optional[GameObject] = None,
-        partner: Optional[GameObject] = None,
         lover: Optional[GameObject] = None,
         is_alive: bool = True,
         clan: Optional[GameObject] = None,
@@ -224,7 +221,6 @@ class Character(Component):
         self.siblings = siblings if siblings is not None else []
         self.children = []
         self.spouse = spouse
-        self.partner = partner
         self.lover = lover
         self.is_alive = is_alive
         self.clan = clan
@@ -292,6 +288,77 @@ class Pregnancy(Component):
             f"due_date={self.due_date}"
             f")"
         )
+
+
+class Marriage(Component):
+    """Marriage information from one character to another.
+
+    Marriages objects are uni-directional. Meaning they only track one side of
+    the marriage.
+    """
+
+    __slots__ = ("character", "spouse", "start_date")
+
+    character: GameObject
+    spouse: GameObject
+    start_date: SimDate
+
+    def __init__(
+        self, character: GameObject, spouse: GameObject, start_date: SimDate
+    ) -> None:
+        super().__init__()
+        self.character = character
+        self.spouse = spouse
+        self.start_date = start_date.copy()
+
+
+class MarriageTracker(Component):
+    """Tracks a character's current and past marriages."""
+
+    __slots__ = ("current_marriage", "past_marriage_ids")
+
+    current_marriage: Optional[GameObject]
+    past_marriage_ids: list[int]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.current_marriage = None
+        self.past_marriage_ids = []
+
+
+class RomanticAffair(Component):
+    """Information about a character's lover.
+
+    This tracks information about a lover relationship from a single character's POV.
+    """
+
+    __slots__ = ("character", "lover", "start_date")
+
+    character: GameObject
+    lover: GameObject
+    start_date: SimDate
+
+    def __init__(
+        self, character: GameObject, lover: GameObject, start_date: SimDate
+    ) -> None:
+        super().__init__()
+        self.character = character
+        self.lover = lover
+        self.start_date = start_date
+
+
+class RomanticAffairTracker(Component):
+    """Tracks character's current and past love affairs."""
+
+    __slots__ = ("current_affair", "past_affair_ids")
+
+    current_affair: Optional[GameObject]
+    past_affair_ids: list[int]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.current_affair = None
+        self.past_affair_ids = []
 
 
 class Household(Component):

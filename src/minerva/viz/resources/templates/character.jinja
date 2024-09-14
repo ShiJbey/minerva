@@ -87,13 +87,6 @@ N/A<br>
 N/A
 {% endif %}
 <br>
-<font size="4"><b>Romantic Partner: </b></font>
-{% if character.partner is not none %}
-<a href="/gameobject?uid={{character.partner.uid}}">{{character.partner.name}} ({{character.partner.uid}})</a>
-{% else %}
-N/A
-{% endif %}
-<br>
 <font size="4"><b>Lover: </b></font>
 {% if character.lover is not none %}
 <a href="/gameobject?uid={{character.lover.uid}}">{{character.lover.name}} ({{character.lover.uid}})</a>

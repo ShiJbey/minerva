@@ -10,7 +10,7 @@ from minerva.characters.helpers import (
     set_character_heir,
     set_character_mother,
     set_relation_sibling,
-    set_relation_spouse,
+    start_marriage,
 )
 from minerva.config import Config
 from minerva.loaders import (
@@ -225,13 +225,13 @@ if __name__ == "__main__":
     set_character_mother(laena, rhaenys)
     set_character_father(laena, corlys)
     set_character_biological_father(laena, corlys)
-    set_relation_spouse(corlys, rhaenys)
-    set_relation_spouse(rhaenys, corlys)
+    start_marriage(corlys, rhaenys)
+    start_marriage(rhaenys, corlys)
     set_character_mother(baela, laena)
     set_character_father(baela, daemon)
     set_character_biological_father(baela, daemon)
-    set_relation_spouse(rhaenyra, daemon)
-    set_relation_spouse(daemon, rhaenyra)
+    start_marriage(rhaenyra, daemon)
+    start_marriage(daemon, rhaenyra)
     set_character_father(rhaenyra, viserys)
     set_character_biological_father(rhaenyra, viserys)
     set_character_mother(aegon_2, alicent)

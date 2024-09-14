@@ -28,6 +28,7 @@ from minerva.characters.components import (
     Lifespan,
     LifeStage,
     Luck,
+    MarriageTracker,
     Martial,
     MoneyMotive,
     PowerMotive,
@@ -35,6 +36,7 @@ from minerva.characters.components import (
     Rationality,
     RespectMotive,
     RomancePropensity,
+    RomanticAffairTracker,
     Sex,
     SexMotive,
     SexualOrientation,
@@ -70,7 +72,7 @@ from minerva.characters.helpers import (
     set_household_head,
     set_relation_child,
     set_relation_sibling,
-    set_relation_spouse,
+    start_marriage,
 )
 from minerva.characters.succession_helpers import start_new_dynasty
 from minerva.config import Config
@@ -297,6 +299,8 @@ def generate_character(
     obj.add_component(RelationshipManager())
     obj.add_component(LifeEventHistory())
     obj.add_component(StatManager())
+    obj.add_component(MarriageTracker())
+    obj.add_component(RomanticAffairTracker())
 
     # Create all the stat components and add them to the stats class for str look-ups
     obj.add_component(
@@ -646,8 +650,8 @@ def _generate_clans(world: World) -> list[GameObject]:
                 set_character_household(spouse, household)
 
                 # Update the relationship between the household head and spouse
-                set_relation_spouse(household_head, spouse)
-                set_relation_spouse(spouse, household_head)
+                start_marriage(household_head, spouse)
+                start_marriage(spouse, household_head)
 
                 n_children = rng.randint(0, config.max_children_per_household)
 

@@ -13,7 +13,7 @@ from minerva.characters.helpers import (
     set_character_mother,
     set_relation_child,
     set_relation_sibling,
-    set_relation_spouse,
+    start_marriage,
 )
 from minerva.ecs import Active
 from minerva.loaders import (
@@ -138,12 +138,10 @@ def test_sim() -> Simulation:
     set_relation_child(viserys, aemond)
     set_relation_child(alicent, aegon_2)
     set_relation_child(alicent, aemond)
-    set_relation_spouse(viserys, alicent)
-    set_relation_spouse(alicent, viserys)
+    start_marriage(viserys, alicent)
     set_relation_sibling(viserys, daemon)
     set_relation_sibling(daemon, viserys)
-    set_relation_spouse(rhaenyra, daemon)
-    set_relation_spouse(daemon, rhaenyra)
+    start_marriage(rhaenyra, daemon)
     set_character_father(rhaenyra, viserys)
     set_character_biological_father(rhaenyra, viserys)
     set_character_mother(aegon_2, alicent)
