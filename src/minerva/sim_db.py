@@ -234,11 +234,11 @@ CREATE TABLE rulers (
     dynasty_id INT NOT NULL,
     start_date TEXT NOT NULL,
     end_date TEXT,
-    previous_ruler_id INT,
+    predecessor_id INT,
     PRIMARY KEY (character_id, start_date),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (dynasty_id) REFERENCES dynasties(uid),
-    FOREIGN KEY (previous_ruler_id) REFERENCES characters(uid)
+    FOREIGN KEY (predecessor_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE dynasties (

@@ -168,14 +168,143 @@ def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
     return depth_chart
 
 
-def create_dynasty(founding_character: GameObject) -> GameObject:
-    """Create a new dynasty with the given character at the helm."""
+def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
+    """Set the character who is currently the ruler.
+
+    Setting the ruler changes who is currently in charge and potentially
+    what dynasty is currently active. Consecutive rulers from the same
+    family constitute a single dynasty. IF the new ruler comes from a different
+    family, a new dynasty starts.
+
+    There may be times when there is no active dynasty.
+
+    Parameters
+    ----------
+    character
+        The next ruler.
+    """
+    db = world.resources.get_resource(SimDB).db
+    cur = db.cursor()
+    dynasty_tracker = world.resources.get_resource(DynastyTracker)
+    current_date = world.resources.get_resource(SimDate)
+
+    # Check if there is a current dynasty and that it has a current ruler. If it
+    # does, remove the ruler/emperor component and update their ruler entry in the
+    # database
+    if dynasty_tracker.current_dynasty is not None:
+        current_dynasty_component = dynasty_tracker.current_dynasty.get_component(
+            Dynasty
+        )
+
+        # Remove the current ruler
+        if current_dynasty_component.current_ruler is not None:
+            current_dynasty_component.current_ruler.remove_component(Emperor)
+            cur.execute(
+                """
+                UPDATE rulers
+                SET end_date=?
+                WHERE character_id=?;
+                """,
+                (
+                    current_date.to_iso_str(),
+                    current_dynasty_component.current_ruler.uid,
+                ),
+            )
+            current_dynasty_component.previous_rulers.add(
+                current_dynasty_component.current_ruler
+            )
+            current_dynasty_component.current_ruler = None
+
+        # Nobody has been assigned as the next ruler end the dynasty
+        if character is None:
+            current_dynasty_component.ending_date = current_date
+
+            cur.execute(
+                """
+                UPDATE dynasties
+                SET
+                end_date=?
+                WHERE
+                uid=?;
+                """,
+                (current_date.to_iso_str(), current_dynasty_component.gameobject.uid),
+            )
+
+            dynasty_tracker.previous_dynasties.add(dynasty_tracker.current_dynasty)
+            dynasty_tracker.current_dynasty = None
+
+        # Check if the new ruler is from the same family
+        else:
+            character_component = character.get_component(Character)
+            if character_component.family != current_dynasty_component.family:
+                current_dynasty_component.ending_date = current_date
+
+                cur.execute(
+                    """
+                    UPDATE dynasties
+                    SET
+                    end_date=?
+                    WHERE
+                    uid=?;
+                    """,
+                    (
+                        current_date.to_iso_str(),
+                        current_dynasty_component.gameobject.uid,
+                    ),
+                )
+
+                dynasty_tracker.previous_dynasties.add(dynasty_tracker.current_dynasty)
+                dynasty_tracker.current_dynasty = None
+
+    if character is not None:
+
+        if dynasty_tracker.current_dynasty is not None:
+            current_dynasty_component = dynasty_tracker.current_dynasty.get_component(
+                Dynasty
+            )
+
+            current_dynasty_component.current_ruler = character
+            last_ruler = dynasty_tracker.last_ruler
+            dynasty_tracker.all_rulers.add(character)
+            character.add_component(Emperor())
+
+            cur.execute(
+                """
+                INSERT INTO rulers
+                (
+                    character_id,
+                    dynasty_id,
+                    start_date,
+                    predecessor_id
+                )
+                VALUES (?, ?, ?, ?);
+                """,
+                (
+                    character.uid,
+                    current_dynasty_component.gameobject.uid,
+                    current_date.to_iso_str(),
+                    last_ruler,
+                ),
+            )
+        else:
+            _start_new_dynasty(character)
+
+    db.commit()
+
+
+def _start_new_dynasty(founding_character: GameObject) -> GameObject:
+    """Start a new dynasty and return it."""
+    world = founding_character.world
+
+    current_date = world.resources.get_resource(SimDate)
+    dynasty_tracker = world.resources.get_resource(DynastyTracker)
+
+    if dynasty_tracker.current_dynasty is not None:
+        raise RuntimeError("Cannot start new dynasty while another is active.")
 
     character_component = founding_character.get_component(Character)
     family = character_component.family
     assert family is not None, "Dynasty founder missing family"
-
-    world = founding_character.world
 
     dynasty_obj = world.gameobjects.spawn_gameobject(
         components=[
@@ -187,27 +316,13 @@ def create_dynasty(founding_character: GameObject) -> GameObject:
         ],
         name=f"The {character_component.surname} dynasty",
     )
-
-    return dynasty_obj
-
-
-def start_new_dynasty(founding_character: GameObject) -> GameObject:
-    """Start a new dynasty and return it."""
-    world = founding_character.world
-
-    current_date = world.resources.get_resource(SimDate)
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
-
-    if dynasty_tracker.current_dynasty is not None:
-        raise RuntimeError("Cannot start new dynast while another is active.")
-
-    dynasty_obj = create_dynasty(founding_character)
     dynasty_component = dynasty_obj.get_component(Dynasty)
 
     dynasty_tracker.current_dynasty = dynasty_obj
     dynasty_component.current_ruler = founding_character
-    dynasty_component.previous_dynasty = dynasty_tracker.previous_dynasty
+    dynasty_component.previous_dynasty = dynasty_tracker.last_dynasty
     founding_character.add_component(Emperor())
+    dynasty_tracker.all_rulers.add(founding_character)
 
     previous_ruler: Optional[GameObject] = None
     if dynasty_component.previous_dynasty:
@@ -245,7 +360,7 @@ def start_new_dynasty(founding_character: GameObject) -> GameObject:
             character_id,
             dynasty_id,
             start_date,
-            previous_ruler_id
+            predecessor_id
         )
         VALUES (?, ?, ?, ?);
         """,
@@ -258,114 +373,3 @@ def start_new_dynasty(founding_character: GameObject) -> GameObject:
     )
 
     return dynasty_obj
-
-
-def end_current_dynasty(world: World) -> None:
-    """End the current dynasty."""
-
-    current_date = world.resources.get_resource(SimDate)
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
-
-    if dynasty_tracker.current_dynasty is None:
-        raise RuntimeError("No current dynasty to end.")
-
-    dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
-    dynasty_component.ending_date = current_date.copy()
-
-    if dynasty_component.current_ruler is not None:
-        dynasty_component.previous_rulers.add(dynasty_component.current_ruler)
-        dynasty_component.current_ruler = None
-
-    dynasty_tracker.previous_dynasties.add(dynasty_tracker.current_dynasty)
-    dynasty_tracker.current_dynasty = None
-
-    db = world.resources.get_resource(SimDB).db
-    cur = db.cursor()
-    cur.execute(
-        """
-        UPDATE dynasties
-        SET end_date=?
-        WHERE uid=?
-        """,
-        (current_date.to_iso_str(), dynasty_component.gameobject.uid),
-    )
-
-
-def start_reign(character: GameObject) -> None:
-    """Start the reign of a new ruler."""
-
-    world = character.world
-    current_date = world.resources.get_resource(SimDate)
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
-
-
-def end_reign(character: GameObject) -> None:
-    """End the reign of the current ruler."""
-    world = character.world
-    current_date = world.resources.get_resource(SimDate)
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
-
-    if dynasty_tracker.current_dynasty is None:
-        raise RuntimeError("Cannot end reign if no current dynasty.")
-
-    dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
-
-    current_ruler = dynasty_component.current_ruler
-
-    if current_ruler != character:
-        raise RuntimeError("The current ruler is not the given character.")
-
-    # Update the rulers end date in the database
-    db = world.resources.get_resource(SimDB).db
-    cur = db.cursor()
-    cur.execute(
-        """
-        UPDATE rulers
-        SET end_date=?
-        WHERE character_id=?;
-        """,
-        (current_date.to_iso_str(), character.uid),
-    )
-    db.commit()
-
-
-def set_current_ruler(character: GameObject) -> None:
-    """Set the character who is currently the ruler.
-
-    Setting the ruler changes who is currently in charge and potentially
-    what dynasty is currently active. Consecutive rulers from the same
-    family constitute a single dynasty. IF the new ruler comes from a different
-    family, a new dynasty starts.
-
-    There may be times when there is no active dynasty.
-
-    Parameters
-    ----------
-    character
-        The next ruler.
-    """
-    world = character.world
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
-
-    character_component = character.get_component(Character)
-    character_family = character_component.family
-
-    assert character_family is not None, "Character is missing family"
-
-    # Check if there is currently a dynasty
-    if dynasty_tracker.current_dynasty is not None:
-        dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
-        # Check who is in charge
-        if dynasty_component.family == character_family:
-            # This is a continuation of the current dynasty.
-            pass
-
-    # There is no current dynasty, start a new one
-    else:
-        dynasty = create_dynasty(character)
-        dynasty_component = dynasty.get_component(Dynasty)
-        dynasty_component.previous_dynasty = dynasty_tracker.previous_dynasty
-        dynasty_component.current_ruler = character
-
-        if dynasty_tracker.previous_dynasty is not None:
-            pass

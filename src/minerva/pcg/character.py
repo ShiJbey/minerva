@@ -75,7 +75,7 @@ from minerva.characters.helpers import (
     set_relation_sibling,
     start_marriage,
 )
-from minerva.characters.succession_helpers import start_new_dynasty
+from minerva.characters.succession_helpers import set_current_ruler
 from minerva.config import Config
 from minerva.constants import CLAN_COLORS_PRIMARY, CLAN_COLORS_SECONDARY
 from minerva.ecs import Active, Event, GameObject, World
@@ -573,7 +573,7 @@ def generate_initial_clans(world: World) -> None:
 
     # Start the first dynasty
     chosen_emperor = rng.choice(clan_heads)
-    start_new_dynasty(chosen_emperor)
+    set_current_ruler(world, chosen_emperor)
 
     emperor_family = chosen_emperor.get_component(Character).family
     assert emperor_family is not None, "Emperor family cannot be none"

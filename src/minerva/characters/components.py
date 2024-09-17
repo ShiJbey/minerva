@@ -569,17 +569,27 @@ class Dynasty(Component):
 class DynastyTracker:
     """A shared singleton that tracks the current royal family and dynasty."""
 
-    __slots__ = ("current_dynasty", "previous_dynasties")
+    __slots__ = ("current_dynasty", "previous_dynasties", "all_rulers")
 
     current_dynasty: Optional[GameObject]
     previous_dynasties: OrderedSet[GameObject]
+    all_rulers: OrderedSet[GameObject]
 
     def __init__(self) -> None:
         self.current_dynasty = None
         self.previous_dynasties = OrderedSet([])
+        self.all_rulers = OrderedSet([])
 
     @property
-    def previous_dynasty(self) -> Optional[GameObject]:
+    def last_ruler(self) -> Optional[GameObject]:
+        """Get a reference to the last character that ruled."""
+        if self.all_rulers:
+            return self.all_rulers[-1]
+
+        return None
+
+    @property
+    def last_dynasty(self) -> Optional[GameObject]:
         """Get the previous dynasty."""
         if self.previous_dynasties:
             return self.previous_dynasties[-1]

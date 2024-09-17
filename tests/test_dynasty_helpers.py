@@ -5,17 +5,16 @@ import pathlib
 
 import pytest
 
-from minerva.characters.components import Character, LifeStage, Sex, SexualOrientation
-from minerva.characters.helpers import (
-    set_character_biological_father,
-    set_character_family,
-    set_character_father,
-    set_character_mother,
-    set_relation_child,
-    set_relation_sibling,
-    start_marriage,
+from minerva.characters.components import (
+    Dynasty,
+    DynastyTracker,
+    LifeStage,
+    Sex,
+    SexualOrientation,
 )
-from minerva.ecs import Active
+from minerva.characters.helpers import set_character_family
+from minerva.characters.succession_helpers import set_current_ruler
+from minerva.ecs import GameObject
 from minerva.loaders import (
     load_female_first_names,
     load_male_first_names,
@@ -24,6 +23,7 @@ from minerva.loaders import (
     load_surnames,
 )
 from minerva.pcg.character import generate_character, generate_family
+from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
 
@@ -40,12 +40,14 @@ def test_sim() -> Simulation:
     load_settlement_names(sim, data_dir / "japanese_city_names.txt")
     load_species_types(sim, data_dir / "species_types.yaml")
 
-    # Test
+    return sim
 
-    # Configure characters
+
+def test_set_current_ruler(test_sim: Simulation):
+    """Test setting the current ruler."""
 
     viserys = generate_character(
-        sim.world,
+        test_sim.world,
         first_name="Viserys",
         surname="Targaryen",
         sex=Sex.MALE,
@@ -55,7 +57,7 @@ def test_sim() -> Simulation:
     )
 
     rhaenyra = generate_character(
-        sim.world,
+        test_sim.world,
         first_name="Rhaenyra",
         surname="Targaryen",
         sex=Sex.FEMALE,
@@ -64,47 +66,8 @@ def test_sim() -> Simulation:
         species="human",
     )
 
-    alicent = generate_character(
-        sim.world,
-        first_name="Alicent",
-        surname="Hightower",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-    )
-
-    daemon = generate_character(
-        sim.world,
-        first_name="Daemon",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
-    )
-
-    aegon_2 = generate_character(
-        sim.world,
-        first_name="Aegon",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        age=20,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
-    )
-
-    aemond = generate_character(
-        sim.world,
-        first_name="Aemond",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        age=16,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
-    )
-
     corlys = generate_character(
-        sim.world,
+        test_sim.world,
         first_name="Corlys",
         surname="Velaryon",
         sex=Sex.MALE,
@@ -113,92 +76,113 @@ def test_sim() -> Simulation:
         species="human",
     )
 
-    laena = generate_character(
-        sim.world,
-        first_name="Laena",
-        surname="Velaryon",
-        sex=Sex.FEMALE,
-        age=34,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
-    )
+    targaryen_family = generate_family(test_sim.world, name="Targaryen")
+    velaryon_family = generate_family(test_sim.world, name="Velaryon")
 
-    targaryen_family = generate_family(sim.world, name="Targaryen")
-    velaryon_family = generate_family(sim.world, name="Velaryon")
-
-    # Create family ties
     set_character_family(viserys, targaryen_family)
     set_character_family(rhaenyra, targaryen_family)
     set_character_family(corlys, velaryon_family)
-    set_character_family(laena, velaryon_family)
 
-    # Configure Relationships
-    set_relation_child(viserys, rhaenyra)
-    set_relation_child(viserys, aegon_2)
-    set_relation_child(viserys, aemond)
-    set_relation_child(alicent, aegon_2)
-    set_relation_child(alicent, aemond)
-    start_marriage(viserys, alicent)
-    set_relation_sibling(viserys, daemon)
-    set_relation_sibling(daemon, viserys)
-    start_marriage(rhaenyra, daemon)
-    set_character_father(rhaenyra, viserys)
-    set_character_biological_father(rhaenyra, viserys)
-    set_character_mother(aegon_2, alicent)
-    set_character_father(rhaenyra, viserys)
-    set_character_biological_father(rhaenyra, viserys)
-    set_character_mother(aegon_2, alicent)
-    set_character_father(rhaenyra, viserys)
-    set_character_biological_father(rhaenyra, viserys)
-    set_character_mother(aegon_2, alicent)
-    set_relation_sibling(rhaenyra, aegon_2)
-    set_relation_sibling(aegon_2, rhaenyra)
-    set_character_father(laena, corlys)
-    set_character_biological_father(laena, corlys)
+    dynasty_tracker = test_sim.world.resources.get_resource(DynastyTracker)
+    db = test_sim.world.resources.get_resource(SimDB).db
 
-    return sim
+    set_current_ruler(test_sim.world, viserys)
 
+    assert dynasty_tracker.current_dynasty is not None
+    assert dynasty_tracker.last_dynasty is None
+    assert len(dynasty_tracker.all_rulers) == 1
+    assert dynasty_tracker.all_rulers[-1] == viserys
 
-def test_set_current_ruler(test_sim: Simulation):
-    """Test setting the current ruler."""
+    targaryen_dynasty: GameObject = dynasty_tracker.current_dynasty
+    current_dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
+    assert current_dynasty_component.family == targaryen_family
+    assert current_dynasty_component.current_ruler == viserys
 
-    viserys = [
-        character.gameobject
-        for _, (character, _) in test_sim.world.get_components((Character, Active))
-        if character.first_name == "Viserys"
-    ]
+    # Verify ruler data is in the database
+    result = db.execute(
+        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        (viserys.uid,),
+    ).fetchone()
+    assert result == ("0001-01", None, None)
 
-    corlys = [
-        character.gameobject
-        for _, (character, _) in test_sim.world.get_components((Character, Active))
-        if character.first_name == "Corlys"
-    ]
+    # Verify that the database entry for the dynasty is up to date
+    result = db.execute(
+        """
+        SELECT family_id, founder_id, start_date, end_date, previous_dynasty_id
+        FROM dynasties WHERE uid=?;""",
+        (dynasty_tracker.current_dynasty.uid,),
+    ).fetchone()
+    assert result == (targaryen_family.uid, viserys.uid, "0001-01", None, None)
 
-    # start_new_dynasty(test_sim.world, viserys)
+    current_dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
+    assert current_dynasty_component.current_ruler == viserys
 
-    assert False
+    # Set the next ruler to come from the same family
+    set_current_ruler(test_sim.world, rhaenyra)
 
+    # Verify that the dynasty has not changed
+    result = db.execute(
+        """
+        SELECT family_id, founder_id, start_date, end_date, previous_dynasty_id
+        FROM dynasties WHERE uid=?;""",
+        (dynasty_tracker.current_dynasty.uid,),
+    ).fetchone()
+    assert result == (
+        targaryen_family.uid,
+        viserys.uid,
+        "0001-01",
+        None,
+        None,
+    )
 
-def test_end_current_dynasty():
-    """Test ending the current dynasty.
+    result = db.execute(
+        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        (rhaenyra.uid,),
+    ).fetchone()
+    assert result == ("0001-01", None, viserys.uid)
 
-    This should ensure that all termination information is saved
-    to the dynasty upon ending. It should also allow us to create
-    a new dynasty afterward that has the proper references to the
-    previous dynasty.
-    """
-    assert False
+    result = db.execute(
+        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        (viserys.uid,),
+    ).fetchone()
+    assert result == ("0001-01", "0001-01", None)
 
+    # Set the next ruler to come from a different family, ending the current dynasty.
+    set_current_ruler(test_sim.world, corlys)
 
-def test_changing_ruler():
-    """Set the current emperor for the dynasty.
+    result = db.execute(
+        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        (rhaenyra.uid,),
+    ).fetchone()
+    assert result == ("0001-01", "0001-01", viserys.uid)
 
-    This test checks that we can set the current ruler.
-    Changing rulers will cause an error if the new ruler is not
-    part of the family royal family, as this would signal a dynasty
-    change.
+    result = db.execute(
+        """
+        SELECT family_id, founder_id, start_date, end_date, previous_dynasty_id
+        FROM dynasties WHERE uid=?;""",
+        (dynasty_tracker.current_dynasty.uid,),
+    ).fetchone()
+    assert result == (
+        velaryon_family.uid,
+        corlys.uid,
+        "0001-01",
+        None,
+        targaryen_dynasty.uid,
+    )
 
-    This test also ensures that rulers correctly reference their
-    predecessor if any.
-    """
-    assert False
+    assert dynasty_tracker.current_dynasty is not None
+    assert dynasty_tracker.last_dynasty is not None
+    assert len(dynasty_tracker.all_rulers) == 3
+    assert dynasty_tracker.all_rulers[-1] == corlys
+
+    current_dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
+    assert current_dynasty_component.family == velaryon_family
+    assert current_dynasty_component.current_ruler == corlys
+
+    # Remove the final rule from power and do not place anyone as a replacement.
+    set_current_ruler(test_sim.world, None)
+
+    assert dynasty_tracker.current_dynasty is None
+    assert len(dynasty_tracker.previous_dynasties) == 2
+    assert len(dynasty_tracker.all_rulers) == 3
+    assert dynasty_tracker.all_rulers[-1] == corlys
