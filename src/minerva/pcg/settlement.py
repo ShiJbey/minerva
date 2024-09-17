@@ -10,7 +10,7 @@ from minerva.ecs import Event, GameObject, World
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatManager
 from minerva.stats.helpers import default_stat_calc_strategy
-from minerva.world_map.components import Settlement, PopulationHappiness
+from minerva.world_map.components import PopulationHappiness, Settlement
 
 
 class ISettlementFactory(ABC):

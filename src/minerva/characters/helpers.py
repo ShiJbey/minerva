@@ -19,6 +19,8 @@ from minerva.characters.components import (
     LifeStage,
     Marriage,
     MarriageTracker,
+    RomanticAffair,
+    RomanticAffairTracker,
     Sex,
     SexualOrientation,
 )
@@ -101,8 +103,8 @@ def set_clan_head(
         clan_component.head = character
         character.add_component(HeadOfClan(clan=clan))
         cur.execute(
-            """INSERT INTO clan_heads (head, clan, start_date) VALUES (?, ?, ?);""",
-            (character, clan, current_date),
+            """INSERT INTO clan_heads (head, clan, start_date, predecessor) VALUES (?, ?, ?, ?);""",
+            (character, clan, current_date, former_head),
         )
 
     cur.execute(
@@ -232,11 +234,14 @@ def set_family_clan(
         former_clan = family_component.clan
         clan_component = former_clan.get_component(Clan)
         clan_component.families.remove(family)
+        clan_component.active_families.remove(family)
+        clan_component.former_families.add(family)
         family_component.clan = None
 
     if clan is not None:
         clan_component = clan.get_component(Clan)
         clan_component.families.append(family)
+        clan_component.active_families.add(family)
         family_component.clan = clan
 
     db = family.world.resources.get_resource(SimDB).db
@@ -344,8 +349,12 @@ def set_family_head(
         family_component.head = character
 
         cur.execute(
-            """INSERT INTO family_heads (head, family, start_date) VALUES (?, ?, ?);""",
-            (character, family, current_date),
+            """
+            INSERT INTO family_heads
+            (head, family, start_date, predecessor)
+            VALUES (?, ?, ?, ?);
+            """,
+            (character, family, current_date, former_head),
         )
 
     cur.execute(
@@ -383,11 +392,14 @@ def set_character_family(
         former_family = character_component.family
         family_component = former_family.get_component(Family)
         family_component.members.remove(character)
+        family_component.active_members.remove(character)
+        family_component.former_members.add(character)
         character_component.family = None
 
     if family is not None:
         family_component = family.get_component(Family)
         family_component.members.append(character)
+        family_component.active_members.append(character)
         character_component.family = family
 
     db = character.world.resources.get_resource(SimDB).db
@@ -450,8 +462,6 @@ def remove_clan_from_play(clan: GameObject) -> None:
         )
 
         for member in [*clan_component.active_families]:
-            clan_component.active_families.remove(member)
-            clan_component.former_families.add(member)
             set_family_clan(member, None)
 
     clan.deactivate()
@@ -602,8 +612,8 @@ def merge_family_with(
 
     # Move all households over to the new family and remove them from the old
     source_family_component = source_family.get_component(Family)
-    for household in source_family_component.households:
-        set_household_family(household, destination_family)
+    for character in [*source_family_component.active_members]:
+        set_character_family(character, destination_family)
 
 
 # ===================================
@@ -1090,6 +1100,7 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
     character_a_marriages.past_marriage_ids.append(
         character_a_marriages.current_marriage.uid
     )
+    character_a_marriages.current_marriage.destroy()
     character_a_marriages.current_marriage = None
 
     character_b_marriages = character_b.get_component(MarriageTracker)
@@ -1105,6 +1116,7 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
     character_b_marriages.past_marriage_ids.append(
         character_b_marriages.current_marriage.uid
     )
+    character_b_marriages.current_marriage.destroy()
     character_b_marriages.current_marriage = None
 
     db.commit()
@@ -1112,25 +1124,132 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
 
 def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
     """Start a romantic affair between two characters."""
-    raise NotImplementedError()
+    world = character_a.world
+    character_a_component = character_a.get_component(Character)
+    character_b_component = character_b.get_component(Character)
+
+    # Check that both characters are not married
+    if character_a_component.lover:
+        raise RuntimeError(f"Error: {character_a.name_with_uid} already has a lover.")
+
+    if character_b_component.lover:
+        raise RuntimeError(f"Error: {character_b.name_with_uid} already has a lover.")
+
+    current_date = world.resources.get_resource(SimDate)
+    db = world.resources.get_resource(SimDB).db
+    cur = db.cursor()
+
+    # Set the lover references in the component data
+    character_a_component.lover = character_b
+    character_b_component.lover = character_a
+
+    # Update the lover IDs in the database
+    cur.execute(
+        """UPDATE characters SET lover=? WHERE uid=?;""",
+        (character_b.uid, character_a.uid),
+    )
+    cur.execute(
+        """UPDATE characters SET lover=? WHERE uid=?;""",
+        (character_a.uid, character_b.uid),
+    )
+
+    # Create a new romantic affair entries into the database
+    a_to_b = world.gameobjects.spawn_gameobject(
+        components=[
+            RomanticAffair(character_a, character_b, current_date),
+        ]
+    )
+    character_a.get_component(RomanticAffairTracker).current_affair = a_to_b
+    cur.execute(
+        """
+        INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
+        VALUES (?, ?, ?, ?);
+        """,
+        (a_to_b.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
+    )
+
+    b_to_a = world.gameobjects.spawn_gameobject(
+        components=[
+            RomanticAffair(character_b, character_a, current_date),
+        ]
+    )
+    character_b.get_component(RomanticAffairTracker).current_affair = b_to_a
+    cur.execute(
+        """
+        INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
+        VALUES (?, ?, ?, ?);
+        """,
+        (b_to_a.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
+    )
+
+    db.commit()
 
 
 def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
     """End a romantic affair between two characters."""
-    raise NotImplementedError()
+    world = character_a.world
+    character_a_component = character_a.get_component(Character)
+    character_b_component = character_b.get_component(Character)
 
+    # Check that both characters are lovers with each other
+    if character_a_component.lover != character_b:
+        raise RuntimeError(
+            f"Error: {character_a.name_with_uid} is not in a romantic affair with"
+            f" {character_b.name_with_uid}."
+        )
 
-def set_relation_lover(character: GameObject, lover: Optional[GameObject]) -> None:
-    """Set the lover of a character."""
+    if character_b_component.lover != character_a:
+        raise RuntimeError(
+            f"Error: {character_b.name_with_uid} is not in a romantic affair with"
+            f" {character_a.name_with_uid}."
+        )
 
-    character.get_component(Character).lover = lover
+    # Set the spouse references in the component data
+    character_a_component.lover = None
+    character_b_component.lover = None
 
-    db = character.world.resources.get_resource(SimDB).db
+    current_date = world.resources.get_resource(SimDate).to_iso_str()
+    db = world.resources.get_resource(SimDB).db
+    cur = db.cursor()
 
-    db.execute(
+    # Update the spouse IDs in the database
+    cur.execute(
         """UPDATE characters SET lover=? WHERE uid=?;""",
-        (lover, character.uid),
+        (None, character_a.uid),
     )
+    cur.execute(
+        """UPDATE characters SET lover=? WHERE uid=?;""",
+        (None, character_b.uid),
+    )
+
+    # Update romantic affair entries in the database
+    character_a_lovers = character_a.get_component(RomanticAffairTracker)
+    assert character_a_lovers.current_affair
+
+    cur.execute(
+        """
+        UPDATE romantic_affairs SET end_date=?
+        WHERE uid=?;
+        """,
+        (current_date, character_a_lovers.current_affair.uid),
+    )
+    character_a_lovers.past_affair_ids.append(character_a_lovers.current_affair.uid)
+    character_a_lovers.current_affair.destroy()
+    character_a_lovers.current_affair = None
+
+    character_b_lovers = character_b.get_component(RomanticAffairTracker)
+    assert character_b_lovers.current_affair
+
+    cur.execute(
+        """
+        UPDATE romantic_affairs SET end_date=?
+        WHERE uid=?;
+        """,
+        (current_date, character_b_lovers.current_affair.uid),
+    )
+    character_b_lovers.past_affair_ids.append(character_b_lovers.current_affair.uid)
+    character_b_lovers.current_affair.destroy()
+    character_b_lovers.current_affair = None
 
     db.commit()
 

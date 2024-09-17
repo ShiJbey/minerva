@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from minerva.ecs import GameObject
-from minerva.traits.base_types import TraitLibrary, TraitManager, Trait
+from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
 
 
 def add_trait(gameobject: GameObject, trait_id: str) -> bool:

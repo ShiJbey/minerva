@@ -14,12 +14,13 @@ DROP TABLE IF EXISTS households;
 DROP TABLE IF EXISTS siblings;
 DROP TABLE IF EXISTS children;
 DROP TABLE IF EXISTS marriages;
-DROP TABLE IF EXISTS romantic_partners;
+DROP TABLE IF EXISTS romantic_affairs;
 DROP TABLE IF EXISTS life_events;
 DROP TABLE IF EXISTS life_stage_change_events;
 DROP TABLE IF EXISTS death_events;
 DROP TABLE IF EXISTS rulers;
 DROP TABLE IF EXISTS dynasties;
+DROP TABLE IF EXISTS betrothals;
 
 CREATE TABLE characters (
     uid INT NOT NULL PRIMARY KEY,
@@ -148,12 +149,24 @@ CREATE TABLE marriages (
     FOREIGN KEY (spouse_id) REFERENCES characters(uid)
 );
 
-CREATE TABLE romantic_partners (
-    character_id INT,
-    partner_id INT,
-    PRIMARY KEY(character_id, partner_id),
+CREATE TABLE betrothals (
+    uid INT NOT NULL PRIMARY KEY,
+    character_id INT NOT NULL,
+    betrothed_id INT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
     FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (partner_id) REFERENCES characters(uid)
+    FOREIGN KEY (betrothed_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE romantic_affairs (
+    uid INT NOT NULL PRIMARY KEY,
+    character_id INT NOT NULL,
+    lover_id INT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (lover_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE children (

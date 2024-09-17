@@ -8,6 +8,7 @@ from typing import Optional, Union
 
 from ordered_set import OrderedSet
 
+from minerva.characters.betrothal_data import BetrothalTracker
 from minerva.characters.components import (
     Boldness,
     Character,
@@ -301,6 +302,7 @@ def generate_character(
     obj.add_component(StatManager())
     obj.add_component(MarriageTracker())
     obj.add_component(RomanticAffairTracker())
+    obj.add_component(BetrothalTracker())
 
     # Create all the stat components and add them to the stats class for str look-ups
     obj.add_component(
@@ -435,7 +437,7 @@ def generate_family(world: World, name: str = "") -> GameObject:
     family.metadata["object_type"] = "family"
     family_name = name if name else character_name_factory.generate_surname()
     family.add_component(Family(name=family_name))
-    family.name = f"The {family_name} family"
+    family.name = f"{family_name}"
 
     db.execute(
         """
@@ -471,7 +473,7 @@ def generate_clan(world: World, name: str = "") -> GameObject:
     clan_component = clan.add_component(Clan(name=clan_name))
     clan_component.color_primary = rng.choice(CLAN_COLORS_PRIMARY)
     clan_component.color_secondary = rng.choice(CLAN_COLORS_SECONDARY)
-    clan.name = f"The {clan_name} clan"
+    clan.name = f"{clan_name}"
 
     db.execute(
         """
@@ -651,7 +653,6 @@ def _generate_clans(world: World) -> list[GameObject]:
 
                 # Update the relationship between the household head and spouse
                 start_marriage(household_head, spouse)
-                start_marriage(spouse, household_head)
 
                 n_children = rng.randint(0, config.max_children_per_household)
 

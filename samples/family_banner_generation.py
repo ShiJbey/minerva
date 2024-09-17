@@ -9,14 +9,14 @@ import pygame.gfxdraw
 
 from minerva.constants import (
     CAMERA_SPEED,
+    CLAN_COLORS_PRIMARY,
+    CLAN_COLORS_SECONDARY,
+    FAMILY_BANNER_SHAPES,
+    FAMILY_COLORS_TERTIARY,
+    FPS,
     TILE_SIZE,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
-    CLAN_COLORS_PRIMARY,
-    FPS,
-    FAMILY_BANNER_SHAPES,
-    CLAN_COLORS_SECONDARY,
-    FAMILY_COLORS_TERTIARY,
 )
 from minerva.viz.family_banners import FamilyBannerSprite
 

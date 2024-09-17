@@ -10,6 +10,7 @@ import pytest
 from minerva.characters.components import Character, LifeStage, Sex, SexualOrientation
 from minerva.characters.helpers import (
     end_marriage,
+    end_romantic_affair,
     set_character_age,
     set_character_alive,
     set_character_biological_father,
@@ -27,6 +28,7 @@ from minerva.characters.helpers import (
     set_relation_child,
     set_relation_sibling,
     start_marriage,
+    start_romantic_affair,
 )
 from minerva.datetime import SimDate
 from minerva.loaders import (
@@ -574,11 +576,6 @@ def test_set_character_birth_family(test_sim: Simulation):
     assert result[0] == targaryen_family.uid
 
 
-def test_remove_character_from_play(test_sim: Simulation):
-    """Test removing a character from the active simulation."""
-    assert False
-
-
 def test_set_relation_sibling(test_sim: Simulation):
     """Test updating a sibling reference from on character to another."""
     daemon = generate_character(
@@ -795,9 +792,121 @@ def test_end_marriage(test_sim: Simulation):
 
 def test_start_romantic_affair(test_sim: Simulation):
     """Test starting a romantic lover relationship and updating lover references."""
-    assert False
+    alicent = generate_character(
+        test_sim.world,
+        first_name="Alicent",
+        surname="Hightower",
+        sex=Sex.FEMALE,
+        life_stage=LifeStage.ADULT,
+        sexual_orientation=SexualOrientation.HETEROSEXUAL,
+        species="human",
+    )
+
+    cole = generate_character(
+        test_sim.world,
+        first_name="Cristen",
+        surname="Cole",
+        sex=Sex.MALE,
+        life_stage=LifeStage.ADULT,
+        sexual_orientation=SexualOrientation.HETEROSEXUAL,
+        species="human",
+    )
+
+    alicent_character_component = alicent.get_component(Character)
+    cole_character_component = cole.get_component(Character)
+    db = test_sim.world.resources.get_resource(SimDB).db
+
+    assert cole_character_component.lover is None
+    assert alicent_character_component.lover is None
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
+    result = cur.fetchone()
+    assert result[0] is None
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
+    result = cur.fetchone()
+    assert result[0] is None
+
+    start_romantic_affair(alicent, cole)
+
+    assert cole_character_component.lover == alicent
+    assert alicent_character_component.lover == cole
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
+    result = cur.fetchone()
+    assert result[0] == cole.uid
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
+    result = cur.fetchone()
+    assert result[0] == alicent.uid
 
 
 def test_end_romantic_affair(test_sim: Simulation):
     """Test ending romantic lover relationships and updating lover references."""
-    assert False
+    alicent = generate_character(
+        test_sim.world,
+        first_name="Alicent",
+        surname="Hightower",
+        sex=Sex.FEMALE,
+        life_stage=LifeStage.ADULT,
+        sexual_orientation=SexualOrientation.HETEROSEXUAL,
+        species="human",
+    )
+
+    cole = generate_character(
+        test_sim.world,
+        first_name="Cristen",
+        surname="Cole",
+        sex=Sex.MALE,
+        life_stage=LifeStage.ADULT,
+        sexual_orientation=SexualOrientation.HETEROSEXUAL,
+        species="human",
+    )
+
+    alicent_character_component = alicent.get_component(Character)
+    cole_character_component = cole.get_component(Character)
+    db = test_sim.world.resources.get_resource(SimDB).db
+
+    assert cole_character_component.spouse is None
+    assert alicent_character_component.spouse is None
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
+    result = cur.fetchone()
+    assert result[0] is None
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
+    result = cur.fetchone()
+    assert result[0] is None
+
+    start_romantic_affair(alicent, cole)
+
+    assert cole_character_component.lover == alicent
+    assert alicent_character_component.lover == cole
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
+    result = cur.fetchone()
+    assert result[0] == cole.uid
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
+    result = cur.fetchone()
+    assert result[0] == alicent.uid
+
+    end_romantic_affair(alicent, cole)
+
+    assert cole_character_component.lover is None
+    assert alicent_character_component.lover is None
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
+    result = cur.fetchone()
+    assert result[0] is None
+
+    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
+    result = cur.fetchone()
+    assert result[0] is None
+
+    cur = db.execute(
+        """SELECT end_date FROM romantic_affairs WHERE character_id=? AND lover_id=?;""",
+        (alicent.uid, cole.uid),
+    )
+    result = cur.fetchone()
+    assert result[0] == "0001-01"

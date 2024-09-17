@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from itertools import product
-from typing import Generator, Any
+from typing import Any, Generator
 
 from minerva.config import Config
 from minerva.constants import TERRITORY_GENERATION_DEBUG_COLORS
@@ -12,9 +12,10 @@ from minerva.ecs import GameObject, World
 from minerva.pcg.settlement import generate_settlement
 from minerva.world_map.components import (
     CartesianGrid,
-    TerritoryInfo,
     CompassDir,
-    WorldMap, Settlement,
+    Settlement,
+    TerritoryInfo,
+    WorldMap,
 )
 
 
