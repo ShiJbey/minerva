@@ -32,6 +32,9 @@ BEHAVIOR_UTILITY_THRESHOLD = 0
 
 # === Clan/Family Settings ===
 
+MAX_ADVISORS_PER_FAMILY = 3
+MAX_WARRIORS_PER_FAMILY = 3
+
 CLAN_COLORS_PRIMARY = [
     "#01161E",  # Rich Black
     "#124559",  # Midnight Green

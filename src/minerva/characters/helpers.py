@@ -7,6 +7,7 @@ import math
 import random
 from typing import Optional
 
+import minerva.constants
 from minerva.characters.components import (
     Character,
     Clan,
@@ -23,6 +24,11 @@ from minerva.characters.components import (
     RomanticAffairTracker,
     Sex,
     SexualOrientation,
+    FamilyRoleFlags,
+    Diplomacy,
+    Stewardship,
+    Prowess,
+    Martial,
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
 from minerva.datetime import SimDate
@@ -614,6 +620,147 @@ def merge_family_with(
     source_family_component = source_family.get_component(Family)
     for character in [*source_family_component.active_members]:
         set_character_family(character, destination_family)
+
+
+def get_advisor_candidates(family: GameObject) -> list[GameObject]:
+    """Get all the characters that can be assigned as advisors.
+
+    Returns
+    -------
+    list[GameObject]
+        All potential candidates in descending order of fitness.
+    """
+    candidate_score_tuples: list[tuple[GameObject, float]] = []
+
+    family_component = family.get_component(Family)
+
+    for member in family_component.active_members:
+        character_component = member.get_component(Character)
+
+        if FamilyRoleFlags.ADVISOR in character_component.family_roles:
+            continue
+
+        if character_component.life_stage < LifeStage.ADOLESCENT:
+            continue
+
+        # Characters are scored as advisors based on stewardship and diplomacy
+        diplomacy = member.get_component(Diplomacy).value
+        stewardship = member.get_component(Stewardship).value
+        total_score = diplomacy + stewardship
+
+        candidate_score_tuples.append((member, total_score))
+
+    candidate_score_tuples.sort(key=lambda x: x[1], reverse=True)
+
+    candidates = [x[0] for x in candidate_score_tuples]
+
+    return candidates
+
+
+def get_warrior_candidates(family: GameObject) -> list[GameObject]:
+    """Get all the characters that can be assigned as warriors.
+
+    Returns
+    -------
+    list[GameObject]
+        All potential candidates in descending order of fitness.
+    """
+
+    candidate_score_tuples: list[tuple[GameObject, float]] = []
+
+    family_component = family.get_component(Family)
+
+    for member in family_component.active_members:
+        character_component = member.get_component(Character)
+
+        if FamilyRoleFlags.ADVISOR in character_component.family_roles:
+            continue
+
+        if character_component.life_stage < LifeStage.ADOLESCENT:
+            continue
+
+        # Characters are scored as advisors based on stewardship and diplomacy
+        martial = member.get_component(Martial).value
+        prowess = member.get_component(Prowess).value
+        total_score = martial + prowess
+
+        candidate_score_tuples.append((member, total_score))
+
+    candidate_score_tuples.sort(key=lambda x: x[1], reverse=True)
+
+    candidates = [x[0] for x in candidate_score_tuples]
+
+    return candidates
+
+
+def assign_family_member_to_roles(
+    family: GameObject, character: GameObject, roles: FamilyRoleFlags
+) -> None:
+    """Assign a character to a given set of roles."""
+
+    family_component = family.get_component(Family)
+    character_component = character.get_component(Character)
+
+    if character not in family_component.active_members:
+        raise RuntimeError(
+            f"Error: Cannot assign {character.name_with_uid} to any roles. "
+            f"They are not a current member of the {family.name_with_uid} family."
+        )
+
+    if (
+        FamilyRoleFlags.WARRIOR in roles
+        and FamilyRoleFlags.WARRIOR not in character_component.family_roles
+    ):
+        if len(family_component.warriors) >= minerva.constants.MAX_WARRIORS_PER_FAMILY:
+            raise RuntimeError(
+                "Error: Cannot assign any additional warriors to the "
+                f"{family.name_with_uid} family. All slots are full."
+            )
+
+        family_component.warriors.add(character)
+        character_component.family_roles |= FamilyRoleFlags.WARRIOR
+
+    if (
+        FamilyRoleFlags.ADVISOR in roles
+        and FamilyRoleFlags.ADVISOR not in character_component.family_roles
+    ):
+        if len(family_component.advisors) >= minerva.constants.MAX_ADVISORS_PER_FAMILY:
+            raise RuntimeError(
+                "Error: Cannot assign any additional advisors to the "
+                f"{family.name_with_uid} family. All slots are full."
+            )
+
+        family_component.advisors.add(character)
+        character_component.family_roles |= FamilyRoleFlags.ADVISOR
+
+
+def unassign_family_member_from_roles(
+    family: GameObject, character: GameObject, roles: FamilyRoleFlags
+) -> None:
+    """Unassign a character from a given set of roles."""
+
+    family_component = family.get_component(Family)
+    character_component = character.get_component(Character)
+
+    if character not in family_component.active_members:
+        raise RuntimeError(
+            f"Error: Cannot unassign {character.name_with_uid} from any roles. "
+            f"They are not a current member of the {family.name_with_uid} family."
+        )
+
+    if (
+        FamilyRoleFlags.WARRIOR in roles
+        and FamilyRoleFlags.WARRIOR in character_component.family_roles
+    ):
+        family_component.warriors.remove(character)
+        character_component.family_roles ^= FamilyRoleFlags.WARRIOR
+
+    if (
+        FamilyRoleFlags.ADVISOR in roles
+        and FamilyRoleFlags.ADVISOR in character_component.family_roles
+    ):
+        family_component.advisors.remove(character)
+        character_component.family_roles ^= FamilyRoleFlags.ADVISOR
 
 
 # ===================================

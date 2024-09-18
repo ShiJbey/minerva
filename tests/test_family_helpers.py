@@ -7,13 +7,29 @@ import pathlib
 
 import pytest
 
-from minerva.characters.components import Character, Family, HeadOfFamily
+import minerva.constants
+from minerva.characters.components import (
+    Character,
+    Family,
+    HeadOfFamily,
+    Martial,
+    Prowess,
+    LifeStage,
+    Stewardship,
+    Diplomacy,
+    FamilyRoleFlags,
+)
 from minerva.characters.helpers import (
     merge_family_with,
     set_character_family,
     set_family_head,
     set_family_home_base,
     set_family_name,
+    remove_family_from_play,
+    get_advisor_candidates,
+    get_warrior_candidates,
+    assign_family_member_to_roles,
+    unassign_family_member_from_roles,
 )
 from minerva.loaders import (
     load_female_first_names,
@@ -209,14 +225,17 @@ def test_merge_family_with(test_sim: Simulation):
     assert len(f1.get_component(Family).active_members) == 10
 
 
-def test_remove_family_from_play():
+def test_remove_family_from_play(test_sim: Simulation):
     """Test removing a family from the active simulation."""
-    assert False
+    test_family = generate_family(test_sim.world)
+    c0 = generate_character(test_sim.world)
 
+    set_character_family(c0, test_family)
 
-def test_add_family_to_settlement():
-    """Test adding a family to a settlement."""
-    assert False
+    remove_family_from_play(test_family)
+
+    assert c0.is_active is False
+    assert test_family.is_active is False
 
 
 def test_set_family_home_base(test_sim: Simulation):
@@ -235,16 +254,105 @@ def test_set_family_home_base(test_sim: Simulation):
     assert family_component.home_base is None
 
 
-def test_get_warrior_candidates():
+def test_get_warrior_candidates(test_sim: Simulation):
     """Test getting potential candidates for warrior roles in a family."""
-    assert False
+    test_family = generate_family(test_sim.world)
+
+    c0 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c0.get_component(Martial).base_value = 30
+    set_character_family(c0, test_family)
+
+    c1 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c1.get_component(Prowess).base_value = 50
+    set_character_family(c1, test_family)
+
+    c2 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c2.get_component(Martial).base_value = 10
+    set_character_family(c2, test_family)
+
+    c3 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c3.get_component(Martial).base_value = 15
+    c3.get_component(Prowess).base_value = 30
+    set_character_family(c3, test_family)
+
+    c4 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c4.get_component(Martial).base_value = 20
+    set_character_family(c4, test_family)
+
+    candidates = get_warrior_candidates(test_family)
+
+    assert candidates[0] == c1
+    assert candidates[1] == c3
+    assert candidates[2] == c0
+    assert candidates[3] == c4
+    assert candidates[4] == c2
 
 
-def test_get_advisor_candidates():
+def test_get_advisor_candidates(test_sim: Simulation):
     """Test getting potential advisors for advisor roles in a family."""
-    assert False
+    test_family = generate_family(test_sim.world)
+
+    c0 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c0.get_component(Stewardship).base_value = 30
+    set_character_family(c0, test_family)
+
+    c1 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c1.get_component(Diplomacy).base_value = 50
+    set_character_family(c1, test_family)
+
+    c2 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c2.get_component(Stewardship).base_value = 10
+    set_character_family(c2, test_family)
+
+    c3 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c3.get_component(Stewardship).base_value = 15
+    c3.get_component(Diplomacy).base_value = 30
+    set_character_family(c3, test_family)
+
+    c4 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    c4.get_component(Stewardship).base_value = 20
+    set_character_family(c4, test_family)
+
+    candidates = get_advisor_candidates(test_family)
+
+    assert candidates[0] == c1
+    assert candidates[1] == c3
+    assert candidates[2] == c0
+    assert candidates[3] == c4
+    assert candidates[4] == c2
 
 
-def test_set_family_role():
+def test_set_family_role(test_sim: Simulation):
     """Test setting a character to have a given role in their family."""
-    assert False
+
+    test_family = generate_family(test_sim.world)
+
+    c0 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    set_character_family(c0, test_family)
+
+    c1 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    set_character_family(c1, test_family)
+
+    c2 = generate_character(test_sim.world, life_stage=LifeStage.ADULT)
+    set_character_family(c2, test_family)
+
+    minerva.constants.MAX_ADVISORS_PER_FAMILY = 1
+    minerva.constants.MAX_WARRIORS_PER_FAMILY = 1
+
+    assign_family_member_to_roles(
+        test_family, c0, FamilyRoleFlags.ADVISOR | FamilyRoleFlags.WARRIOR
+    )
+
+    with pytest.raises(RuntimeError):
+        assign_family_member_to_roles(test_family, c1, FamilyRoleFlags.ADVISOR)
+
+    assert FamilyRoleFlags.WARRIOR in c0.get_component(Character).family_roles
+    assert FamilyRoleFlags.ADVISOR in c0.get_component(Character).family_roles
+    assert FamilyRoleFlags.ADVISOR not in c1.get_component(Character).family_roles
+
+    unassign_family_member_from_roles(test_family, c0, FamilyRoleFlags.ADVISOR)
+
+    assign_family_member_to_roles(test_family, c1, FamilyRoleFlags.ADVISOR)
+
+    assert FamilyRoleFlags.ADVISOR not in c0.get_component(Character).family_roles
+    assert FamilyRoleFlags.ADVISOR in c1.get_component(Character).family_roles

@@ -145,6 +145,7 @@ class Character(Component):
         "clan",
         "birth_clan",
         "family",
+        "family_roles",
         "birth_family",
         "household",
         "heir",
@@ -176,6 +177,7 @@ class Character(Component):
     household: Optional[GameObject]
     heir: Optional[GameObject]
     heir_to: Optional[GameObject]
+    family_roles: FamilyRoleFlags
 
     def __init__(
         self,
@@ -230,6 +232,7 @@ class Character(Component):
         self.household = household
         self.heir = heir
         self.heir_to = heir_to
+        self.family_roles = FamilyRoleFlags.NONE
 
     @property
     def full_name(self) -> str:
@@ -393,6 +396,19 @@ class HeadOfHousehold(Component):
         self.household = household
 
 
+class FamilyRoleFlags(enum.IntFlag):
+    """Roles a character can be appointed to within their family."""
+
+    NONE = 0
+    """The character is an ordinary member."""
+    WARRIOR = enum.auto()
+    """The character is assigned a warrior seat."""
+    ADVISOR = enum.auto()
+    """The character is assigned an advisor seat."""
+    HEAD = enum.auto()
+    """The character is the head of their family."""
+
+
 class Family(Component):
     """A collection of household bearing the same name."""
 
@@ -406,6 +422,8 @@ class Family(Component):
         "clan",
         "home_base",
         "territories",
+        "warriors",
+        "advisors",
     )
 
     name: str
@@ -426,6 +444,10 @@ class Family(Component):
     """The settlements this family has control over."""
     active_members: OrderedSet[GameObject]
     """Characters actively a part of this family."""
+    warriors: OrderedSet[GameObject]
+    """Characters responsible for strength during wars."""
+    advisors: OrderedSet[GameObject]
+    """Characters responsible for maintaining diplomatic stability."""
 
     def __init__(self, name: str = "") -> None:
         super().__init__()
@@ -438,12 +460,14 @@ class Family(Component):
         self.territories = []
         self.active_members = OrderedSet([])
         self.former_members = OrderedSet([])
+        self.warriors = OrderedSet([])
+        self.advisors = OrderedSet([])
 
 
 class HeadOfFamily(Component):
     """Marks a character as being the head of a family."""
 
-    __slots__ = ("family",)
+    __slots__ = ("family", "roles")
 
     family: GameObject
     """The family they are the head of."""
