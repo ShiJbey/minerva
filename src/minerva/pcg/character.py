@@ -76,6 +76,7 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.characters.succession_helpers import set_current_ruler
+from minerva.characters.war_data import AllianceTracker, WarTracker
 from minerva.config import Config
 from minerva.constants import CLAN_COLORS_PRIMARY, CLAN_COLORS_SECONDARY
 from minerva.ecs import Active, Event, GameObject, World
@@ -437,6 +438,8 @@ def generate_family(world: World, name: str = "") -> GameObject:
     family.metadata["object_type"] = "family"
     family_name = name if name else character_name_factory.generate_surname()
     family.add_component(Family(name=family_name))
+    family.add_component(AllianceTracker())
+    family.add_component(WarTracker())
     family.name = f"{family_name}"
 
     db.execute(

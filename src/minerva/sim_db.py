@@ -21,6 +21,9 @@ DROP TABLE IF EXISTS death_events;
 DROP TABLE IF EXISTS rulers;
 DROP TABLE IF EXISTS dynasties;
 DROP TABLE IF EXISTS betrothals;
+DROP TABLE IF EXISTS alliances;
+DROP TABLE IF EXISTS wars;
+DROP TABLE IF EXISTS war_participants;
 
 CREATE TABLE characters (
     uid INT NOT NULL PRIMARY KEY,
@@ -251,6 +254,38 @@ CREATE TABLE dynasties (
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (founder_id) REFERENCES characters(uid),
     FOREIGN KEY (previous_dynasty_id) REFERENCES dynasties(uid)
+);
+
+CREATE TABLE alliances (
+    uid INT NOT NULL PRIMARY KEY,
+    family_id INT NOT NULL,
+    ally_id INT NOT NULL,
+    start_date TEXT,
+    end_date TEXT,
+    FOREIGN KEY (family_id) REFERENCES families(uid),
+    FOREIGN KEY (ally_id) REFERENCES families(uid)
+);
+
+CREATE TABLE wars (
+    uid INT NOT NULL PRIMARY KEY,
+    aggressor_id INT NOT NULL,
+    defender_id INT NOT NULL,
+    start_date TEXT,
+    end_date TEXT,
+    winner_id INT,
+    FOREIGN KEY (aggressor_id) REFERENCES families(uid),
+    FOREIGN KEY (defender_id) REFERENCES families(uid),
+    FOREIGN KEY (winner_id) REFERENCES families(uid)
+);
+
+CREATE TABLE war_participants (
+    row_id INT AUTO INCREMENT PRIMARY KEY,
+    family_id INT NOT NULL,
+    war_id INT NOT NULL,
+    role INT NOT NULL,
+    date_joined TEXT,
+    FOREIGN KEY (family_id) REFERENCES families(uid),
+    FOREIGN KEY (war_id) REFERENCES wars(uid)
 );
 """
 
