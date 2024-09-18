@@ -1,5 +1,7 @@
 # Minerva
 
+![Minerva Screenshot](https://github.com/user-attachments/assets/25f7def9-a375-4f72-b4ac-3bc5c9d60759)
+
 Minerva is a procedurally-generated world simulation. It's designed for research and data-analysis. The design is
 partially based on [Neighborly](https://github.com/ShiJbey/neighborly).
 
