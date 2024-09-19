@@ -10,25 +10,25 @@ import pytest
 import minerva.constants
 from minerva.characters.components import (
     Character,
+    Diplomacy,
     Family,
+    FamilyRoleFlags,
     HeadOfFamily,
+    LifeStage,
     Martial,
     Prowess,
-    LifeStage,
     Stewardship,
-    Diplomacy,
-    FamilyRoleFlags,
 )
 from minerva.characters.helpers import (
+    assign_family_member_to_roles,
+    get_advisor_candidates,
+    get_warrior_candidates,
     merge_family_with,
+    remove_family_from_play,
     set_character_family,
     set_family_head,
     set_family_home_base,
     set_family_name,
-    remove_family_from_play,
-    get_advisor_candidates,
-    get_warrior_candidates,
-    assign_family_member_to_roles,
     unassign_family_member_from_roles,
 )
 from minerva.loaders import (
@@ -161,13 +161,11 @@ def test_add_character_to_family(test_sim: Simulation):
 
     # Test the initial state
     assert character_component.family is None
-    assert len(family_component.members) == 0
     assert len(family_component.active_members) == 0
 
     # Test the state after the character has been added to the family
     set_character_family(c0, test_family)
     assert character_component.family == test_family
-    assert len(family_component.members) == 1
     assert len(family_component.active_members) == 1
 
 
@@ -181,21 +179,18 @@ def test_remove_character_from_family(test_sim: Simulation):
 
     # Test the initial state
     assert character_component.family is None
-    assert len(family_component.members) == 0
     assert len(family_component.active_members) == 0
     assert len(family_component.former_members) == 0
 
     # Test the state after the character has been added to the family
     set_character_family(c0, test_family)
     assert character_component.family == test_family
-    assert len(family_component.members) == 1
     assert len(family_component.active_members) == 1
     assert len(family_component.former_members) == 0
 
     # Remove the character from the family
     set_character_family(c0, None)
     assert character_component.family is None
-    assert len(family_component.members) == 0
     assert len(family_component.active_members) == 0
     assert len(family_component.former_members) == 1
 

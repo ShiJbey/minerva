@@ -33,6 +33,7 @@ from minerva.characters.motive_helpers import get_character_motives
 from minerva.characters.succession_helpers import (
     SuccessionChartCache,
     get_succession_depth_chart,
+    set_current_ruler,
 )
 from minerva.constants import (
     BEHAVIOR_UTILITY_THRESHOLD,
@@ -42,11 +43,7 @@ from minerva.constants import (
 from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, GameObject, System, World
 from minerva.life_events.aging import LifeStageChangeEvent
-from minerva.life_events.succession import (
-    BecameClanHeadEvent,
-    BecameEmperorEvent,
-    BecameFamilyHeadEvent,
-)
+from minerva.life_events.succession import BecameClanHeadEvent, BecameFamilyHeadEvent
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
 
@@ -209,7 +206,7 @@ class FallbackFamilySuccessionSystem(System):
 
             eligible_members: list[Character] = []
 
-            for m in family.members:
+            for m in family.active_members:
                 character_component = m.get_component(Character)
                 if (
                     character_component.is_alive
@@ -282,8 +279,7 @@ class FallbackEmperorSuccessionSystem(System):
 
         if eligible_clan_heads:
             chosen_emperor = rng.choice(eligible_clan_heads)
-            chosen_emperor.add_component(Emperor())
-            BecameEmperorEvent(chosen_emperor).dispatch()
+            set_current_ruler(world, chosen_emperor)
 
 
 class EmptyFamilyCleanUpSystem(System):

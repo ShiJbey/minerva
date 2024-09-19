@@ -28,10 +28,15 @@ class BecameFamilyHeadEvent(LifeEvent):
         cur = db.db.cursor()
         cur.execute(
             """
-            INSERT INTO life_events (event_id, event_type, timestamp)
-            VALUES (?, ?, ?);
+            INSERT INTO life_events (event_id, event_type, timestamp, description)
+            VALUES (?, ?, ?, ?);
             """,
-            (self.event_id, self.event_type, self.timestamp.to_iso_str()),
+            (
+                self.event_id,
+                self.event_type,
+                self.timestamp.to_iso_str(),
+                self.get_description(),
+            ),
         )
         cur.execute(
             """
@@ -85,10 +90,15 @@ class BecameClanHeadEvent(LifeEvent):
         cur = db.cursor()
         cur.execute(
             """
-            INSERT INTO life_events (event_id, event_type, timestamp)
-            VALUES (?, ?, ?);
+            INSERT INTO life_events (event_id, event_type, timestamp, description)
+            VALUES (?, ?, ?, ?);
             """,
-            (self.event_id, self.event_type, self.timestamp.to_iso_str()),
+            (
+                self.event_id,
+                self.event_type,
+                self.timestamp.to_iso_str(),
+                self.get_description(),
+            ),
         )
         cur.execute(
             """

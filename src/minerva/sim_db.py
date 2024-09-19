@@ -83,6 +83,7 @@ CREATE TABLE clans (
     descended_from INT,
     home_base INT,
     founding_date TEXT,
+    defunct_date TEXT,
     FOREIGN KEY (descended_from) REFERENCES clans(uid),
     FOREIGN KEY (home_base) REFERENCES settlements(uid)
 );
@@ -106,6 +107,7 @@ CREATE TABLE families (
     clan INT,
     founding_date TEXT,
     home_base_id INT,
+    defunct_date TEXT,
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (clan) REFERENCES clans(uid),
     FOREIGN KEY (home_base_id) REFERENCES settlements(uid)

@@ -79,6 +79,7 @@ from minerva.characters.succession_helpers import set_current_ruler
 from minerva.characters.war_data import AllianceTracker, WarTracker
 from minerva.config import Config
 from minerva.constants import CLAN_COLORS_PRIMARY, CLAN_COLORS_SECONDARY
+from minerva.datetime import SimDate
 from minerva.ecs import Active, Event, GameObject, World
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.relationships.base_types import RelationshipManager
@@ -348,7 +349,10 @@ def generate_character(
     db.execute(
         """
         INSERT INTO characters
-        (uid, first_name, surname, birth_surname, sex, sexual_orientation, life_stage, is_alive, age)
+        (
+            uid, first_name, surname, birth_surname,
+            sex, sexual_orientation, life_stage, is_alive, age
+        )
         VALUES
         (?, ?, ?, ?, ?, ?, ?, ?, ?);
         """,
@@ -432,6 +436,7 @@ def generate_family(world: World, name: str = "") -> GameObject:
     """Create a new family."""
 
     character_name_factory = world.resources.get_resource(CharacterNameFactory)
+    current_date = world.resources.get_resource(SimDate)
     db = world.resources.get_resource(SimDB).db
 
     family = world.gameobjects.spawn_gameobject()
@@ -445,10 +450,10 @@ def generate_family(world: World, name: str = "") -> GameObject:
     db.execute(
         """
         INSERT INTO families
-        (uid, name)
-        VALUES (?, ?);
+        (uid, name, founding_date)
+        VALUES (?, ?, ?);
         """,
-        (family.uid, family.name),
+        (family.uid, family.name, current_date.to_iso_str()),
     )
 
     db.commit()
@@ -469,6 +474,7 @@ def generate_clan(world: World, name: str = "") -> GameObject:
     rng = world.resources.get_resource(random.Random)
     character_name_factory = world.resources.get_resource(ClanNameFactory)
     db = world.resources.get_resource(SimDB).db
+    current_date = world.resources.get_resource(SimDate)
 
     clan = world.gameobjects.spawn_gameobject()
     clan.metadata["object_type"] = "clan"
@@ -481,10 +487,10 @@ def generate_clan(world: World, name: str = "") -> GameObject:
     db.execute(
         """
         INSERT INTO clans
-        (uid, name)
-        VALUES (?, ?);
+        (uid, name, founding_date)
+        VALUES (?, ?, ?);
         """,
-        (clan.uid, clan_name),
+        (clan.uid, clan_name, current_date.to_iso_str()),
     )
 
     db.commit()

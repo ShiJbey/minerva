@@ -33,6 +33,7 @@ from minerva.characters.components import (
 )
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject, World
+from minerva.life_events.succession import BecameEmperorEvent
 from minerva.sim_db import SimDB
 
 
@@ -267,6 +268,7 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
             last_ruler = dynasty_tracker.last_ruler
             dynasty_tracker.all_rulers.add(character)
             character.add_component(Emperor())
+            BecameEmperorEvent(character).dispatch()
 
             cur.execute(
                 """
@@ -322,6 +324,7 @@ def _start_new_dynasty(founding_character: GameObject) -> GameObject:
     dynasty_component.current_ruler = founding_character
     dynasty_component.previous_dynasty = dynasty_tracker.last_dynasty
     founding_character.add_component(Emperor())
+    BecameEmperorEvent(founding_character).dispatch()
     dynasty_tracker.all_rulers.add(founding_character)
 
     previous_ruler: Optional[GameObject] = None

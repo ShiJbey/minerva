@@ -1,3 +1,4 @@
+# pylint: disable=C0302
 """Components used to model characters."""
 
 from __future__ import annotations
@@ -416,7 +417,7 @@ class Family(Component):
         "name",
         "households",
         "head",
-        "members",
+        "former_heads",
         "active_members",
         "former_members",
         "clan",
@@ -432,8 +433,8 @@ class Family(Component):
     """Households belonging to this family."""
     head: Optional[GameObject]
     """The character that is currently in charge of the family."""
-    members: list[GameObject]
-    """All members current and deceased members."""
+    former_heads: OrderedSet[GameObject]
+    """Former heads of this family."""
     former_members: OrderedSet[GameObject]
     """All people who have left the family."""
     clan: Optional[GameObject]
@@ -454,7 +455,6 @@ class Family(Component):
         self.name = name
         self.households = []
         self.head = None
-        self.members = []
         self.clan = None
         self.home_base = None
         self.territories = []
@@ -462,6 +462,7 @@ class Family(Component):
         self.former_members = OrderedSet([])
         self.warriors = OrderedSet([])
         self.advisors = OrderedSet([])
+        self.former_heads = OrderedSet([])
 
 
 class HeadOfFamily(Component):
@@ -486,7 +487,7 @@ class Clan(Component):
         "active_families",
         "former_families",
         "head",
-        "former_head",
+        "former_heads",
         "members",
         "active_members",
         "color_primary",
@@ -503,8 +504,8 @@ class Clan(Component):
     """Families who were formerly part of the clan."""
     head: Optional[GameObject]
     """The character that is currently in charge of the clan."""
-    former_head: Optional[GameObject]
-    """The last character in charge of the family."""
+    former_heads: OrderedSet[GameObject]
+    """The last characters in charge of the family."""
     members: list[GameObject]
     """All characters who have ever belonged to the clan."""
     active_members: OrderedSet[GameObject]
@@ -521,7 +522,7 @@ class Clan(Component):
         self.active_families = OrderedSet([])
         self.former_families = OrderedSet([])
         self.head = None
-        self.former_head = None
+        self.former_heads = OrderedSet([])
         self.members = []
         self.active_members = OrderedSet([])
         self.color_primary = "#ffffff"

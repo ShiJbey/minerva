@@ -1,3 +1,4 @@
+# pylint: disable=C0302
 """Modifier functions for manipulating characters, clans, families, and households."""
 
 from __future__ import annotations
@@ -30,12 +31,14 @@ from minerva.characters.components import (
     SexualOrientation,
     Stewardship,
 )
-from minerva.characters.succession_helpers import get_succession_depth_chart
+from minerva.characters.succession_helpers import (
+    get_succession_depth_chart,
+    set_current_ruler,
+)
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Event, GameObject
 from minerva.life_events.succession import (
     BecameClanHeadEvent,
-    BecameEmperorEvent,
     BecameFamilyHeadEvent,
     ClanRemovedFromPlay,
     FamilyRemovedFromPlay,
@@ -99,6 +102,7 @@ def set_clan_head(
         former_head = clan_component.head
         former_head.remove_component(HeadOfClan)
         clan_component.head = None
+        clan_component.former_heads.add(former_head)
         cur.execute(
             """UPDATE clan_heads SET end_date=? where head=?;""",
             (current_date, former_head),
@@ -108,9 +112,12 @@ def set_clan_head(
     if character is not None:
         clan_component.head = character
         character.add_component(HeadOfClan(clan=clan))
+        past_head = (
+            clan_component.former_heads[-1] if clan_component.former_heads else None
+        )
         cur.execute(
             """INSERT INTO clan_heads (head, clan, start_date, predecessor) VALUES (?, ?, ?, ?);""",
-            (character, clan, current_date, former_head),
+            (character, clan, current_date, past_head),
         )
 
     cur.execute(
@@ -257,7 +264,7 @@ def set_family_clan(
     )
     db.commit()
 
-    for m in family_component.members:
+    for m in family_component.active_members:
         set_character_clan(m, clan)
 
 
@@ -343,7 +350,7 @@ def set_family_head(
         former_head = family_component.head
         former_head.remove_component(HeadOfFamily)
         family_component.head = None
-
+        family_component.former_heads.add(former_head)
         cur.execute(
             """UPDATE family_heads SET end_date=? WHERE head=?;""",
             (current_date, former_head.uid),
@@ -353,14 +360,16 @@ def set_family_head(
     if character is not None:
         character.add_component(HeadOfFamily(family=family))
         family_component.head = character
-
+        previous_head = (
+            family_component.former_heads[-1] if family_component.former_heads else None
+        )
         cur.execute(
             """
             INSERT INTO family_heads
             (head, family, start_date, predecessor)
             VALUES (?, ?, ?, ?);
             """,
-            (character, family, current_date, former_head),
+            (character, family, current_date, previous_head),
         )
 
     cur.execute(
@@ -397,15 +406,13 @@ def set_character_family(
     if character_component.family is not None:
         former_family = character_component.family
         family_component = former_family.get_component(Family)
-        family_component.members.remove(character)
         family_component.active_members.remove(character)
         family_component.former_members.add(character)
         character_component.family = None
 
     if family is not None:
         family_component = family.get_component(Family)
-        family_component.members.append(character)
-        family_component.active_members.append(character)
+        family_component.active_members.add(character)
         character_component.family = family
 
     db = character.world.resources.get_resource(SimDB).db
@@ -460,6 +467,19 @@ def set_family_home_base(family: GameObject, settlement: Optional[GameObject]) -
 def remove_clan_from_play(clan: GameObject) -> None:
     """Remove a clan from play."""
     clan_component = clan.get_component(Clan)
+    world = clan.world
+    db = world.resources.get_resource(SimDB).db
+    current_date = world.resources.get_resource(SimDate)
+    db_cursor = db.cursor()
+    db_cursor.execute(
+        """
+        UPDATE clans
+        SET defunct_date=?
+        WHERE uid=?;
+        """,
+        (current_date.to_iso_str(), clan.uid),
+    )
+    db.commit()
 
     if len(clan_component.active_families) != 0:
         _logger.debug(
@@ -478,6 +498,19 @@ def remove_family_from_play(family: GameObject) -> None:
     """Remove a family from play."""
     world = family.world
     family_component = family.get_component(Family)
+
+    db = world.resources.get_resource(SimDB).db
+    current_date = world.resources.get_resource(SimDate)
+    db_cursor = db.cursor()
+    db_cursor.execute(
+        """
+        UPDATE families
+        SET defunct_date=?
+        WHERE uid=?;
+        """,
+        (current_date.to_iso_str(), family.uid),
+    )
+    db.commit()
 
     # Remove any remaining characters from play
     if len(family_component.active_members) != 0:
@@ -550,15 +583,18 @@ def remove_character_from_play(character: GameObject) -> None:
 
     if _ := character.try_component(Emperor):
         # Perform succession
-        character.remove_component(Emperor)
         if heir is not None:
-            heir.add_component(Emperor())
-            BecameEmperorEvent(heir).dispatch()
+            set_current_ruler(world, heir)
+        else:
+            set_current_ruler(world, None)
 
     character_component = character.get_component(Character)
 
     if character_component.family:
         unassign_family_member_from_all_roles(character_component.family, character)
+        family_component = character_component.family.get_component(Family)
+        family_component.active_members.remove(character)
+        family_component.former_members.add(character)
 
     if character_component.household is not None:
         former_household = character_component.household
