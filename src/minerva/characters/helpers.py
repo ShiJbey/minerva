@@ -11,8 +11,10 @@ import minerva.constants
 from minerva.characters.components import (
     Character,
     Clan,
+    Diplomacy,
     Emperor,
     Family,
+    FamilyRoleFlags,
     HeadOfClan,
     HeadOfFamily,
     HeadOfHousehold,
@@ -20,15 +22,13 @@ from minerva.characters.components import (
     LifeStage,
     Marriage,
     MarriageTracker,
+    Martial,
+    Prowess,
     RomanticAffair,
     RomanticAffairTracker,
     Sex,
     SexualOrientation,
-    FamilyRoleFlags,
-    Diplomacy,
     Stewardship,
-    Prowess,
-    Martial,
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
 from minerva.datetime import SimDate
@@ -557,6 +557,9 @@ def remove_character_from_play(character: GameObject) -> None:
 
     character_component = character.get_component(Character)
 
+    if character_component.family:
+        unassign_family_member_from_all_roles(character_component.family, character)
+
     if character_component.household is not None:
         former_household = character_component.household
         household_component = former_household.get_component(Household)
@@ -720,6 +723,10 @@ def assign_family_member_to_roles(
         family_component.warriors.add(character)
         character_component.family_roles |= FamilyRoleFlags.WARRIOR
 
+        _logger.debug(
+            "%s has been assigned the role of family warrior", character.name_with_uid
+        )
+
     if (
         FamilyRoleFlags.ADVISOR in roles
         and FamilyRoleFlags.ADVISOR not in character_component.family_roles
@@ -732,6 +739,10 @@ def assign_family_member_to_roles(
 
         family_component.advisors.add(character)
         character_component.family_roles |= FamilyRoleFlags.ADVISOR
+
+        _logger.debug(
+            "%s has been assigned the role of family advisor", character.name_with_uid
+        )
 
 
 def unassign_family_member_from_roles(
@@ -755,12 +766,47 @@ def unassign_family_member_from_roles(
         family_component.warriors.remove(character)
         character_component.family_roles ^= FamilyRoleFlags.WARRIOR
 
+        _logger.debug(
+            "%s has been removed from their role as a family warrior",
+            character.name_with_uid,
+        )
+
     if (
         FamilyRoleFlags.ADVISOR in roles
         and FamilyRoleFlags.ADVISOR in character_component.family_roles
     ):
         family_component.advisors.remove(character)
         character_component.family_roles ^= FamilyRoleFlags.ADVISOR
+
+        _logger.debug(
+            "%s has been removed from their role as a family advisor",
+            character.name_with_uid,
+        )
+
+
+def unassign_family_member_from_all_roles(
+    family: GameObject, character: GameObject
+) -> None:
+    """Unassign a character from a given set of roles."""
+
+    family_component = family.get_component(Family)
+    character_component = character.get_component(Character)
+
+    if character not in family_component.active_members:
+        raise RuntimeError(
+            f"Error: Cannot unassign {character.name_with_uid} from any roles. "
+            f"They are not a current member of the {family.name_with_uid} family."
+        )
+
+    if FamilyRoleFlags.WARRIOR in character_component.family_roles:
+        family_component.warriors.remove(character)
+        character_component.family_roles ^= FamilyRoleFlags.WARRIOR
+
+    if FamilyRoleFlags.ADVISOR in character_component.family_roles:
+        family_component.advisors.remove(character)
+        character_component.family_roles ^= FamilyRoleFlags.ADVISOR
+
+    _logger.debug("%s has been removed from all family roles", character.name_with_uid)
 
 
 # ===================================

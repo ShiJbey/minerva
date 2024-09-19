@@ -143,6 +143,7 @@ if __name__ == "__main__":
             world_size=(25, 15),
             logging_enabled=bool(args.enable_logging),
             log_to_terminal=False,
+            log_level="DEBUG" if args.debug else "INFO",
         )
     )
 

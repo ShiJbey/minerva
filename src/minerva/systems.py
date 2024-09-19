@@ -12,6 +12,7 @@ from minerva.characters.components import (
     Clan,
     Emperor,
     Family,
+    FamilyRoleFlags,
     Fertility,
     HeadOfFamily,
     Lifespan,
@@ -19,6 +20,9 @@ from minerva.characters.components import (
     Sex,
 )
 from minerva.characters.helpers import (
+    assign_family_member_to_roles,
+    get_advisor_candidates,
+    get_warrior_candidates,
     remove_clan_from_play,
     remove_family_from_play,
     set_character_age,
@@ -30,7 +34,11 @@ from minerva.characters.succession_helpers import (
     SuccessionChartCache,
     get_succession_depth_chart,
 )
-from minerva.constants import BEHAVIOR_UTILITY_THRESHOLD
+from minerva.constants import (
+    BEHAVIOR_UTILITY_THRESHOLD,
+    MAX_ADVISORS_PER_FAMILY,
+    MAX_WARRIORS_PER_FAMILY,
+)
 from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, GameObject, System, World
 from minerva.life_events.aging import LifeStageChangeEvent
@@ -348,3 +356,47 @@ class CharacterBehaviorSystem(System):
                     )[0]
 
                     selected_behavior.execute(character)
+
+
+class FamilyRoleSystem(System):
+    """Automatically assign family members to empty family roles."""
+
+    __system_group__ = "LateUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        for _, (family_component, _) in world.get_components((Family, Active)):
+            # Fill advisor positions
+            if len(family_component.advisors) < MAX_ADVISORS_PER_FAMILY:
+                candidates = get_advisor_candidates(family_component.gameobject)
+                if candidates:
+                    seats_to_assign = min(
+                        MAX_ADVISORS_PER_FAMILY - len(family_component.advisors),
+                        len(candidates),
+                    )
+
+                    chosen_candidates = candidates[:seats_to_assign]
+
+                    for family_member in chosen_candidates:
+                        assign_family_member_to_roles(
+                            family_component.gameobject,
+                            family_member,
+                            FamilyRoleFlags.ADVISOR,
+                        )
+
+            # Fill warrior positions
+            if len(family_component.warriors) < MAX_WARRIORS_PER_FAMILY:
+                candidates = get_warrior_candidates(family_component.gameobject)
+                if candidates:
+                    seats_to_assign = min(
+                        MAX_WARRIORS_PER_FAMILY - len(family_component.warriors),
+                        len(candidates),
+                    )
+
+                    chosen_candidates = candidates[:seats_to_assign]
+
+                    for family_member in chosen_candidates:
+                        assign_family_member_to_roles(
+                            family_component.gameobject,
+                            family_member,
+                            FamilyRoleFlags.WARRIOR,
+                        )

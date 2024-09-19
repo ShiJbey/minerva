@@ -157,6 +157,9 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.CharacterBehaviorSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.FamilyRoleSystem(),
+        )
 
     def initialize_logging(self) -> None:
         """Initialize simulation logging."""
