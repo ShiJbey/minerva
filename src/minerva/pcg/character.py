@@ -8,6 +8,7 @@ from typing import Optional, Union
 
 from ordered_set import OrderedSet
 
+from minerva import constants
 from minerva.characters.betrothal_data import BetrothalTracker
 from minerva.characters.components import (
     Boldness,
@@ -86,7 +87,13 @@ from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatManager, StatusEffectManager
 from minerva.stats.helpers import default_stat_calc_strategy
-from minerva.traits.base_types import TraitManager
+from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
+from minerva.traits.helpers import (
+    add_trait,
+    get_personality_traits,
+    has_conflicting_trait,
+    has_trait,
+)
 from minerva.world_map.components import Settlement
 from minerva.world_map.helpers import set_settlement_controlling_family
 
@@ -209,6 +216,7 @@ def generate_character(
     sexual_orientation: Optional[SexualOrientation] = None,
     life_stage: Optional[LifeStage] = None,
     age: Optional[int] = None,
+    n_max_personality_traits: int = 0,
 ) -> GameObject:
     """Create a new character."""
     name_factory = world.resources.get_resource(CharacterNameFactory)
@@ -369,6 +377,33 @@ def generate_character(
         ),
     )
 
+    # Sample personality traits
+    trait_library = world.resources.get_resource(TraitLibrary)
+
+    personality_traits = trait_library.get_instances_with_tags(["personality"])
+
+    for _ in range(n_max_personality_traits):
+
+        potential_traits = [
+            t
+            for t in personality_traits
+            if not has_conflicting_trait(obj, t) and not has_trait(obj, t.trait_id)
+        ]
+
+        traits: list[str] = []
+        trait_weights: list[int] = []
+
+        for trait in potential_traits:
+            traits.append(trait.trait_id)
+            trait_weights.append(1)
+
+        if len(traits) == 0:
+            continue
+
+        chosen_trait = rng.choices(population=traits, weights=trait_weights, k=1)[0]
+
+        add_trait(obj, chosen_trait)
+
     db.commit()
 
     return obj
@@ -396,13 +431,78 @@ def generate_spouse_for(character: GameObject) -> GameObject:
     return generate_character(
         world=character.world,
         sex=spouse_sex,
+        n_max_personality_traits=constants.MAX_PERSONALITY_TRAITS,
     )
 
 
 def generate_child_from(mother: GameObject, father: GameObject) -> GameObject:
     """Generate a child from the given parents."""
+    rng = mother.world.resources.get_resource(random.Random)
 
-    return generate_character(world=mother.world, life_stage=LifeStage.CHILD)
+    child = generate_character(
+        world=mother.world, life_stage=LifeStage.CHILD, n_max_personality_traits=0
+    )
+
+    # Replace personality traits with ones from parents
+    mother_personality = get_personality_traits(mother)
+    father_personality = get_personality_traits(father)
+
+    all_parent_traits: list[Trait] = sorted(
+        list(set(mother_personality).union(set(father_personality))),
+        key=lambda t: t.trait_id,
+    )
+
+    for _ in range(constants.N_PERSONALITY_TRAITS_FROM_PARENTS):
+        potential_traits = [
+            t
+            for t in all_parent_traits
+            if not has_conflicting_trait(child, t) and not has_trait(child, t.trait_id)
+        ]
+
+        traits: list[str] = []
+        trait_weights: list[int] = []
+
+        for trait in potential_traits:
+            traits.append(trait.trait_id)
+            trait_weights.append(1)
+
+        if len(traits) == 0:
+            continue
+
+        chosen_trait = rng.choices(population=traits, weights=trait_weights, k=1)[0]
+
+        add_trait(child, chosen_trait)
+
+    child_personality = get_personality_traits(child)
+
+    n_additional_traits = constants.MAX_PERSONALITY_TRAITS - len(child_personality)
+
+    trait_library = mother.world.resources.get_resource(TraitLibrary)
+
+    personality_traits = trait_library.get_instances_with_tags(["personality"])
+
+    for _ in range(n_additional_traits):
+        potential_traits = [
+            t
+            for t in personality_traits
+            if not has_conflicting_trait(child, t) and not has_trait(child, t.trait_id)
+        ]
+
+        traits: list[str] = []
+        trait_weights: list[int] = []
+
+        for trait in potential_traits:
+            traits.append(trait.trait_id)
+            trait_weights.append(1)
+
+        if len(traits) == 0:
+            continue
+
+        chosen_trait = rng.choices(population=traits, weights=trait_weights, k=1)[0]
+
+        add_trait(child, chosen_trait)
+
+    return child
 
 
 def generate_household(world: World) -> GameObject:
@@ -636,6 +736,7 @@ def _generate_clans(world: World) -> list[GameObject]:
                     life_stage=LifeStage.ADULT,
                     sex=Sex.MALE,
                     sexual_orientation=SexualOrientation.HETEROSEXUAL,
+                    n_max_personality_traits=constants.MAX_PERSONALITY_TRAITS,
                 )
 
                 set_character_surname(household_head, family_surname)

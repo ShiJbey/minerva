@@ -31,7 +31,7 @@ def add_trait(gameobject: GameObject, trait_id: str) -> bool:
     if trait_id in traits.traits:
         return False
 
-    if _has_conflicting_trait(gameobject, trait):
+    if has_conflicting_trait(gameobject, trait):
         return False
 
     traits.traits[trait.trait_id] = trait
@@ -74,7 +74,7 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
     return False
 
 
-def _has_conflicting_trait(gameobject: GameObject, trait: Trait) -> bool:
+def has_conflicting_trait(gameobject: GameObject, trait: Trait) -> bool:
     """Check if a trait conflicts with current traits.
 
     Parameters
@@ -119,3 +119,16 @@ def has_trait(gameobject: GameObject, trait_id: str) -> bool:
     """
 
     return trait_id in gameobject.get_component(TraitManager).traits
+
+
+def get_personality_traits(gameobject: GameObject) -> list[Trait]:
+    """Get all a character's personality traits."""
+    personality_traits: list[Trait] = []
+
+    trait_manager = gameobject.get_component(TraitManager)
+
+    for trait in trait_manager.traits.values():
+        if "personality" in trait.tags:
+            personality_traits.append(trait)
+
+    return personality_traits

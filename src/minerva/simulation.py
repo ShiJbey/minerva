@@ -278,10 +278,8 @@ class Simulation:
                     )
                     for entry in trait_def.effects
                 ],
+                tags=trait_def.tags.copy(),
                 conflicting_traits=trait_def.conflicts_with,
             )
 
             trait_library.add_trait(trait)
-
-        # Free up some memory
-        trait_library.definitions.clear()

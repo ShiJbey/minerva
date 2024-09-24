@@ -66,6 +66,9 @@ class Trait:
     tags: set[str] = attrs.field(factory=set)
     """Tags describing this definition."""
 
+    def __hash__(self) -> int:
+        return hash(self.trait_id)
+
     def __str__(self) -> str:
         return self.name
 
@@ -131,4 +134,11 @@ class TraitLibrary:
 
         return get_with_tags(
             options=[(d, d.tags) for d in self.definitions.values()], tags=tags
+        )
+
+    def get_instances_with_tags(self, tags: list[str]) -> list[Trait]:
+        """Get a trait instance from the library with the given tags."""
+
+        return get_with_tags(
+            options=[(d, d.tags) for d in self.instances.values()], tags=tags
         )
