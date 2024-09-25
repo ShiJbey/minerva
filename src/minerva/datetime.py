@@ -13,6 +13,28 @@ MONTHS_PER_YEAR = 12
 """The number of months per calendar year."""
 
 
+class DateDelta:
+    """Stores the difference in months between two dates."""
+
+    __slots__ = ("total_months",)
+
+    total_months: int
+    """The total number of months between two dates."""
+
+    def __init__(self, months: int = 0, years: int = 0) -> None:
+        self.total_months = months + MONTHS_PER_YEAR * years
+
+    @property
+    def months(self) -> int:
+        """Get number of months (not including years)."""
+        return self.total_months % MONTHS_PER_YEAR
+
+    @property
+    def years(self) -> int:
+        """Get the number of whole years."""
+        return self.total_months // MONTHS_PER_YEAR
+
+
 class SimDate:
     """Records the current date of the simulation counting in 1-month increments."""
 
@@ -123,3 +145,6 @@ class SimDate:
         if not isinstance(other, SimDate):
             raise TypeError(f"expected {type(self)} object but was {type(other)}")
         return self.total_months == other.total_months
+
+    def __sub__(self, other: SimDate) -> DateDelta:
+        return DateDelta(months=self.total_months - other.total_months)

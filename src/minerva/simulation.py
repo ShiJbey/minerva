@@ -153,6 +153,15 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.FamilyRoleSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.SettlementRevoltSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.RevoltUpdateSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.SettlementRandomEventSystem(),
+        )
 
     def initialize_logging(self) -> None:
         """Initialize simulation logging."""

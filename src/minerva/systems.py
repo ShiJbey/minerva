@@ -1,9 +1,12 @@
 """Minerva Base Systems."""
 
+import logging
 import random
+from typing import Callable, ClassVar, Optional
 
 from ordered_set import OrderedSet
 
+from minerva import constants
 from minerva.actions.actions import Die
 from minerva.actions.base_types import AIBehaviorLibrary, IAIBehavior
 from minerva.actions.behavior_helpers import get_behavior_utility
@@ -43,6 +46,10 @@ from minerva.life_events.aging import LifeStageChangeEvent
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
+from minerva.world_map.components import InRevolt, PopulationHappiness, Settlement
+from minerva.world_map.helpers import set_settlement_controlling_family
+
+_logger = logging.getLogger(__name__)
 
 
 class TimeSystem(System):
@@ -345,3 +352,185 @@ class FamilyRoleSystem(System):
                             family_member,
                             FamilyRoleFlags.WARRIOR,
                         )
+
+
+class SettlementRevoltSystem(System):
+    """Settlements revolt against controlling family.
+
+    When a settlement's happiness drops below a given threshold, the settlement will
+    move into a revolt to remove the controlling family.
+
+    """
+
+    __system_group__ = "UpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate)
+
+        for _, (settlement, happiness, _) in world.get_components(
+            (Settlement, PopulationHappiness, Active)
+        ):
+            # Ignore settlements with happiness over the threshold
+            if happiness.value > constants.REVOLT_THRESHOLD:
+                continue
+
+            # Ignore settlements that are already revolting
+            if settlement.gameobject.has_component(InRevolt):
+                continue
+
+            # Ignore settlements that are not controlled by a family
+            if settlement.controlling_family is None:
+                continue
+
+            settlement.gameobject.add_component(InRevolt(start_date=current_date))
+
+            _logger.info(
+                "[%s]: %s is revolting.",
+                current_date.to_iso_str(),
+                settlement.gameobject.name_with_uid,
+            )
+
+
+class RevoltUpdateSystem(System):
+    """Updates existing revolts."""
+
+    __system_group__ = "UpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate)
+
+        for _, (settlement, happiness, in_revolt, _) in world.get_components(
+            (Settlement, PopulationHappiness, InRevolt, Active)
+        ):
+            elapsed_months = (current_date - in_revolt.start_date).total_months
+
+            # Ignore settlements that have not reached the point of no return
+            if elapsed_months < constants.MONTHS_TO_QUELL_REBELLION:
+                continue
+
+            if settlement.controlling_family is None:
+                settlement.gameobject.remove_component(InRevolt)
+                happiness.base_value = constants.BASE_SETTLEMENT_HAPPINESS
+                continue
+
+            # TODO: Reduce the controlling family's influence points
+
+            settlement.gameobject.remove_component(InRevolt)
+            happiness.base_value = constants.BASE_SETTLEMENT_HAPPINESS
+
+            _logger.info(
+                "[%s]: %s has removed the %s family from power.",
+                current_date.to_iso_str(),
+                settlement.gameobject.name_with_uid,
+                settlement.controlling_family.name_with_uid,
+            )
+
+            # Remove the current family from power
+            set_settlement_controlling_family(settlement.gameobject, None)
+
+
+class SettlementRandomEventSystem(System):
+    """Random events can happen to settlements to change their happiness.
+
+    Outside of the actions of the controlling family, settlements can be subject
+    to various random events that affect their happiness state. We select from them
+    each month like a deck of cards.
+
+    """
+
+    __system_group__ = "UpdateSystems"
+
+    _random_events: ClassVar[dict[str, tuple[float, Callable[[GameObject], None]]]] = {}
+
+    def on_update(self, world: World) -> None:
+        rng = world.resources.get_resource(random.Random)
+
+        for _, (settlement, _) in world.get_components((Settlement, Active)):
+            event_name = self.choose_random_event(rng)
+
+            if event_name is None:
+                continue
+
+            event_fn = self._random_events[event_name][1]
+
+            event_fn(settlement.gameobject)
+
+    def choose_random_event(self, rng: random.Random) -> Optional[str]:
+        """Choose an event at random"""
+
+        if not self._random_events:
+            return None
+
+        options: list[str] = []
+        weights: list[float] = []
+
+        for name, (weight, _) in self._random_events.items():
+            options.append(name)
+            weights.append(weight)
+
+        choice = rng.choices(options, weights=weights, k=1)[0]
+
+        return choice
+
+    @classmethod
+    def random_event(cls, name: str, relative_frequency: float):
+        """Decorator for making random events."""
+
+        def wrapper(fn: Callable[[GameObject], None]):
+            if relative_frequency <= 0:
+                raise ValueError("Relative frequency must be greater than 0")
+
+            cls._random_events[name] = (relative_frequency, fn)
+
+        return wrapper
+
+
+@SettlementRandomEventSystem.random_event("nothing", 10)
+def nothing_event(_: GameObject) -> None:
+    """Do Nothing."""
+    return
+
+
+@SettlementRandomEventSystem.random_event("poor harvest", 0.5)
+def poor_harvest_event(settlement: GameObject) -> None:
+    """Poor harvest."""
+    current_date = settlement.world.resources.get_resource(SimDate)
+    happiness_component = settlement.get_component(PopulationHappiness)
+
+    happiness_component.base_value -= 10
+
+    _logger.info(
+        "[%s]: %s has suffered a poor harvest.",
+        current_date.to_iso_str(),
+        settlement.name_with_uid,
+    )
+
+
+@SettlementRandomEventSystem.random_event("disease", 0.5)
+def disease_event(settlement: GameObject) -> None:
+    """Do Nothing."""
+    current_date = settlement.world.resources.get_resource(SimDate)
+    happiness_component = settlement.get_component(PopulationHappiness)
+
+    happiness_component.base_value -= 10
+
+    _logger.info(
+        "[%s]: %s has suffered a disease outbreak.",
+        current_date.to_iso_str(),
+        settlement.name_with_uid,
+    )
+
+
+@SettlementRandomEventSystem.random_event("bountiful harvest", 0.5)
+def bountiful_harvest_event(settlement: GameObject) -> None:
+    """Do Nothing."""
+    current_date = settlement.world.resources.get_resource(SimDate)
+    happiness_component = settlement.get_component(PopulationHappiness)
+
+    happiness_component.base_value += 10
+
+    _logger.info(
+        "[%s]: %s had a bountiful harvest.",
+        current_date.to_iso_str(),
+        settlement.name_with_uid,
+    )

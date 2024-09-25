@@ -15,6 +15,7 @@ from minerva.constants import (
     MAX_SETTLEMENT_HAPPINESS,
     MIN_SETTLEMENT_HAPPINESS,
 )
+from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
@@ -311,3 +312,23 @@ class PopulationHappiness(StatComponent):
             bounds=(MIN_SETTLEMENT_HAPPINESS, MAX_SETTLEMENT_HAPPINESS),
             is_discrete=True,
         )
+
+
+class InRevolt(Component):
+    """Tags a settlement as being in revolt."""
+
+    __slots__ = ("_start_date",)
+
+    def __init__(self, start_date: SimDate) -> None:
+        super().__init__()
+        self.start_date = start_date
+
+    @property
+    def start_date(self) -> SimDate:
+        """The date the revolt start."""
+        return self._start_date
+
+    @start_date.setter
+    def start_date(self, value: SimDate) -> None:
+        """Set the date the revolt started."""
+        self._start_date = value.copy()
