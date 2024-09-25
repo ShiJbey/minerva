@@ -7,7 +7,9 @@ import pathlib
 
 import pytest
 
-from minerva.characters.war_data import AllianceTracker, War, WarRole, WarTracker
+from minerva.characters.components import Family
+from minerva.characters.helpers import set_family_head
+from minerva.characters.war_data import Alliance, War, WarRole, WarTracker
 from minerva.characters.war_helpers import (
     end_alliance,
     end_war,
@@ -23,7 +25,7 @@ from minerva.loaders import (
     load_species_types,
     load_surnames,
 )
-from minerva.pcg.character import generate_family
+from minerva.pcg.character import generate_character, generate_family
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
@@ -46,63 +48,65 @@ def test_sim() -> Simulation:
 
 def test_start_alliance(test_sim: Simulation):
     """Test starting new alliances."""
-    db = test_sim.world.resources.get_resource(SimDB).db
+
+    character_0 = generate_character(test_sim.world)
+    character_1 = generate_character(test_sim.world)
 
     family_0 = generate_family(test_sim.world)
     family_1 = generate_family(test_sim.world)
 
-    family_0_alliances = family_0.get_component(AllianceTracker)
-    family_1_alliances = family_1.get_component(AllianceTracker)
+    set_family_head(family_0, character_0)
+    set_family_head(family_1, character_1)
 
-    start_alliance(family_0, family_1)
+    family_0_component = family_0.get_component(Family)
+    family_1_component = family_1.get_component(Family)
 
-    assert family_1.uid in family_0_alliances.alliances
-    assert family_0.uid in family_1_alliances.alliances
+    alliance = start_alliance(family_0, family_1)
+    alliance_component = alliance.get_component(Alliance)
 
-    result = db.execute(
-        """SELECT ally_id FROM alliances WHERE family_id=?""",
-        (family_0.uid,),
-    ).fetchone()
-    assert result[0] == family_1.uid
-
-    result = db.execute(
-        """SELECT ally_id FROM alliances WHERE family_id=?""",
-        (family_1.uid,),
-    ).fetchone()
-    assert result[0] == family_0.uid
+    assert family_0_component.alliance == alliance
+    assert family_1_component.alliance == alliance
+    assert family_1 in alliance_component.member_families
+    assert family_0 in alliance_component.member_families
+    assert alliance_component.founder_family == family_0
+    assert alliance_component.founder == character_0
 
 
 def test_end_alliance(test_sim: Simulation):
     """Test terminating an existing alliance."""
     db = test_sim.world.resources.get_resource(SimDB).db
 
+    character_0 = generate_character(test_sim.world)
+    character_1 = generate_character(test_sim.world)
+
     family_0 = generate_family(test_sim.world)
     family_1 = generate_family(test_sim.world)
 
-    family_0_alliances = family_0.get_component(AllianceTracker)
-    family_1_alliances = family_1.get_component(AllianceTracker)
+    set_family_head(family_0, character_0)
+    set_family_head(family_1, character_1)
 
-    start_alliance(family_0, family_1)
+    family_0_component = family_0.get_component(Family)
+    family_1_component = family_1.get_component(Family)
 
-    assert family_1.uid in family_0_alliances.alliances
-    assert family_0.uid in family_1_alliances.alliances
+    alliance = start_alliance(family_0, family_1)
+    alliance_component = alliance.get_component(Alliance)
 
-    end_alliance(family_0, family_1)
+    test_sim.world.resources.add_resource(SimDate(10, 1))
 
-    assert family_1.uid not in family_0_alliances.alliances
-    assert family_0.uid not in family_1_alliances.alliances
+    end_alliance(alliance)
+
+    assert family_0_component.alliance is None
+    assert family_1_component.alliance is None
+    assert family_1 in alliance_component.member_families
+    assert family_0 in alliance_component.member_families
+    assert alliance_component.founder_family == family_0
+    assert alliance_component.founder == character_0
 
     result = db.execute(
-        """SELECT end_date FROM alliances WHERE family_id=? AND ally_id=?;""",
-        (family_0.uid, family_1.uid),
+        """SELECT end_date FROM alliances WHERE uid=?;""",
+        (alliance.uid,),
     ).fetchone()
-    assert result[0] == "0001-01"
-
-    result = db.execute(
-        """SELECT end_date FROM alliances WHERE family_id=? AND ally_id=?;""",
-        (family_1.uid, family_0.uid),
-    ).fetchone()
-    assert result[0] == "0001-01"
+    assert result[0] == "0010-01"
 
 
 def test_start_war(test_sim: Simulation):

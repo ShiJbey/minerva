@@ -68,7 +68,7 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.characters.succession_helpers import set_current_ruler
-from minerva.characters.war_data import AllianceTracker, WarTracker
+from minerva.characters.war_data import WarTracker
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Event, GameObject, World
@@ -521,7 +521,6 @@ def generate_family(world: World, name: str = "") -> GameObject:
             banner_symbol=banner_symbol,
         )
     )
-    family.add_component(AllianceTracker())
     family.add_component(WarTracker())
     family.name = f"{family_name}"
 

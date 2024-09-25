@@ -3,6 +3,7 @@
 """
 
 import enum
+from typing import Iterable, Optional
 
 from ordered_set import OrderedSet
 
@@ -31,7 +32,8 @@ class War(Component):
         "defender",
         "aggressor_allies",
         "defender_allies",
-        "start_date",
+        "_start_date",
+        "_end_date",
     )
 
     aggressor: GameObject
@@ -42,8 +44,10 @@ class War(Component):
     """Families allied with the aggressor in this war."""
     defender_allies: OrderedSet[GameObject]
     """Families allied with the defender in this war."""
-    start_date: SimDate
+    _start_date: SimDate
     """The date the war started"""
+    _end_date: Optional[SimDate]
+    """The date the war ended."""
 
     def __init__(
         self, aggressor: GameObject, defender: GameObject, start_date: SimDate
@@ -51,9 +55,33 @@ class War(Component):
         super().__init__()
         self.aggressor = aggressor
         self.defender = defender
-        self.start_date = start_date.copy()
+        self.start_date = start_date
         self.aggressor_allies = OrderedSet([])
         self.defender_allies = OrderedSet([])
+        self.end_date = None
+
+    @property
+    def start_date(self) -> SimDate:
+        """The date the war started."""
+        return self._start_date
+
+    @start_date.setter
+    def start_date(self, value: SimDate) -> None:
+        """Set the start date."""
+        self._start_date = value.copy()
+
+    @property
+    def end_date(self) -> Optional[SimDate]:
+        """The date the war started."""
+        return self._end_date
+
+    @end_date.setter
+    def end_date(self, value: Optional[SimDate]) -> None:
+        """Set the end date."""
+        if value is not None:
+            self._end_date = value.copy()
+        else:
+            self._end_date = None
 
 
 class WarTracker(Component):
@@ -73,34 +101,60 @@ class WarTracker(Component):
 
 
 class Alliance(Component):
-    """Tracks an alliance from one family to another."""
+    """Tracks an alliance among a group of families."""
 
-    __slots__ = ("family", "ally", "start_date")
+    __slots__ = (
+        "founder",
+        "founder_family",
+        "member_families",
+        "_start_date",
+        "_end_date",
+    )
 
-    family: GameObject
-    """The subject of the alliance."""
-    ally: GameObject
-    """The other family the subject is allied with."""
-    start_date: SimDate
+    founder: GameObject
+    """The family head that founded the alliance."""
+    founder_family: GameObject
+    """The family the alliance's founder was the head of."""
+    member_families: OrderedSet[GameObject]
+    """All families that belong to the alliance."""
+    _start_date: SimDate
     """The date the alliance started."""
+    _end_date: Optional[SimDate]
+    """The date the alliance ended."""
 
     def __init__(
-        self, family: GameObject, ally: GameObject, start_date: SimDate
+        self,
+        founder: GameObject,
+        founder_family: GameObject,
+        member_families: Iterable[GameObject],
+        start_date: SimDate,
     ) -> None:
         super().__init__()
-        self.family = family
-        self.ally = ally
+        self.founder = founder
+        self.founder_family = founder_family
+        self.member_families = OrderedSet(member_families)
         self.start_date = start_date
+        self.end_date = None
 
+    @property
+    def start_date(self) -> SimDate:
+        """The date the war started."""
+        return self._start_date
 
-class AllianceTracker(Component):
-    """Tracks references to all alliances a character belongs to."""
+    @start_date.setter
+    def start_date(self, value: SimDate) -> None:
+        """Set the start date."""
+        self._start_date = value.copy()
 
-    __slots__ = ("alliances",)
+    @property
+    def end_date(self) -> Optional[SimDate]:
+        """The date the war started."""
+        return self._end_date
 
-    alliances: dict[int, GameObject]
-    """References to all current alliances. (Ally ID mapped to alliance)"""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.alliances = {}
+    @end_date.setter
+    def end_date(self, value: Optional[SimDate]) -> None:
+        """Set the end date."""
+        if value is not None:
+            self._end_date = value.copy()
+        else:
+            self._end_date = None

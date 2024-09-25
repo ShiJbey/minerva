@@ -1,100 +1,118 @@
 """Helper functions for wrs and alliances."""
 
-from minerva.characters.war_data import (
-    Alliance,
-    AllianceTracker,
-    War,
-    WarRole,
-    WarTracker,
-)
+from minerva.characters.components import Family
+from minerva.characters.war_data import Alliance, War, WarRole, WarTracker
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject
 from minerva.sim_db import SimDB
 
 
-def start_alliance(family_a: GameObject, family_b: GameObject) -> None:
+def start_alliance(*families: GameObject) -> GameObject:
     """Start a new alliance between the two families."""
-    world = family_a.world
+
+    if len(families) < 2:
+        raise ValueError("An alliance requires a minimum of two families.")
+
+    founder_family = families[0]
+    founder_family_component = founder_family.get_component(Family)
+    founder = founder_family_component.head
+
+    world = founder_family.world
     current_date = world.resources.get_resource(SimDate)
+
+    if founder is None:
+        raise TypeError("Alliance founding family is missing a family head.")
+
+    # Create the new alliance object
+    alliance = world.gameobjects.spawn_gameobject()
+    alliance_component = alliance.add_component(
+        Alliance(
+            founder=founder,
+            founder_family=founder_family,
+            member_families=families,
+            start_date=current_date,
+        )
+    )
+
+    # Verify that none of the families are currently in an alliance and set
+    # their alliance variables
+    for family in alliance_component.member_families:
+        family_component = family.get_component(Family)
+        if family_component.alliance is not None:
+            raise RuntimeError(
+                f"The {family_component.name} family already belongs to an alliance."
+            )
+        else:
+            family_component.alliance = alliance
+
     db = world.resources.get_resource(SimDB).db
     db_cursor = db.cursor()
 
-    a_to_b_alliance_obj = world.gameobjects.spawn_gameobject(
-        components=[Alliance(family_a, family_b, current_date.copy())]
-    )
-
-    family_a_alliances = family_a.get_component(AllianceTracker)
-    family_a_alliances.alliances[family_b.uid] = a_to_b_alliance_obj
-
     db_cursor.execute(
         """
-        INSERT INTO alliances (uid, family_id, ally_id, start_date)
+        INSERT INTO alliances (uid, founder_id, founder_family_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
         (
-            a_to_b_alliance_obj.uid,
-            family_a.uid,
-            family_b.uid,
+            alliance.uid,
+            founder.uid,
+            founder_family.uid,
             current_date.to_iso_str(),
         ),
     )
-
-    b_to_a_alliance_obj = world.gameobjects.spawn_gameobject(
-        components=[Alliance(family_a, family_b, current_date.copy())]
-    )
-
-    family_b_alliances = family_b.get_component(AllianceTracker)
-    family_b_alliances.alliances[family_a.uid] = b_to_a_alliance_obj
-
-    db_cursor.execute(
-        """
-        INSERT INTO alliances (uid, family_id, ally_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (
-            b_to_a_alliance_obj.uid,
-            family_b.uid,
-            family_a.uid,
-            current_date.to_iso_str(),
-        ),
-    )
-
-    db.commit()
-
-
-def end_alliance(family_a: GameObject, family_b: GameObject) -> None:
-    """End an existing alliance between families."""
-
-    world = family_a.world
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
-    db_cursor = db.cursor()
-
-    family_a_alliances = family_a.get_component(AllianceTracker)
-    family_b_alliances = family_b.get_component(AllianceTracker)
-
-    a_to_b_alliance_obj = family_a_alliances.alliances[family_b.uid]
-    b_to_a_alliance_obj = family_b_alliances.alliances[family_a.uid]
-
-    del family_a_alliances.alliances[family_b.uid]
-    del family_b_alliances.alliances[family_a.uid]
 
     db_cursor.executemany(
         """
-        UPDATE alliances
-        SET end_date=?
-        WHERE uid=?;
+        INSERT INTO alliance_members (family_id, alliance_id, date_joined)
+        VALUES (?, ?, ?);
         """,
         [
-            (current_date.to_iso_str(), a_to_b_alliance_obj.uid),
-            (current_date.to_iso_str(), b_to_a_alliance_obj.uid),
+            (f.uid, alliance.uid, current_date.to_iso_str())
+            for f in alliance_component.member_families
         ],
     )
 
-    a_to_b_alliance_obj.destroy()
-    b_to_a_alliance_obj.destroy()
+    db.commit()
+
+    return alliance
+
+
+def end_alliance(alliance: GameObject) -> None:
+    """End an existing alliance between families."""
+
+    world = alliance.world
+    current_date = world.resources.get_resource(SimDate)
+    db = world.resources.get_resource(SimDB).db
+    db_cursor = db.cursor()
+
+    alliance_component = alliance.get_component(Alliance)
+    alliance_component.end_date = current_date.copy()
+
+    # Remove the alliance from all member families
+    for family in alliance_component.member_families:
+        family_component = family.get_component(Family)
+        family_component.alliance = None
+
+    db_cursor.execute(
+        """UPDATE alliances SET end_date=? WHERE uid=?""",
+        (current_date.to_iso_str(), alliance.uid),
+    )
+
+    db_cursor.executemany(
+        """
+        UPDATE alliance_members
+        SET date_left=?
+        WHERE family_id=? AND alliance_id=?;
+        """,
+        [
+            (current_date.to_iso_str(), f.uid, alliance.uid)
+            for f in alliance_component.member_families
+        ],
+    )
 
     db.commit()
+
+    alliance.destroy()
 
 
 def start_war(family_a: GameObject, family_b: GameObject) -> GameObject:

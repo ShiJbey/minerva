@@ -19,6 +19,7 @@ DROP TABLE IF EXISTS rulers;
 DROP TABLE IF EXISTS dynasties;
 DROP TABLE IF EXISTS betrothals;
 DROP TABLE IF EXISTS alliances;
+DROP TABLE IF EXISTS alliance_members;
 DROP TABLE IF EXISTS wars;
 DROP TABLE IF EXISTS war_participants;
 
@@ -209,12 +210,22 @@ CREATE TABLE dynasties (
 
 CREATE TABLE alliances (
     uid INT NOT NULL PRIMARY KEY,
-    family_id INT NOT NULL,
-    ally_id INT NOT NULL,
+    founder_id INT NOT NULL,
+    founder_family_id INT NOT NULL,
     start_date TEXT,
     end_date TEXT,
+    FOREIGN KEY (founder_id) REFERENCES characters(uid),
+    FOREIGN KEY (founder_family_id) REFERENCES families(uid)
+);
+
+CREATE TABLE alliance_members (
+    family_id INT NOT NULL,
+    alliance_id INT NOT NULL,
+    date_joined TEXT NOT NULL,
+    date_left TEXT,
+    PRIMARY KEY (family_id, alliance_id),
     FOREIGN KEY (family_id) REFERENCES families(uid),
-    FOREIGN KEY (ally_id) REFERENCES families(uid)
+    FOREIGN KEY (alliance_id) REFERENCES alliances(uid)
 );
 
 CREATE TABLE wars (
