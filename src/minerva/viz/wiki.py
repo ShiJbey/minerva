@@ -11,7 +11,7 @@ from pygame_gui import UI_TEXT_BOX_LINK_CLICKED
 from pygame_gui.elements import UIButton, UITextBox, UIWindow
 from pygame_gui.ui_manager import UIManager
 
-from minerva.characters.components import Character, Clan, Family
+from minerva.characters.components import Character, Family
 from minerva.ecs import Active, GameObject
 from minerva.simulation import Simulation
 from minerva.world_map.components import PopulationHappiness, Settlement
@@ -54,22 +54,6 @@ class SettlementListPageGenerator(WikiPageGenerator):
             settlement_list.append({"uid": uid, "name": settlement.gameobject.name})
 
         content = template.render(settlements=settlement_list)
-        content = content.replace("\n", "")
-        return content
-
-
-class ClanListPageGenerator(WikiPageGenerator):
-    """Generates the clan list page for the wiki window."""
-
-    def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
-        template = _jinja_env.get_template("clan_list.jinja")
-
-        clan_list: list[Any] = []
-
-        for uid, (clan, _) in sim.world.get_components((Clan, Active)):
-            clan_list.append({"uid": uid, "name": clan.gameobject.name})
-
-        content = template.render(clans=clan_list)
         content = content.replace("\n", "")
         return content
 
@@ -145,18 +129,6 @@ class FamilyPageGenerator(WikiPageGenerator):
         return content
 
 
-class ClanPageGenerator(WikiPageGenerator):
-    """Generate page for a clan."""
-
-    def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
-        template = _jinja_env.get_template("clan.jinja")
-        clan: GameObject = kwargs["clan"]
-
-        content = template.render(clan=clan.get_component(Clan))
-
-        return content
-
-
 class GameObjectPageGenerator(WikiPageGenerator):
     """Generates the family list page for the wiki window."""
 
@@ -171,8 +143,6 @@ class GameObjectPageGenerator(WikiPageGenerator):
             )
         elif object_type == "character":
             content = CharacterPageGenerator().generate_page(sim, character=gameobject)
-        elif object_type == "clan":
-            content = ClanPageGenerator().generate_page(sim, clan=gameobject)
         elif object_type == "family":
             content = FamilyPageGenerator().generate_page(sim, family=gameobject)
         else:
@@ -187,7 +157,6 @@ _page_generators: dict[str, WikiPageGenerator] = {
     "/character_list": CharacterListPageGenerator(),
     "/settlement_list": SettlementListPageGenerator(),
     "/family_list": FamilyListPageGenerator(),
-    "/clan_list": ClanListPageGenerator(),
     "/gameobject": GameObjectPageGenerator(),
 }
 

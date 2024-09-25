@@ -9,9 +9,9 @@ import pygame.gfxdraw
 
 from minerva.constants import (
     CAMERA_SPEED,
-    CLAN_COLORS_PRIMARY,
-    CLAN_COLORS_SECONDARY,
-    FAMILY_BANNER_SHAPES,
+    FAMILY_BANNER_SYMBOLS,
+    FAMILY_COLORS_PRIMARY,
+    FAMILY_COLORS_SECONDARY,
     FAMILY_COLORS_TERTIARY,
     FPS,
     TILE_SIZE,
@@ -113,10 +113,10 @@ class Game:
         flags_in_row: int = 0
         current_row: int = 0
 
-        for color_primary in CLAN_COLORS_PRIMARY:
-            for color_secondary in CLAN_COLORS_SECONDARY:
+        for color_primary in FAMILY_COLORS_PRIMARY:
+            for color_secondary in FAMILY_COLORS_SECONDARY:
                 for color_tertiary in FAMILY_COLORS_TERTIARY:
-                    for shape_0 in FAMILY_BANNER_SHAPES:
+                    for shape_0 in FAMILY_BANNER_SYMBOLS:
 
                         x = (TILE_SIZE + 4) * flags_in_row
                         y = (TILE_SIZE + 4) * current_row

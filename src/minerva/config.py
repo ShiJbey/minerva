@@ -35,14 +35,8 @@ class Config(pydantic.BaseModel):
     """The number of settlements to generate."""
     n_territories: int = 10
     """The number of map territories"""
-    n_sovereign_clans: int = 4
-    """The number of initial clans start with territory."""
-    n_initial_clans: int = 20
-    """The number of initial clans to generate."""
-    chance_noble_family: float = 0.2
-    """Chance of a family spawning as a noble family."""
-    max_families_per_clan: int = 5
-    """The max number of families to spawn per initial clan."""
+    n_initial_families: int = 20
+    """The number of initial families to generate."""
     max_households_per_family: int = 3
     """The max number of households to spawn per initial family."""
     max_children_per_household: int = 4

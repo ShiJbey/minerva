@@ -6,11 +6,8 @@ DB_CONFIG = """
 DROP TABLE IF EXISTS characters;
 DROP TABLE IF EXISTS character_traits;
 DROP TABLE IF EXISTS settlements;
-DROP TABLE IF EXISTS clans;
-DROP TABLE IF EXISTS clan_heads;
 DROP TABLE IF EXISTS families;
 DROP TABLE IF EXISTS family_heads;
-DROP TABLE IF EXISTS households;
 DROP TABLE IF EXISTS siblings;
 DROP TABLE IF EXISTS children;
 DROP TABLE IF EXISTS marriages;
@@ -41,9 +38,6 @@ CREATE TABLE characters (
     spouse INT,
     lover INT,
     is_alive INT,
-    household INT,
-    clan INT,
-    birth_clan INT,
     family INT,
     birth_family INT,
     birth_date TEXT,
@@ -55,9 +49,6 @@ CREATE TABLE characters (
     FOREIGN KEY (spouse) REFERENCES characters(uid),
     FOREIGN KEY (lover) REFERENCES characters(uid),
     FOREIGN KEY (uid) REFERENCES entities(uid),
-    FOREIGN KEY (household) REFERENCES households(uid),
-    FOREIGN KEY (clan) REFERENCES clans(uid),
-    FOREIGN KEY (birth_clan) REFERENCES clans(uid),
     FOREIGN KEY (family) REFERENCES families(uid),
     FOREIGN KEY (birth_family) REFERENCES families(uid)
 );
@@ -73,43 +64,19 @@ CREATE TABLE settlements (
     uid INT NOT NULL PRIMARY KEY,
     name TEXT,
     controlling_family INT,
-    FOREIGN KEY (controlling_family) REFERENCES clans(uid)
-);
-
-CREATE TABLE clans (
-    uid INT NOT NULL PRIMARY KEY,
-    name TEXT,
-    head INT,
-    descended_from INT,
-    home_base INT,
-    founding_date TEXT,
-    defunct_date TEXT,
-    FOREIGN KEY (descended_from) REFERENCES clans(uid),
-    FOREIGN KEY (home_base) REFERENCES settlements(uid)
-);
-
-CREATE TABLE clan_heads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    head INT NOT NULL,
-    clan INT NOT NULL,
-    start_date TEXT,
-    end_date TEXT,
-    predecessor INT,
-    FOREIGN KEY (head) REFERENCES characters(uid),
-    FOREIGN KEY (clan) REFERENCES clans(uid),
-    FOREIGN KEY (predecessor) REFERENCES characters(uid)
+    FOREIGN KEY (controlling_family) REFERENCES families(uid)
 );
 
 CREATE TABLE families (
     uid INT PRIMARY KEY,
     name TEXT,
     head INT,
-    clan INT,
+    alliance_id INT,
     founding_date TEXT,
     home_base_id INT,
     defunct_date TEXT,
     FOREIGN KEY (head) REFERENCES characters(uid),
-    FOREIGN KEY (clan) REFERENCES clans(uid),
+    FOREIGN KEY (alliance_id) REFERENCES alliances(uid),
     FOREIGN KEY (home_base_id) REFERENCES settlements(uid)
 );
 
@@ -123,14 +90,6 @@ CREATE TABLE family_heads (
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (family) REFERENCES families(uid),
     FOREIGN KEY (predecessor) REFERENCES characters(uid)
-);
-
-CREATE TABLE households (
-    uid INT PRIMARY KEY,
-    head INT,
-    family INT,
-    FOREIGN KEY (head) REFERENCES characters(uid),
-    FOREIGN KEY (family) REFERENCES families(uid)
 );
 
 CREATE TABLE siblings (
@@ -206,16 +165,6 @@ CREATE TABLE became_family_head_events (
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (family_id) REFERENCES families(uid)
-);
-
-CREATE TABLE became_clan_head_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    clan_id INT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (clan_id) REFERENCES clans(uid)
 );
 
 CREATE TABLE became_emperor_events (

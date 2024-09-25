@@ -143,12 +143,9 @@ class Character(Component):
         "spouse",
         "lover",
         "is_alive",
-        "clan",
-        "birth_clan",
         "family",
         "family_roles",
         "birth_family",
-        "household",
         "heir",
         "heir_to",
     )
@@ -171,11 +168,8 @@ class Character(Component):
     spouse: Optional[GameObject]
     lover: Optional[GameObject]
     is_alive: bool
-    clan: Optional[GameObject]
-    birth_clan: Optional[GameObject]
     family: Optional[GameObject]
     birth_family: Optional[GameObject]
-    household: Optional[GameObject]
     heir: Optional[GameObject]
     heir_to: Optional[GameObject]
     family_roles: FamilyRoleFlags
@@ -199,11 +193,8 @@ class Character(Component):
         spouse: Optional[GameObject] = None,
         lover: Optional[GameObject] = None,
         is_alive: bool = True,
-        clan: Optional[GameObject] = None,
-        birth_clan: Optional[GameObject] = None,
         family: Optional[GameObject] = None,
         birth_family: Optional[GameObject] = None,
-        household: Optional[GameObject] = None,
         heir: Optional[GameObject] = None,
         heir_to: Optional[GameObject] = None,
     ) -> None:
@@ -226,11 +217,8 @@ class Character(Component):
         self.spouse = spouse
         self.lover = lover
         self.is_alive = is_alive
-        self.clan = clan
-        self.birth_clan = birth_clan
         self.family = family
         self.birth_family = birth_family
-        self.household = household
         self.heir = heir
         self.heir_to = heir_to
         self.family_roles = FamilyRoleFlags.NONE
@@ -365,38 +353,6 @@ class RomanticAffairTracker(Component):
         self.past_affair_ids = []
 
 
-class Household(Component):
-    """A collection of characters that all live together."""
-
-    __slots__ = ("head", "members", "family")
-
-    head: Optional[GameObject]
-    """The head of the household."""
-    members: list[GameObject]
-    """Other members of the household."""
-    family: Optional[GameObject]
-    """The family this household belongs to."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.head = None
-        self.members = []
-        self.family = None
-
-
-class HeadOfHousehold(Component):
-    """Marks a character as being the head of a household."""
-
-    __slots__ = ("household",)
-
-    household: GameObject
-    """The household they are the head of."""
-
-    def __init__(self, household: GameObject) -> None:
-        super().__init__()
-        self.household = household
-
-
 class FamilyRoleFlags(enum.IntFlag):
     """Roles a character can be appointed to within their family."""
 
@@ -411,34 +367,35 @@ class FamilyRoleFlags(enum.IntFlag):
 
 
 class Family(Component):
-    """A collection of household bearing the same name."""
+    """A collection of characters joined by blood or marriage."""
 
     __slots__ = (
         "name",
-        "households",
         "head",
         "former_heads",
         "active_members",
         "former_members",
-        "clan",
+        "alliance",
         "home_base",
         "territories",
         "warriors",
         "advisors",
+        "color_primary",
+        "color_secondary",
+        "color_tertiary",
+        "banner_symbol",
     )
 
     name: str
     """The name of the family."""
-    households: list[GameObject]
-    """Households belonging to this family."""
     head: Optional[GameObject]
     """The character that is currently in charge of the family."""
     former_heads: OrderedSet[GameObject]
     """Former heads of this family."""
     former_members: OrderedSet[GameObject]
     """All people who have left the family."""
-    clan: Optional[GameObject]
-    """The clan this family belongs to."""
+    alliance: Optional[GameObject]
+    """The alliance this family belongs to."""
     home_base: Optional[GameObject]
     """The settlement this family belongs to."""
     territories: list[GameObject]
@@ -449,13 +406,27 @@ class Family(Component):
     """Characters responsible for strength during wars."""
     advisors: OrderedSet[GameObject]
     """Characters responsible for maintaining diplomatic stability."""
+    color_primary: str
+    """The primary color associated with this family."""
+    color_secondary: str
+    """The secondary color associated with this family."""
+    color_tertiary: str
+    """The tertiary color associated with this family."""
+    banner_symbol: str
+    """The symbol displayed on this family's banner."""
 
-    def __init__(self, name: str = "") -> None:
+    def __init__(
+        self,
+        name: str,
+        color_primary: str,
+        color_secondary: str,
+        color_tertiary: str,
+        banner_symbol: str,
+    ) -> None:
         super().__init__()
         self.name = name
-        self.households = []
         self.head = None
-        self.clan = None
+        self.alliance = None
         self.home_base = None
         self.territories = []
         self.active_members = OrderedSet([])
@@ -463,6 +434,10 @@ class Family(Component):
         self.warriors = OrderedSet([])
         self.advisors = OrderedSet([])
         self.former_heads = OrderedSet([])
+        self.color_primary = color_primary
+        self.color_secondary = color_secondary
+        self.color_tertiary = color_tertiary
+        self.banner_symbol = banner_symbol
 
 
 class HeadOfFamily(Component):
@@ -476,70 +451,6 @@ class HeadOfFamily(Component):
     def __init__(self, family: GameObject) -> None:
         super().__init__()
         self.family = family
-
-
-class Clan(Component):
-    """A collection of families."""
-
-    __slots__ = (
-        "name",
-        "families",
-        "active_families",
-        "former_families",
-        "head",
-        "former_heads",
-        "members",
-        "active_members",
-        "color_primary",
-        "color_secondary",
-    )
-
-    name: str
-    """The name of the clan."""
-    active_families: OrderedSet[GameObject]
-    """Families who are active in the clan."""
-    families: list[GameObject]
-    """All families that have ever that belong to the clan."""
-    former_families: OrderedSet[GameObject]
-    """Families who were formerly part of the clan."""
-    head: Optional[GameObject]
-    """The character that is currently in charge of the clan."""
-    former_heads: OrderedSet[GameObject]
-    """The last characters in charge of the family."""
-    members: list[GameObject]
-    """All characters who have ever belonged to the clan."""
-    active_members: OrderedSet[GameObject]
-    """characters who are actively a part of the clan."""
-    color_primary: str
-    """Hex string primary color for this clan."""
-    color_secondary: str
-    """Hex string secondary color for the clan."""
-
-    def __init__(self, name: str = "") -> None:
-        super().__init__()
-        self.name = name
-        self.families = []
-        self.active_families = OrderedSet([])
-        self.former_families = OrderedSet([])
-        self.head = None
-        self.former_heads = OrderedSet([])
-        self.members = []
-        self.active_members = OrderedSet([])
-        self.color_primary = "#ffffff"
-        self.color_secondary = "#000000"
-
-
-class HeadOfClan(Component):
-    """Marks a character as being the head of a clan."""
-
-    __slots__ = ("clan",)
-
-    clan: GameObject
-    """The clan they are the head of."""
-
-    def __init__(self, clan: GameObject) -> None:
-        super().__init__()
-        self.clan = clan
 
 
 class Emperor(TagComponent):

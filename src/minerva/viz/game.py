@@ -10,7 +10,7 @@ import pygame_gui
 import pygame_gui.elements.ui_panel
 import pygame_gui.ui_manager
 
-from minerva.characters.components import Clan, Dynasty, DynastyTracker, Family
+from minerva.characters.components import Dynasty, DynastyTracker
 from minerva.constants import (
     BACKGROUND_COLOR,
     CAMERA_SPEED,
@@ -27,7 +27,6 @@ from minerva.viz.game_events import gameobject_wiki_shown
 from minerva.viz.tile_sprites import (
     BorderSprite,
     CastleSprite,
-    ClanFlagSprite,
     CrownSprite,
     LabelSprite,
     TerrainType,
@@ -249,12 +248,6 @@ class Game:
                 parent=castle_sprite,
             )
 
-            flag_sprite = ClanFlagSprite(
-                pygame.color.Color("white"),
-                pygame.color.Color("white"),
-                castle_sprite,
-            )
-
             settlement_component = settlement.get_component(Settlement)
             if settlement_component.controlling_family:
 
@@ -262,19 +255,18 @@ class Game:
                     crown_sprite = CrownSprite(castle_sprite)
                     self.visible_sprites.add(crown_sprite)  # type: ignore
 
-                family_component = (
-                    settlement_component.controlling_family.get_component(Family)
-                )
-                if family_component.clan:
-                    clan_component = family_component.clan.get_component(Clan)
-                    flag_sprite.set_primary_color(
-                        pygame.color.Color(clan_component.color_primary)
-                    )
-                    flag_sprite.set_secondary_color(
-                        pygame.color.Color(clan_component.color_secondary)
-                    )
+                # family_component = (
+                #     settlement_component.controlling_family.get_component(Family)
+                # )
+                # if family_component.clan:
+                #     clan_component = family_component.clan.get_component(Clan)
+                #     flag_sprite.set_primary_color(
+                #         pygame.color.Color(clan_component.color_primary)
+                #     )
+                #     flag_sprite.set_secondary_color(
+                #         pygame.color.Color(clan_component.color_secondary)
+                #     )
 
-            self.visible_sprites.add(flag_sprite)  # type: ignore
             self.visible_sprites.add(castle_sprite)  # type: ignore
             self.visible_sprites.add(castle_label)  # type: ignore
             self._castle_sprites.append(castle_sprite)
@@ -285,34 +277,12 @@ class Game:
             if wall_flags == CompassDir.NONE:
                 continue
 
-            # settlement_id = self.world_map.territory_grid.get((x, y))
-
             sprite = BorderSprite(
                 (x * TILE_SIZE, y * TILE_SIZE),
                 pygame.color.Color("blue"),
                 pygame.color.Color("yellow"),
                 wall_flags,
             )
-
-            # if settlement_id != -1:
-            #     controlling_family = (
-            #         self.simulation.world.gameobjects.get_gameobject(settlement_id)
-            #         .get_component(Settlement)
-            #         .controlling_family
-            #     )
-            #
-            #     if controlling_family is not None:
-            #         family_clan = controlling_family.get_component(Family).clan
-            #         if family_clan is not None:
-            #             clan_component = family_clan.get_component(Clan)
-            #
-            #             sprite.set_primary_color(
-            #                 pygame.color.Color(clan_component.color_primary)
-            #             )
-            #
-            #             sprite.set_secondary_color(
-            #                 pygame.color.Color(clan_component.color_secondary)
-            #             )
 
             self.visible_sprites.add(sprite)  # type: ignore
 

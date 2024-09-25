@@ -12,13 +12,13 @@ from minerva.world_map.components import Settlement
 
 def get_settlement_influence(
     territory: GameObject,
-    clan: GameObject,
+    family: GameObject,
 ) -> int:
-    """Get the political influence of a clan over a given territory."""
+    """Get the political influence of a family over a given territory."""
 
     territory_component = territory.get_component(Settlement)
 
-    influence = territory_component.political_influence.get(clan, 0)
+    influence = territory_component.political_influence.get(family, 0)
 
     return influence
 
@@ -26,7 +26,7 @@ def get_settlement_influence(
 def set_settlement_controlling_family(
     settlement: GameObject, family: Optional[GameObject]
 ) -> None:
-    """Set what clan currently controls the settlement."""
+    """Set what family currently controls the settlement."""
 
     settlement_component = settlement.get_component(Settlement)
 

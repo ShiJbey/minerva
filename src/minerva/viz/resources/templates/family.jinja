@@ -8,14 +8,6 @@ N/A
 {% endif %}
 <br>
 <br>
-<font size="4"><b>Clan: </b></font>
-{% if family.clan is not none %}
-<a href="/gameobject?uid={{family.clan.uid}}">{{family.clan.name}} ({{family.clan.uid}})</a>
-{% else %}
-N/A
-{% endif %}
-<br>
-<br>
 <font size="4"><b>Home Base: </b></font>
 {% if family.home_base is not none %}
 <a href="/gameobject?uid={{family.home_base.uid}}">{{family.home_base.name}} ({{family.home_base.uid}})</a>

@@ -3,7 +3,7 @@
 Succession in Minerva operates using depth charts like in NCAA25. A character's position
 within the depth chart represents their distance from inheriting the thrown. The person
 at the top of the depth chart is considered the next in line (heir) to inherit the
-family/household when the current head is no longer in power.
+family when the current head is no longer in power.
 
 The first iteration of this depth chart places living candidates in the following order:
 

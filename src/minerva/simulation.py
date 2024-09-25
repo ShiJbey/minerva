@@ -27,7 +27,7 @@ from minerva.effects.effects import (
     AddRelationshipModifierFactory,
     AddStatModifierFactory,
 )
-from minerva.pcg.character import CharacterNameFactory, ClanNameFactory
+from minerva.pcg.character import CharacterNameFactory
 from minerva.pcg.settlement import SettlementNameFactory
 from minerva.preconditions.base_types import PreconditionLibrary
 from minerva.preconditions.preconditions import (
@@ -92,7 +92,6 @@ class Simulation:
         self._world.resources.add_resource(random.Random(self._config.seed))
         self._world.resources.add_resource(CharacterNameFactory(seed=self.config.seed))
         self._world.resources.add_resource(SettlementNameFactory(seed=self.config.seed))
-        self._world.resources.add_resource(ClanNameFactory(seed=self.config.seed))
         self._world.resources.add_resource(SpeciesLibrary())
         self._world.resources.add_resource(TraitLibrary())
         self._world.resources.add_resource(OccupationLibrary())
@@ -146,13 +145,7 @@ class Simulation:
             minerva.systems.FallbackFamilySuccessionSystem(),
         )
         self.world.systems.add_system(
-            minerva.systems.FallbackClanSuccessionSystem(),
-        )
-        self.world.systems.add_system(
             minerva.systems.EmptyFamilyCleanUpSystem(),
-        )
-        self.world.systems.add_system(
-            minerva.systems.EmptyClanCleanUpSystem(),
         )
         self.world.systems.add_system(
             minerva.systems.CharacterBehaviorSystem(),

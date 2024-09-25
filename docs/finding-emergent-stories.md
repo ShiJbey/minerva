@@ -4,16 +4,14 @@ The core purpose of this project is to explore quantitative methods of extractin
 
 ## A list of potentially interesting entities
 
-- Defunct clans that are no longer active
-- Rivalries between clans that were once a single clan
-- "Forbidden" love between the heirs of two rival clans
+- Rivalries between families with a common ancestor
+- "Forbidden" love between the heirs of two rival families
 - Marriage between a member of a noble family and a commoner
 - Bastard children to nobles
 - Characters born in to a lower-class family joining a noble family
 - Families that became noble during the simulation (they were not generated as nobility)
-- Clans who consolidated power by acquiring many vassal families
-- Clans that broker a many alliances
-- Clans that wage many wars
+- Family heads broker a many alliances
+- Family heads that wage many wars
 - The fall of noble families
 - Local juxtapositions in occupation vs other people in the same social class
 
@@ -22,7 +20,3 @@ The core purpose of this project is to explore quantitative methods of extractin
 ### How do you know if a character is a noble/royal?
 
 Characters born into noble families are considered noble. The same rule applies for royalty status.
-
-### What makes a clan prominent?
-
-(Aside from the clans containing noble/royal families) Interesting clans will probably be those that are older or have many people. Each clan has a reputation score that they maintain over time. Those with high reputations have earned them based on the actions of their leader(s).

@@ -19,7 +19,7 @@ from minerva.businesses.data import (
     OccupationType,
 )
 from minerva.characters.components import Sex, SpeciesLibrary, SpeciesType
-from minerva.pcg.character import CharacterNameFactory, ClanNameFactory
+from minerva.pcg.character import CharacterNameFactory
 from minerva.pcg.settlement import SettlementNameFactory
 from minerva.relationships.base_types import SocialRuleDef, SocialRuleLibrary
 from minerva.simulation import Simulation
@@ -51,15 +51,6 @@ def load_surnames(
     """Load character surnames from a file."""
     name_factory = sim.world.resources.get_resource(CharacterNameFactory)
     name_factory.load_surnames(filepath)
-
-
-def load_clan_names(
-    sim: Simulation,
-    filepath: Union[str, pathlib.Path],
-) -> None:
-    """Load character surnames from a file."""
-    name_factory = sim.world.resources.get_resource(ClanNameFactory)
-    name_factory.load_names(filepath)
 
 
 def load_settlement_names(

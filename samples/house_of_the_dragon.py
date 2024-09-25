@@ -27,7 +27,7 @@ DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 DB_OUTPUT_PATH = str(pathlib.Path(__file__).parent / "HotD.db")
 
 if __name__ == "__main__":
-    sim = Simulation(Config(n_initial_clans=0))
+    sim = Simulation(Config(n_initial_families=0))
 
     load_male_first_names(sim, DATA_DIR / "masculine_japanese_names.txt")
     load_female_first_names(sim, DATA_DIR / "feminine_japanese_names.txt")

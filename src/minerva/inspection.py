@@ -9,7 +9,7 @@ from typing import Callable, Union
 import tabulate
 
 from minerva import __version__
-from minerva.characters.components import Character, Family, Household, Pregnancy
+from minerva.characters.components import Character, Family, Pregnancy
 from minerva.ecs import Active, GameObject, GameObjectNotFoundError
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.relationships.base_types import Relationship, RelationshipManager
@@ -127,29 +127,6 @@ def _relationship_section(obj: GameObject) -> str:
     output += f"Target: {relationship.target.name}\n"
 
     return output
-
-
-def _household_section(obj: GameObject) -> str:
-    """Print information about a household."""
-    household = obj.try_component(Household)
-
-    if household is None:
-        return ""
-
-    output: list[str] = [
-        "=== Household ===",
-        "",
-        f"Head of Household: {household.head.name if household.head else 'N/A'}",
-    ]
-
-    if household.members:
-        output.append(f"Members: (Total {len(household.members)})")
-        for member in household.members:
-            output.append(f"\t- {member.name}")
-    else:
-        output.append("Members: N/A")
-
-    return "\n".join(output)
 
 
 def _pregnancy_section(obj: GameObject) -> str:
@@ -313,7 +290,6 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("settlement", _settlement_section),
     ("relationship", _relationship_section),
     ("character", _character_section),
-    ("household", _household_section),
     ("stats", _get_stats_table),
     ("traits", _get_traits_table),
     ("pregnancy", _pregnancy_section),
@@ -465,7 +441,7 @@ class SimulationInspector:
     def list_families(self, inactive_ok: bool = False) -> None:
         """Print all the families in the simulation."""
 
-        family_info: list[tuple[int, str, str, str, str]] = []
+        family_info: list[tuple[int, str, str, str]] = []
 
         if inactive_ok:
             family_info = [
@@ -473,7 +449,6 @@ class SimulationInspector:
                     uid,
                     family.name,
                     family.head.name_with_uid if family.head else "N/A",
-                    family.clan.name_with_uid if family.clan else "N/A",
                     family.home_base.name_with_uid if family.home_base else "N/A",
                 )
                 for uid, (family,) in self.sim.world.get_components((Family,))
@@ -484,14 +459,13 @@ class SimulationInspector:
                     uid,
                     family.name,
                     family.head.name_with_uid if family.head else "N/A",
-                    family.clan.name_with_uid if family.clan else "N/A",
                     family.home_base.name_with_uid if family.home_base else "N/A",
                 )
                 for uid, (family, _) in self.sim.world.get_components((Family, Active))
             ]
 
         table = tabulate.tabulate(
-            family_info, headers=["UID", "Name", "Head", "Clan", "Home Base"]
+            family_info, headers=["UID", "Name", "Head", "Home Base"]
         )
 
         output = "=== Families ===\n"

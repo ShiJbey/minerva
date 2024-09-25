@@ -28,11 +28,11 @@ When a cheater is discovered, their reputation with their spouse drops, and the 
 
 The partner who discovered the cheating has the option of forgiving their spouse or divorcing them.
 
-## Clan Wars
+## Family Wars
 
-Clans can wage wars against each other to gain influence over settlements on the world map. Once a war is started, it continues until a truce is called, one or both clans die off, or someone surrenders. During that time, clans lose money and characters in the clan, including the clan head, are subject to be victims of random events in the war.
+Families can wage wars against each other to gain influence over settlements on the world map. Once a war is started, it continues until a truce is called, one or both families die off, or someone surrenders. During that time, families lose influence points and characters in the warrior roles, potentially including the family head, are subject to be victims of random events in the war.
 
-- Military power is calculated using the clan-leader's martial skill and the skills of the family head in charge of the settlement
+- Military power is calculated using the family head's stat and the stats of their warrior members.
 
 ## Occupations
 

@@ -32,7 +32,7 @@ systems within the game. While not the only way behavior utilities are calculate
 
 Goals are additional information tagged to characters that provides more information about their
 personality/motivations. They can apply buffs/debuffs to character motives and other stats to influence behavior
-selection. Example goals might be things like `GetAJob`, `ExpandLand`, or `BecomeClanHead`.
+selection. Example goals might be things like `GetAJob` or `ExpandLand`.
 
 ## List of Behavior Systems
 
@@ -45,12 +45,10 @@ agent and randomly choses one to perform from the top scoring behaviors.
   marriage infidelity, and having children.
 - `FamilyHeadBehaviorSystem`: Handles behaviors performed by family heads. These behaviors might include naming an heir,
   increasing taxes on the settlement they control, giving back to the settlement they control, challenging for control
-  over the clan, betrothing children, assassinating other family heads, making alliances.
-- `ClanHeadBehaviorSystem`: Handles behaviors performed by clan heads. These behaviors might include seizing power over
-  uncontrolled settlements, declaring wars on other clans, proposing vassalage to families, and banishing families from
-  the clan.
+  over the family, betrothing children, assassinating other family heads, making alliances, seizing power over
+  uncontrolled settlements, declaring wars on other families, etc.
 - `SettlementBehaviorSystem`: Handles behaviors performed by settlements. These behaviors include revolting against the
-  current clan/family in charge of the settlement.
+  current family in charge of the settlement.
 
 ## Behavior System Parameters
 
@@ -73,9 +71,6 @@ sim_config = Config(
         # Sets the maximum number of 'family head' behaviors a
         # family head can perform each timestep/tick
         "family_head_behaviors_per_tick": 1,
-        # Sets the maximum number of 'clan head' behaviors a
-        # clan head can perform each timestep/tick
-        "clan_head_behaviors_per_tick": 1,
         # Sets the maximum number of 'settlement' behaviors a
         # settlement can perform each timestep/tick
         "settlement_behaviors_per_tick": 1,

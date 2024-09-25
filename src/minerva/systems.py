@@ -9,7 +9,6 @@ from minerva.actions.base_types import AIBehaviorLibrary, IAIBehavior
 from minerva.actions.behavior_helpers import get_behavior_utility
 from minerva.characters.components import (
     Character,
-    Clan,
     Emperor,
     Family,
     FamilyRoleFlags,
@@ -23,10 +22,8 @@ from minerva.characters.helpers import (
     assign_family_member_to_roles,
     get_advisor_candidates,
     get_warrior_candidates,
-    remove_clan_from_play,
     remove_family_from_play,
     set_character_age,
-    set_clan_head,
     set_family_head,
 )
 from minerva.characters.motive_helpers import get_character_motives
@@ -43,7 +40,7 @@ from minerva.constants import (
 from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, GameObject, System, World
 from minerva.life_events.aging import LifeStageChangeEvent
-from minerva.life_events.succession import BecameClanHeadEvent, BecameFamilyHeadEvent
+from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
 
@@ -225,42 +222,8 @@ class FallbackFamilySuccessionSystem(System):
                 ).dispatch()
 
 
-class FallbackClanSuccessionSystem(System):
-    """Appoint oldest family head as the new clan head."""
-
-    __system_group__ = "LateUpdateSystems"
-
-    def on_update(self, world: World) -> None:
-        for _, (clan, _) in world.get_components((Clan, Active)):
-            if clan.head is not None:
-                continue
-
-            eligible_heads: list[Character] = []
-
-            for m in clan.members:
-                character_component = m.get_component(Character)
-
-                if not m.has_component(HeadOfFamily):
-                    continue
-
-                if (
-                    character_component.is_alive
-                    and character_component.life_stage > LifeStage.CHILD
-                ):
-                    eligible_heads.append(character_component)
-
-            eligible_heads.sort(key=lambda _m: _m.age)
-
-            if eligible_heads:
-                oldest_member = eligible_heads[-1]
-                set_clan_head(clan.gameobject, oldest_member.gameobject)
-                BecameClanHeadEvent(
-                    oldest_member.gameobject, clan.gameobject
-                ).dispatch()
-
-
 class FallbackEmperorSuccessionSystem(System):
-    """If no emperor exists select one of the clan heads."""
+    """If no emperor exists select one of the family heads."""
 
     __system_group__ = "LateUpdateSystems"
 
@@ -272,21 +235,18 @@ class FallbackEmperorSuccessionSystem(System):
         if emperor_exists:
             return
 
-        eligible_clan_heads: list[GameObject] = []
-        for _, (clan, _) in world.get_components((Clan, Active)):
-            if clan.head is not None:
-                eligible_clan_heads.append(clan.gameobject)
+        eligible_family_heads: list[GameObject] = []
+        for _, (family, _) in world.get_components((Family, Active)):
+            if family.head is not None:
+                eligible_family_heads.append(family.gameobject)
 
-        if eligible_clan_heads:
-            chosen_emperor = rng.choice(eligible_clan_heads)
+        if eligible_family_heads:
+            chosen_emperor = rng.choice(eligible_family_heads)
             set_current_ruler(world, chosen_emperor)
 
 
 class EmptyFamilyCleanUpSystem(System):
-    """Removes empty families from play.
-
-    Also removes empty clans if the family removed was the last within the clan.
-    """
+    """Removes empty families from play."""
 
     __system_group__ = "LateUpdateSystems"
 
@@ -294,17 +254,6 @@ class EmptyFamilyCleanUpSystem(System):
         for _, (family, _) in world.get_components((Family, Active)):
             if len(family.active_members) == 0:
                 remove_family_from_play(family.gameobject)
-
-
-class EmptyClanCleanUpSystem(System):
-    """Removes empty clans from play."""
-
-    __system_group__ = "LateUpdateSystems"
-
-    def on_update(self, world: World) -> None:
-        for _, (clan, _) in world.get_components((Clan, Active)):
-            if len(clan.active_families) == 0:
-                remove_clan_from_play(clan.gameobject)
 
 
 class CharacterBehaviorSystem(System):

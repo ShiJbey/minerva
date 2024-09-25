@@ -23,20 +23,6 @@ No
 <br>
 <font size="4"><b>Death Date: </b>{{character.death_date}}</font>
 <br>
-<font size="4"><b>Clan: </b></font>
-{% if character.clan is not none %}
-<a href="/gameobject?uid={{character.clan.uid}}">{{character.clan.name}} ({{character.clan.uid}})</a>
-{% else %}
-N/A
-{% endif %}
-<br>
-<font size="4"><b>Clan at Birth: </b></font>
-{% if character.birth_clan is not none %}
-<a href="/gameobject?uid={{character.birth_clan.uid}}">{{character.birth_clan.name}} ({{character.birth_clan.uid}})</a>
-{% else %}
-N/A
-{% endif %}
-<br>
 <font size="4"><b>Family: </b></font>
 {% if character.family is not none %}
 <a href="/gameobject?uid={{character.family.uid}}">{{character.family.name}} ({{character.family.uid}})</a>

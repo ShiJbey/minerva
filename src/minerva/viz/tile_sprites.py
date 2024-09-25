@@ -6,7 +6,6 @@ from typing import Any
 
 import pygame
 import pygame.gfxdraw
-from pygame import SRCALPHA
 from pygame.sprite import Sprite
 
 from minerva.constants import (
@@ -17,102 +16,6 @@ from minerva.constants import (
 from minerva.ecs import GameObject
 from minerva.viz.game_events import gameobject_wiki_shown
 from minerva.world_map.components import CompassDir, Settlement
-
-
-class ClanFlagSprite(Sprite):
-    """A sprite showing the flag of a clan."""
-
-    def __init__(
-        self,
-        primary_color: pygame.color.Color,
-        secondary_color: pygame.color.Color,
-        parent: Sprite,
-        *groups: Any,
-    ) -> None:
-        super().__init__(*groups)
-        self.primary_color = primary_color
-        self.secondary_color = secondary_color
-        self.parent = parent
-        self.redraw_image()
-
-    def set_primary_color(self, color: pygame.color.Color) -> None:
-        """Set the primary color of the flag."""
-        self.primary_color = color
-        self.redraw_image()
-
-    def set_secondary_color(self, color: pygame.color.Color) -> None:
-        """Set the secondary color of the flag."""
-        self.secondary_color = color
-        self.redraw_image()
-
-    def redraw_image(self) -> None:
-        """Re-render the sprite image."""
-        self.image = pygame.surface.Surface((TILE_SIZE, TILE_SIZE), SRCALPHA)
-        self.rect = self.image.get_rect()
-
-        # Draw the top bar
-        pygame.gfxdraw.box(
-            self.image,
-            (0, 0, TILE_SIZE, 4),
-            pygame.color.Color("#010101"),
-        )
-
-        # Draw the flag pole
-        pygame.gfxdraw.box(
-            self.image,
-            (14, 0, 4, TILE_SIZE),
-            pygame.color.Color("#010101"),
-        )
-
-        # Draw the flag secondary color outline
-        pygame.gfxdraw.filled_polygon(
-            self.image,
-            [
-                (28, 0),
-                (28, 20),
-                (18, 28),
-                (14, 28),
-                (4, 20),
-                (4, 0),
-            ],  # Counter clockwise
-            self.secondary_color,
-        )
-
-        # Draw the flag primary color
-        pygame.gfxdraw.filled_polygon(
-            self.image,
-            [
-                (24, 4),
-                (24, 20),
-                (18, 24),
-                (14, 24),
-                (8, 20),
-                (8, 4),
-            ],  # Counter clockwise
-            self.primary_color,
-        )
-
-        # Draw the flag black outline
-        pygame.gfxdraw.polygon(
-            self.image,
-            [
-                (28, 0),
-                (28, 20),
-                (18, 28),
-                (14, 28),
-                (4, 20),
-                (4, 0),
-            ],  # Counter clockwise
-            pygame.color.Color("#010101"),
-        )
-
-        # Draw the flag symbol (secondary-colored circle)
-        pygame.gfxdraw.filled_circle(self.image, 16, 12, 4, self.secondary_color)
-
-        # Fix positioning
-        assert self.parent.rect
-        self.rect.centerx = self.parent.rect.centerx
-        self.rect.top = self.parent.rect.top - TILE_SIZE
 
 
 class LabelSprite(Sprite):
@@ -183,7 +86,7 @@ class CastleSprite(Sprite):
 
 
 class BorderSprite(Sprite):
-    """A sprite showing the flag of a clan."""
+    """A sprite showing the border of a territory."""
 
     def __init__(
         self,

@@ -33,12 +33,12 @@ CHARACTER_MOTIVE_BASE = 50
 
 BEHAVIOR_UTILITY_THRESHOLD = 0
 
-# === Clan/Family Settings ===
+# === Family Settings ===
 
 MAX_ADVISORS_PER_FAMILY = 3
 MAX_WARRIORS_PER_FAMILY = 3
 
-CLAN_COLORS_PRIMARY = [
+FAMILY_COLORS_PRIMARY = [
     "#01161E",  # Rich Black
     "#124559",  # Midnight Green
     "#598392",  # Air Force Blue
@@ -46,7 +46,7 @@ CLAN_COLORS_PRIMARY = [
     "#654236",  # Liver
 ]
 
-CLAN_COLORS_SECONDARY = [
+FAMILY_COLORS_SECONDARY = [
     "#e90000",  # red
     "#31d5c8",  # light blue
     "#a538c6",  # violet
@@ -62,7 +62,7 @@ FAMILY_COLORS_TERTIARY = [
     "#fff500",  # Yellow
 ]
 
-FAMILY_BANNER_SHAPES = [
+FAMILY_BANNER_SYMBOLS = [
     "circle",
     "square",
     "diamond",
