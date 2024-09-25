@@ -71,6 +71,7 @@ CREATE TABLE settlements (
 CREATE TABLE families (
     uid INT PRIMARY KEY,
     name TEXT,
+    parent_id INT,
     head INT,
     alliance_id INT,
     founding_date TEXT,
@@ -78,7 +79,8 @@ CREATE TABLE families (
     defunct_date TEXT,
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (alliance_id) REFERENCES alliances(uid),
-    FOREIGN KEY (home_base_id) REFERENCES settlements(uid)
+    FOREIGN KEY (home_base_id) REFERENCES settlements(uid),
+    FOREIGN KEY (parent_id) REFERENCES families(uid)
 );
 
 CREATE TABLE family_heads (

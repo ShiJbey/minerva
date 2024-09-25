@@ -371,6 +371,8 @@ class Family(Component):
 
     __slots__ = (
         "name",
+        "parent_family",
+        "branch_families",
         "head",
         "former_heads",
         "active_members",
@@ -388,6 +390,10 @@ class Family(Component):
 
     name: str
     """The name of the family."""
+    parent_family: Optional[GameObject]
+    """The family that this family branched from."""
+    branch_families: OrderedSet[GameObject]
+    """Branches of this family."""
     head: Optional[GameObject]
     """The character that is currently in charge of the family."""
     former_heads: OrderedSet[GameObject]
@@ -425,6 +431,8 @@ class Family(Component):
     ) -> None:
         super().__init__()
         self.name = name
+        self.parent_family = None
+        self.branch_families = OrderedSet([])
         self.head = None
         self.alliance = None
         self.home_base = None

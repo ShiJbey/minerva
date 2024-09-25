@@ -103,3 +103,7 @@ public fields.
 
 - `last_chosen_behavior: str` - The name of the last behavior chosen by the agent regardless of if they were successful
   at performing it.
+
+## Family System
+
+Families re the core unit of power in Minerva. All characters belong to a family and each family strives to survive for as long as possible. The family system is inspired by Game of Thrones, House of the Dragon, Naruto, Castlevania, the Japanese Uji clan system, Crusader Kings, and the WorldBox clan system.

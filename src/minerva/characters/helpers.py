@@ -66,6 +66,27 @@ def set_family_name(
     db.commit()
 
 
+def add_branch_family(family: GameObject, branch_family: GameObject) -> None:
+    """Set the parent family of a family."""
+
+    branch_family_component = branch_family.get_component(Family)
+    family_component = family.get_component(Family)
+
+    branch_family_component.parent_family = family
+    family_component.branch_families.add(branch_family)
+
+    world = branch_family.world
+    db = world.resources.get_resource(SimDB).db
+    cursor = db.cursor()
+
+    cursor.execute(
+        """UPDATE families SET parent_id=? WHERE uid=?;""",
+        (family.uid, branch_family.uid),
+    )
+
+    db.commit()
+
+
 def set_family_head(
     family: GameObject,
     character: Optional[GameObject],

@@ -20,6 +20,7 @@ from minerva.characters.components import (
     Stewardship,
 )
 from minerva.characters.helpers import (
+    add_branch_family,
     assign_family_member_to_roles,
     get_advisor_candidates,
     get_warrior_candidates,
@@ -58,6 +59,30 @@ def test_sim() -> Simulation:
     load_species_types(sim, data_dir / "species_types.yaml")
 
     return sim
+
+
+def test_add_branch_family(test_sim: Simulation):
+    """Test adding a branch to a family."""
+    family_0 = generate_family(test_sim.world)
+    family_1 = generate_family(test_sim.world)
+    family_2 = generate_family(test_sim.world)
+    family_3 = generate_family(test_sim.world)
+
+    add_branch_family(family_0, family_1)
+    add_branch_family(family_0, family_2)
+    add_branch_family(family_2, family_3)
+
+    family_0_component = family_0.get_component(Family)
+    family_1_component = family_1.get_component(Family)
+    family_2_component = family_2.get_component(Family)
+    family_3_component = family_3.get_component(Family)
+
+    assert family_1 in family_0_component.branch_families
+    assert family_2 in family_0_component.branch_families
+    assert family_0 == family_1_component.parent_family
+    assert family_0 == family_2_component.parent_family
+    assert family_2 == family_3_component.parent_family
+    assert family_3 in family_2_component.branch_families
 
 
 def test_set_family_head(test_sim: Simulation):
