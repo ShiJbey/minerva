@@ -9,6 +9,7 @@ from typing import Optional
 import pydantic
 from ordered_set import OrderedSet
 
+from minerva import constants
 from minerva.constants import CHARACTER_MOTIVE_BASE, CHARACTER_MOTIVE_MAX
 from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject, TagComponent
@@ -148,6 +149,7 @@ class Character(Component):
         "birth_family",
         "heir",
         "heir_to",
+        "influence_points",
     )
 
     first_name: str
@@ -173,6 +175,7 @@ class Character(Component):
     heir: Optional[GameObject]
     heir_to: Optional[GameObject]
     family_roles: FamilyRoleFlags
+    influence_points: int
 
     def __init__(
         self,
@@ -222,6 +225,7 @@ class Character(Component):
         self.heir = heir
         self.heir_to = heir_to
         self.family_roles = FamilyRoleFlags.NONE
+        self.influence_points = constants.INFLUENCE_POINTS_BASE
 
     @property
     def full_name(self) -> str:

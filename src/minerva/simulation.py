@@ -162,6 +162,9 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.SettlementRandomEventSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.InfluencePointGainSystem(),
+        )
 
     def initialize_logging(self) -> None:
         """Initialize simulation logging."""

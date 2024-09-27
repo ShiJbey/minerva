@@ -12,6 +12,7 @@ from minerva.actions.base_types import AIBehaviorLibrary, IAIBehavior
 from minerva.actions.behavior_helpers import get_behavior_utility
 from minerva.characters.components import (
     Character,
+    Diplomacy,
     Emperor,
     Family,
     FamilyRoleFlags,
@@ -534,3 +535,38 @@ def bountiful_harvest_event(settlement: GameObject) -> None:
         current_date.to_iso_str(),
         settlement.name_with_uid,
     )
+
+
+class InfluencePointGainSystem(System):
+    """Increases the influence points for characters."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        for _, (character, _) in world.get_components((Character, Active)):
+            influence_gain: int = 1
+
+            if character.gameobject.has_component(Emperor):
+                influence_gain += 5
+
+            if character.gameobject.has_component(HeadOfFamily):
+                influence_gain += 5
+
+            diplomacy = character.gameobject.get_component(Diplomacy)
+            diplomacy_score = int(diplomacy.value)
+            if diplomacy_score > 0:
+                influence_gain += diplomacy_score // 4
+
+            character.influence_points = min(
+                character.influence_points + influence_gain,
+                constants.INFLUENCE_POINTS_MAX,
+            )
+
+            character.influence_points = max(0, character.influence_points)
+
+            _logger.info(
+                "[%s]: %s has %d influence points",
+                world.resources.get_resource(SimDate).to_iso_str(),
+                character.gameobject.name_with_uid,
+                character.influence_points,
+            )
