@@ -7,7 +7,7 @@
 
 ![Minerva Screenshot](https://github.com/user-attachments/assets/25f7def9-a375-4f72-b4ac-3bc5c9d60759)
 
-Minerva is a non-interactive dynasty simulator, that models procedurally generated characters and families vying for influence and power over a shared map. It is designed for emergent narrative research and data analysis. I've found it to be an excellent project for learning how to write SQL queries. Minerva's core architecture is based on [Neighborly](https://github.com/ShiJbey/neighborly), and its systems and mechanics were inspired by [Game of Thrones](https://gameofthrones.fandom.com/wiki/Wiki_of_Westeros), the [Shōgun boardgame](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), [WorldBox](https://the-official-worldbox-wiki.fandom.com/wiki/The_Official_Worldbox_Wiki), [Crusader Kings III](https://duckduckgo.com/?q=crusader+kings+wiki+3&t=osx), and [the Japanese Clan system](https://en.wikipedia.org/wiki/Japanese_clans).
+Minerva is a non-interactive dynasty simulator, that models procedurally generated characters and families vying for influence and power over a shared map. It is designed for emergent narrative research and data analysis. I've found it to be an excellent project for learning how to write SQL queries. Minerva's core architecture is based on [Neighborly](https://github.com/ShiJbey/neighborly), and its systems and mechanics were inspired by [Game of Thrones](https://gameofthrones.fandom.com/wiki/Wiki_of_Westeros), the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), [WorldBox](https://the-official-worldbox-wiki.fandom.com/wiki/The_Official_Worldbox_Wiki), [Crusader Kings III](https://duckduckgo.com/?q=crusader+kings+wiki+3&t=osx), and [the Japanese Clan system](https://en.wikipedia.org/wiki/Japanese_clans).
 
 I started this project as a fork of Neighborly because I felt that Neighborly was trying to do too many things. Neighborly, provides an expandable platform, but, in my opinion offers, little scaffolding for creating interesting emergent stories "out of the box". Most of Neighborly's stories are rather mundane slice of life stories about people raising families and working jobs. Minerva addresses this dullness, by providing a more interesting narrative framing around families fighting for power, and the adventures of those in-charge of the families.
 
@@ -31,7 +31,7 @@ Minerva is rather simple simulation compared to some commercial games. So, I use
 
 ## 🚀 How Does Minerva Work?
 
-Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun boardgame](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories.
+Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories.
 
 The simulation starts by creating a world grid and dividing the grid into separate provinces. Each province is given a name and is home to zero or more families. Each family is comprised of procedurally generated characters that are related by blood or marriage. The simulation initializes a collection of families and distributes them among the provinces.
 
@@ -67,7 +67,7 @@ python -m pip install -e ".[development]"
 
 ## 🍪 Running the Samples
 
-Minerva has two main sample scripts, one inspired by [House of the Dragon](https://en.wikipedia.org/wiki/House_of_the_Dragon) and another inspired by the [Shōgun boardgame](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun) (based on the novel by James Clavell).
+Minerva has two main sample scripts, one inspired by [House of the Dragon](https://en.wikipedia.org/wiki/House_of_the_Dragon) and another inspired by the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun) (based on the novel by James Clavell).
 
 Before running any samples, please ensure that you have installed Minerva locally.
 
