@@ -455,7 +455,7 @@ class Family(Component):
 class HeadOfFamily(Component):
     """Marks a character as being the head of a family."""
 
-    __slots__ = ("family", "roles")
+    __slots__ = ("family",)
 
     family: GameObject
     """The family they are the head of."""
@@ -475,19 +475,19 @@ class Dynasty(Component):
     __slots__ = (
         "founder",
         "family",
-        "founding_date",
+        "_founding_date",
         "current_ruler",
         "previous_rulers",
-        "ending_date",
+        "_ending_date",
         "previous_dynasty",
     )
 
     founder: GameObject
     family: GameObject
-    founding_date: SimDate
+    _founding_date: SimDate
     current_ruler: Optional[GameObject]
     previous_rulers: OrderedSet[GameObject]
-    ending_date: Optional[SimDate]
+    _ending_date: Optional[SimDate]
     previous_dynasty: Optional[GameObject]
 
     def __init__(
@@ -500,11 +500,31 @@ class Dynasty(Component):
         super().__init__()
         self.founder = founder
         self.family = family
-        self.founding_date = founding_date.copy()
+        self._founding_date = founding_date.copy()
         self.current_ruler = None
         self.previous_rulers = OrderedSet([])
-        self.ending_date = None
+        self._ending_date = None
         self.previous_dynasty = previous_dynasty
+
+    @property
+    def founding_date(self) -> SimDate:
+        """The date the dynasty was founded."""
+        return self._founding_date
+
+    @founding_date.setter
+    def founding_date(self, value: SimDate) -> None:
+        """Set the founding date."""
+        self._founding_date = value.copy()
+
+    @property
+    def ending_date(self) -> Optional[SimDate]:
+        """The date the dynasty ended."""
+        return self._ending_date
+
+    @ending_date.setter
+    def ending_date(self, value: SimDate) -> None:
+        """Set the ending date."""
+        self._ending_date = value.copy()
 
     @property
     def last_ruler(self) -> Optional[GameObject]:

@@ -61,7 +61,8 @@ class SuccessionDepthChart:
     def add_row(self, character: GameObject, is_eligible: bool = True) -> None:
         """Add a row to the chart."""
         if character.uid in self._index:
-            raise ValueError(f"Duplicate depth chart entry for: {character.name}")
+            # raise ValueError(f"Duplicate depth chart entry for: {character.name}")
+            return
 
         row = DepthChartRow(
             depth=len(self._rows),
@@ -134,7 +135,10 @@ def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
             child_character_component.life_stage >= LifeStage.ADOLESCENT
             and child_character_component.is_alive is True
         )
-        if child_character_component.family == character_component.family:
+        if (
+            child_character_component.family == character_component.family
+            and child_character_component.birth_family == character_component.family
+        ):
             child_list.append((child, child_character_component.age, is_eligible))
 
     # Sort children by age
@@ -145,8 +149,8 @@ def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
         depth_chart.add_row(child, is_eligible)
 
     # Get the spouse
-    if character_component.spouse is not None:
-        depth_chart.add_row(character_component.spouse, is_eligible=True)
+    # if character_component.spouse is not None:
+    #     depth_chart.add_row(character_component.spouse, is_eligible=True)
 
     # Get living siblings in the same family
     sibling_list: list[tuple[GameObject, float, bool]] = []
@@ -156,7 +160,10 @@ def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
             sibling_character_component.life_stage >= LifeStage.ADOLESCENT
             and sibling_character_component.is_alive is True
         )
-        if sibling_character_component.family == character_component.family:
+        if (
+            sibling_character_component.family == character_component.family
+            and sibling_character_component.birth_family == character_component.family
+        ):
             sibling_list.append((sibling, sibling_character_component.age, is_eligible))
 
     # Sort siblings by age

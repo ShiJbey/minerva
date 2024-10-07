@@ -70,12 +70,6 @@ version = { attr = "minerva.__version__" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# [tool.ruff]
-# line-length = 88
-
-# [tool.ruff.lint.pydocstyle]
-# convention = "numpy"
-
 [tool.isort]
 profile = "black"
 default_section = "THIRDPARTY"
@@ -85,9 +79,6 @@ src_paths = ["src/minerva", "tests", "samples"]
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = ["tests"]
-
-[tool.pyright]
-reportMissingTypeStubs = "none"
 
 [tool.pylint.design]
 # Minimum number of public methods for a class (see R0903).

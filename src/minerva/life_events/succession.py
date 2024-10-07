@@ -59,9 +59,7 @@ class BecameFamilyHeadEvent(LifeEvent):
         self.record_in_database(self.world.resources.get_resource(SimDB))
 
     def get_description(self) -> str:
-        return (
-            f"{self.character.name} became the head of the {self.family.name} family."
-        )
+        return f"{self.character.name_with_uid} became the head of the {self.family.name_with_uid} family."
 
 
 class BecameEmperorEvent(LifeEvent):
@@ -112,7 +110,7 @@ class BecameEmperorEvent(LifeEvent):
         db.commit()
 
     def get_description(self) -> str:
-        return f"{self.character.name} became emperor."
+        return f"{self.character.name_with_uid} became emperor."
 
 
 class FamilyRemovedFromPlay(LifeEvent):
@@ -134,4 +132,4 @@ class FamilyRemovedFromPlay(LifeEvent):
         pass
 
     def get_description(self) -> str:
-        return f"The {self.family.name} family has been removed from play."
+        return f"The {self.family.name_with_uid} family has been removed from play."

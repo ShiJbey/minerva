@@ -55,6 +55,7 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import (
     set_character_biological_father,
+    set_character_birth_date,
     set_character_birth_family,
     set_character_birth_surname,
     set_character_family,
@@ -294,6 +295,7 @@ def generate_character(
             species=chosen_species,
         )
     )
+    obj.name = character.full_name
 
     obj.add_component(TraitManager())
     obj.add_component(StatusEffectManager())
@@ -311,7 +313,7 @@ def generate_character(
             rng.randint(chosen_species.lifespan[0], chosen_species.lifespan[1]),
         )
     )
-    obj.add_component(Fertility(default_stat_calc_strategy))
+    obj.add_component(Fertility(default_stat_calc_strategy, base_value=100))
     obj.add_component(Diplomacy(default_stat_calc_strategy))
     obj.add_component(Martial(default_stat_calc_strategy))
     obj.add_component(Stewardship(default_stat_calc_strategy))
@@ -429,9 +431,22 @@ def generate_child_from(mother: GameObject, father: GameObject) -> GameObject:
     """Generate a child from the given parents."""
     rng = mother.world.resources.get_resource(random.Random)
 
+    mother_character_component = mother.get_component(Character)
+
+    mothers_family = mother_character_component.family
+    assert mothers_family
+
     child = generate_character(
-        world=mother.world, life_stage=LifeStage.CHILD, n_max_personality_traits=0
+        world=mother.world,
+        life_stage=LifeStage.CHILD,
+        n_max_personality_traits=0,
+        surname=mothers_family.name,
     )
+
+    set_character_birth_date(child, mother.world.resources.get_resource(SimDate).copy())
+    set_character_birth_surname(child, mothers_family.name)
+    set_character_birth_family(child, mothers_family)
+    set_character_family(child, mothers_family)
 
     # Replace personality traits with ones from parents
     mother_personality = get_personality_traits(mother)

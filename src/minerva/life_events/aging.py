@@ -58,7 +58,9 @@ class LifeStageChangeEvent(LifeEvent):
         db.commit()
 
     def get_description(self) -> str:
-        return f"{self.character.name} became an {self.life_stage.name.lower()}."
+        return (
+            f"{self.character.name_with_uid} became an {self.life_stage.name.lower()}."
+        )
 
 
 class CharacterDeathEvent(LifeEvent):
@@ -104,4 +106,4 @@ class CharacterDeathEvent(LifeEvent):
         db.commit()
 
     def get_description(self) -> str:
-        return f"{self.character.name} died."
+        return f"{self.character.name_with_uid} died."

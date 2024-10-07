@@ -30,6 +30,11 @@ class IAIBehavior(ABC):
         raise NotImplementedError()
 
     @abstractmethod
+    def get_cost(self) -> int:
+        """Get the influence point cost of the behavior."""
+        raise NotImplementedError()
+
+    @abstractmethod
     def passes_preconditions(self, character: GameObject) -> bool:
         """check if the given character passes all the preconditions."""
         raise NotImplementedError()
@@ -43,12 +48,18 @@ class IAIBehavior(ABC):
 class AIBehavior(IAIBehavior):
     """A behavior that can be performed by a character."""
 
-    __slots__ = ("name", "motives", "preconditions", "execution_strategy")
+    __slots__ = ("name", "motives", "preconditions", "execution_strategy", "cost")
 
     name: str
+    """The nme if the behavior."""
     motives: MotiveVector
+    """The motives satisfied by this behavior."""
     preconditions: list[Precondition]
+    """Preconditions required for the behavior to be available."""
     execution_strategy: Callable[[GameObject], bool]
+    """A function that executes the behavior."""
+    cost: int
+    """The number of influence point required to execute this behavior."""
 
     def __init__(
         self,
@@ -56,16 +67,22 @@ class AIBehavior(IAIBehavior):
         motives: MotiveVector,
         preconditions: list[Precondition],
         execution_strategy: Callable[[GameObject], bool],
+        cost: int = 0,
     ) -> None:
         super().__init__()
         self.name = name
         self.motives = motives
         self.preconditions = preconditions
         self.execution_strategy = execution_strategy
+        self.cost = cost
 
     def get_name(self) -> str:
         """Get the name of the behavior."""
         return self.name
+
+    def get_cost(self) -> int:
+        """Get the influence point cost of the behavior."""
+        return self.cost
 
     def get_motive_vect(self) -> MotiveVector:
         """Get the motive vector for this behavior."""

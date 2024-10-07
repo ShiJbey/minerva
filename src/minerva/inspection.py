@@ -9,7 +9,16 @@ from typing import Callable, Union
 import tabulate
 
 from minerva import __version__
-from minerva.characters.components import Character, Family, Pregnancy
+from minerva.characters.components import (
+    Character,
+    Dynasty,
+    DynastyTracker,
+    Emperor,
+    Family,
+    FamilyRoleFlags,
+    HeadOfFamily,
+    Pregnancy,
+)
 from minerva.ecs import Active, GameObject, GameObjectNotFoundError
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.relationships.base_types import Relationship, RelationshipManager
@@ -28,7 +37,7 @@ def _sign(num: Union[int, float]) -> str:
 def _title_section(obj: GameObject) -> str:
     """Return string output for the section containing general GameObject data."""
 
-    name_line = f"|| {obj.name} ||"
+    name_line = f"|| {obj.name_with_uid} ||"
     frame_top_bottom = "=" * len(name_line)
 
     output = [
@@ -101,14 +110,170 @@ def _character_section(obj: GameObject) -> str:
     if character is None:
         return ""
 
+    mother = character.mother.name_with_uid if character.mother else "N/A"
+    father = character.father.name_with_uid if character.father else "N/A"
+    spouse = character.spouse.name_with_uid if character.spouse else "N/A"
+    lover = character.lover.name_with_uid if character.lover else "N/A"
+    heir = character.heir.name_with_uid if character.heir else "N/A"
+    heir_to = character.heir_to.name_with_uid if character.heir_to else "N/A"
+
+    biological_father = (
+        character.biological_father.name_with_uid
+        if character.biological_father
+        else "N/A"
+    )
+    family = character.family.name_with_uid if character.family else "N/A"
+    birth_family = (
+        character.birth_family.name_with_uid if character.birth_family else "N/A"
+    )
+    siblings = ", ".join(s.name_with_uid for s in character.siblings)
+    children = ", ".join(s.name_with_uid for s in character.children)
+    family_roles = ", ".join(
+        str(r.name) for r in FamilyRoleFlags if r in character.family_roles
+    )
+
+    title_list: list[str] = []
+
+    if obj.has_component(Emperor):
+        title_list.append("Emperor")
+
+    if head_of_family_comp := obj.try_component(HeadOfFamily):
+        title_list.append(f"Head of {head_of_family_comp.family.name_with_uid} family")
+
+    titles = ", ".join(title_list)
+
     output = [
         "=== Character ===",
         "",
-        f"Name: {character.full_name!r}",
-        f"Age: {character.age} ({character.life_stage.name})",
+        f"First Name: {character.first_name}",
+        f"Surname: {character.surname}",
+        f"Surname at Birth: {character.birth_surname}",
+        f"Age: {int(character.age)} ({character.life_stage.name})",
+        f"Is Alive: {character.is_alive}",
+        f"Titles: {titles}",
+        f"Birth Date: {character.birth_date}",
+        f"Death Date: {character.death_date}",
         f"Sex: {character.sex.name}",
         f"Species: {character.species.name}",
+        f"Sexual Orientation: {character.sexual_orientation.name}",
+        f"Mother: {mother}",
+        f"Father: {father}",
+        f"Biological Father: {biological_father}",
+        f"Family: {family}",
+        f"Birth Family: {birth_family}",
+        f"Siblings: {siblings}",
+        f"Children: {children}",
+        f"Spouse: {spouse}",
+        f"Lover: {lover}",
+        f"Heir: {heir}",
+        f"Heir To: {heir_to}",
+        f"Family Roles: {family_roles}",
+        f"Influence Points: {int(character.influence_points)}",
     ]
+
+    return "\n".join(output)
+
+
+def _family_section(obj: GameObject) -> str:
+    """Print information about a family component."""
+    family_component = obj.try_component(Family)
+
+    if not family_component:
+        return ""
+
+    parent_family = (
+        family_component.parent_family.name_with_uid
+        if family_component.parent_family
+        else "None"
+    )
+
+    branch_families = ", ".join(
+        f.name_with_uid for f in family_component.branch_families
+    )
+
+    head = family_component.head.name_with_uid if family_component.head else "None"
+
+    former_heads = ", ".join(h.name_with_uid for h in family_component.former_heads)
+
+    active_members = ", ".join(m.name_with_uid for m in family_component.active_members)
+
+    former_members = ", ".join(m.name_with_uid for m in family_component.former_members)
+
+    alliance = (
+        family_component.alliance.name_with_uid if family_component.alliance else "None"
+    )
+
+    home_base = (
+        family_component.home_base.name_with_uid
+        if family_component.home_base
+        else "None"
+    )
+
+    territories = ", ".join(t.name_with_uid for t in family_component.territories)
+
+    warriors = ", ".join(w.name_with_uid for w in family_component.warriors)
+
+    advisors = ", ".join(a.name_with_uid for a in family_component.advisors)
+
+    output: list[str] = [
+        "=== Family ===",
+        "",
+        f"Name: {family_component.name}",
+        f"Parent Family: {parent_family}",
+        f"Branch Families: {branch_families}",
+        f"Head: {head}",
+        f"Former Heads: {former_heads}",
+        f"Active Members: {active_members}",
+        f"Former Members: {former_members}",
+        f"Alliance: {alliance}",
+        f"Home Base: {home_base}",
+        f"Territories: {territories}",
+        f"Warriors: {warriors}",
+        f"Advisors: {advisors}",
+        "",
+    ]
+
+    return "\n".join(output)
+
+
+def _dynasty_section(obj: GameObject) -> str:
+    """Print information about a dynasty component."""
+
+    dynasty_component = obj.try_component(Dynasty)
+
+    if dynasty_component is None:
+        return ""
+
+    output: list[str] = [
+        "=== Dynasty ===",
+        "",
+    ]
+
+    current_ruler = (
+        dynasty_component.current_ruler.name_with_uid
+        if dynasty_component.current_ruler
+        else "None"
+    )
+
+    previous_rulers = ", ".join(
+        r.name_with_uid for r in dynasty_component.previous_rulers
+    )
+
+    previous_dynasty = (
+        dynasty_component.previous_dynasty.name_with_uid
+        if dynasty_component.previous_dynasty
+        else "None"
+    )
+
+    output.append(f"Current Ruler: {current_ruler}")
+    output.append(f"Founder: {dynasty_component.founder.name_with_uid}")
+    output.append(f"Family: {dynasty_component.family.name_with_uid}")
+    output.append(f"Founding Date: {dynasty_component.founding_date}")
+    output.append(f"Ending Date: {dynasty_component.ending_date}")
+    output.append(f"Previous Rulers: {previous_rulers}")
+    output.append(f"Previous Dynasty: {previous_dynasty}")
+
+    output.append("")
 
     return "\n".join(output)
 
@@ -123,8 +288,8 @@ def _relationship_section(obj: GameObject) -> str:
 
     output = "=== Relationship ===\n"
     output += "\n"
-    output += f"Owner: {relationship.owner.name}\n"
-    output += f"Target: {relationship.target.name}\n"
+    output += f"Owner: {relationship.owner.name_with_uid}\n"
+    output += f"Target: {relationship.target.name_with_uid}\n"
 
     return output
 
@@ -187,7 +352,7 @@ def _get_personal_history_table(obj: GameObject) -> str:
         return ""
 
     event_data: list[tuple[str, str]] = [
-        (str(event.timestamp), str(event)) for event in history.history
+        (str(event.timestamp), event.get_description()) for event in history.history
     ]
 
     output = "=== Event History ===\n\n"
@@ -196,6 +361,8 @@ def _get_personal_history_table(obj: GameObject) -> str:
         event_data,
         headers=("Timestamp", "Description"),
     )
+
+    output += "\n"
 
     return output
 
@@ -290,6 +457,8 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("settlement", _settlement_section),
     ("relationship", _relationship_section),
     ("character", _character_section),
+    ("family", _family_section),
+    ("dynasty", _dynasty_section),
     ("stats", _get_stats_table),
     ("traits", _get_traits_table),
     ("pregnancy", _pregnancy_section),
@@ -351,6 +520,7 @@ class SimulationInspector:
 
         print(output)
 
+        self.list_dynasties()
         self.list_settlements()
         self.list_families()
 
@@ -382,6 +552,67 @@ class SimulationInspector:
 
         print(combined_output)
 
+    def list_dynasties(self) -> None:
+        """Print information about the current dynasty."""
+        dynasty_tracker = self.sim.world.resources.get_resource(DynastyTracker)
+
+        output: list[str] = [
+            "=== Current Dynasty ===",
+            "",
+        ]
+
+        if dynasty_tracker.current_dynasty is None:
+            output.append("No Current Dynasty")
+
+        else:
+            dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
+
+            current_ruler = (
+                dynasty_component.current_ruler.name_with_uid
+                if dynasty_component.current_ruler
+                else "None"
+            )
+
+            previous_rulers = ", ".join(
+                r.name_with_uid for r in dynasty_component.previous_rulers
+            )
+
+            previous_dynasty = (
+                dynasty_component.previous_dynasty.name_with_uid
+                if dynasty_component.previous_dynasty
+                else "None"
+            )
+
+            output.append(f"Current Ruler: {current_ruler}")
+            output.append(f"Founder: {dynasty_component.founder.name_with_uid}")
+            output.append(f"Family: {dynasty_component.family.name_with_uid}")
+            output.append(f"Founding Date: {dynasty_component.founding_date}")
+            output.append(f"Previous Rulers: {previous_rulers}")
+            output.append(f"Previous Dynasty: {previous_dynasty}")
+
+        output.append("")
+        output.append("=== Previous Dynasties ===")
+        output.append("")
+
+        dynasties = [
+            (
+                uid,
+                dynasty.family.name_with_uid,
+                dynasty.founding_date,
+                dynasty.ending_date,
+            )
+            for uid, (dynasty,) in self.sim.world.get_components((Dynasty,))
+            if dynasty.ending_date
+        ]
+
+        table = tabulate.tabulate(
+            dynasties, headers=["UID", "Family", "Start Date", "End Date"]
+        )
+
+        output.append(table)
+        output.append("")
+        print("\n".join(output))
+
     def list_settlements(self) -> None:
         """Print the list of settlements in the simulation."""
         settlements = [
@@ -395,6 +626,7 @@ class SimulationInspector:
 
         # Display as a table the object ID, Display Name, Description
         output = "=== Settlements ===\n"
+        output += "\n"
         output += table
         output += "\n"
 
@@ -433,6 +665,7 @@ class SimulationInspector:
 
         # Display as a table the object ID, Display Name, Description
         output = "=== Characters ===\n"
+        output += "\n"
         output += table
         output += "\n"
 
@@ -469,6 +702,7 @@ class SimulationInspector:
         )
 
         output = "=== Families ===\n"
+        output += "\n"
         output += table
         output += "\n"
 

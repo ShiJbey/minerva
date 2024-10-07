@@ -145,6 +145,9 @@ class Simulation:
             minerva.systems.FallbackFamilySuccessionSystem(),
         )
         self.world.systems.add_system(
+            minerva.systems.FallbackEmperorSuccessionSystem(),
+        )
+        self.world.systems.add_system(
             minerva.systems.EmptyFamilyCleanUpSystem(),
         )
         self.world.systems.add_system(
@@ -164,6 +167,21 @@ class Simulation:
         )
         self.world.systems.add_system(
             minerva.systems.InfluencePointGainSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.PlaceholderMarriageSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.PregnancyPlaceHolderSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.ChildBirthSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.TakeOverProvincePlaceholderSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.ProvinceInfluencePointBoostSystem(),
         )
 
     def initialize_logging(self) -> None:

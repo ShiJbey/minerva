@@ -15,6 +15,8 @@ DROP TABLE IF EXISTS romantic_affairs;
 DROP TABLE IF EXISTS life_events;
 DROP TABLE IF EXISTS life_stage_change_events;
 DROP TABLE IF EXISTS death_events;
+DROP TABLE IF EXISTS marriage_events;
+DROP TABLE IF EXISTS pregnancy_events;
 DROP TABLE IF EXISTS rulers;
 DROP TABLE IF EXISTS dynasties;
 DROP TABLE IF EXISTS betrothals;
@@ -184,6 +186,42 @@ CREATE TABLE death_events (
     timestamp TEXT,
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE marriage_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    spouse_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (spouse_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE pregnancy_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE born_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE give_birth_events (
+    event_id INT NOT NULL PRIMARY KEY,
+    character_id INT,
+    child_id INT,
+    timestamp TEXT,
+    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
+    FOREIGN KEY (character_id) REFERENCES characters(uid),
+    FOREIGN KEY (child_id) REFERENCES characters(uid)
 );
 
 CREATE TABLE rulers (

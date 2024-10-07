@@ -34,8 +34,9 @@ from minerva.characters.succession_helpers import (
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Event, GameObject
 from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
-from minerva.relationships.helpers import deactivate_relationships
+from minerva.relationships.helpers import deactivate_relationships, get_relationship
 from minerva.sim_db import SimDB
+from minerva.traits.helpers import add_trait
 from minerva.world_map.components import Settlement
 from minerva.world_map.helpers import set_settlement_controlling_family
 
@@ -161,6 +162,7 @@ def set_character_family(
         return
 
     if character_component.family is not None:
+        unassign_family_member_from_all_roles(character_component.family, character)
         former_family = character_component.family
         family_component = former_family.get_component(Family)
         family_component.active_members.remove(character)
@@ -300,11 +302,7 @@ def remove_character_from_play(character: GameObject) -> None:
             BecameFamilyHeadEvent(heir, family).dispatch()
 
     if _ := character.try_component(Emperor):
-        # Perform succession
-        if heir is not None:
-            set_current_ruler(world, heir)
-        else:
-            set_current_ruler(world, None)
+        set_current_ruler(world, heir)
 
     character_component = character.get_component(Character)
 
@@ -724,6 +722,9 @@ def set_character_mother(character: GameObject, mother: Optional[GameObject]) ->
 
     db.commit()
 
+    if mother:
+        add_trait(get_relationship(character, mother), "parent")
+
 
 def set_character_heir(character: GameObject, heir: Optional[GameObject]) -> None:
     """Set the heir of a character."""
@@ -771,6 +772,9 @@ def set_character_father(character: GameObject, father: Optional[GameObject]) ->
     )
 
     db.commit()
+
+    if father:
+        add_trait(get_relationship(character, father), "parent")
 
 
 def set_character_biological_father(
@@ -833,7 +837,7 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
         INSERT INTO marriages (uid, character_id, spouse_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (a_to_b.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
+        (a_to_b.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
     )
 
     b_to_a = world.gameobjects.spawn_gameobject(
@@ -847,10 +851,13 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
         INSERT INTO marriages (uid, character_id, spouse_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (b_to_a.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
+        (b_to_a.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
     )
 
     db.commit()
+
+    add_trait(get_relationship(character_a, character_b), "spouse")
+    add_trait(get_relationship(character_b, character_a), "spouse")
 
 
 def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
@@ -926,6 +933,9 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
 
     db.commit()
 
+    add_trait(get_relationship(character_a, character_b), "ex_spouse")
+    add_trait(get_relationship(character_b, character_a), "ex_spouse")
+
 
 def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
     """Start a romantic affair between two characters."""
@@ -988,6 +998,9 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
     )
 
     db.commit()
+
+    add_trait(get_relationship(character_a, character_b), "lover")
+    add_trait(get_relationship(character_b, character_a), "lover")
 
 
 def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
@@ -1058,6 +1071,9 @@ def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> Non
 
     db.commit()
 
+    add_trait(get_relationship(character_a, character_b), "ex_lover")
+    add_trait(get_relationship(character_b, character_a), "ex_lover")
+
 
 def set_character_alive(character: GameObject, is_alive: bool) -> None:
     """Set is_alive status of a character."""
@@ -1098,6 +1114,8 @@ def set_relation_sibling(character: GameObject, sibling: GameObject) -> None:
 
     db.commit()
 
+    add_trait(get_relationship(character, sibling), "sibling")
+
 
 def set_relation_child(character: GameObject, child: GameObject) -> None:
     """Set a character as being a child to the first."""
@@ -1114,3 +1132,5 @@ def set_relation_child(character: GameObject, child: GameObject) -> None:
     )
 
     db.commit()
+
+    add_trait(get_relationship(character, child), "child")
