@@ -23,6 +23,21 @@ def get_settlement_influence(
     return influence
 
 
+def increment_political_influence(
+    territory: GameObject,
+    family: GameObject,
+    amount: int,
+) -> None:
+    """Get the political influence of a family over a given territory."""
+
+    territory_component = territory.get_component(Settlement)
+
+    if family not in territory_component.political_influence:
+        territory_component.political_influence[family] = 0
+
+    territory_component.political_influence[family] += amount
+
+
 def set_settlement_controlling_family(
     settlement: GameObject, family: Optional[GameObject]
 ) -> None:
@@ -38,7 +53,7 @@ def set_settlement_controlling_family(
 
     if family is not None:
         family_component = family.get_component(Family)
-        family_component.territories.append(settlement)
+        family_component.territories.add(settlement)
         settlement_component.controlling_family = family
 
     db = settlement.world.resources.get_resource(SimDB).db

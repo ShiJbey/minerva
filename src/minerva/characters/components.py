@@ -408,7 +408,7 @@ class Family(Component):
     """The alliance this family belongs to."""
     home_base: Optional[GameObject]
     """The settlement this family belongs to."""
-    territories: list[GameObject]
+    territories: OrderedSet[GameObject]
     """The settlements this family has control over."""
     active_members: OrderedSet[GameObject]
     """Characters actively a part of this family."""
@@ -440,7 +440,7 @@ class Family(Component):
         self.head = None
         self.alliance = None
         self.home_base = None
-        self.territories = []
+        self.territories = OrderedSet([])
         self.active_members = OrderedSet([])
         self.former_members = OrderedSet([])
         self.warriors = OrderedSet([])

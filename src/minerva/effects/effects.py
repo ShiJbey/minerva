@@ -152,7 +152,7 @@ class AddRelationshipModifierFactory(EffectFactory):
                 error_dict = exc.errors()[0]
                 if error_dict["type"] == "missing":
                     print(
-                        f"ERROR: Missing required field '{error_dict["loc"][0]}' "
+                        f"ERROR: Missing required field '{error_dict['loc'][0]}' "
                         f"for {stat_name} stat modifier in '{AddRelationshipModifier}' "
                     )
                     sys.exit(1)

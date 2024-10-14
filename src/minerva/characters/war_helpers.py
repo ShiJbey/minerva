@@ -77,6 +77,36 @@ def start_alliance(*families: GameObject) -> GameObject:
     return alliance
 
 
+def join_alliance(alliance: GameObject, family: GameObject) -> None:
+    """Add a family to an alliance."""
+    alliance_component = alliance.get_component(Alliance)
+    family_component = family.get_component(Family)
+
+    if family_component.alliance is not None:
+        raise RuntimeError("Family cannot belong to more than one alliance.")
+
+    if family in alliance_component.member_families:
+        raise RuntimeError("Family is already a a member of this alliance.")
+
+    family_component.alliance = alliance
+    alliance_component.member_families.add(family)
+
+    world = alliance.world
+    current_date = world.resources.get_resource(SimDate)
+    db = world.resources.get_resource(SimDB).db
+    cursor = db.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO alliance_members (family_id, alliance_id, date_joined)
+        VALUES (?, ?, ?);
+        """,
+        (family.uid, alliance.uid, current_date.to_iso_str()),
+    )
+
+    db.commit()
+
+
 def end_alliance(alliance: GameObject) -> None:
     """End an existing alliance between families."""
 

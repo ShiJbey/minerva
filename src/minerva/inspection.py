@@ -346,13 +346,13 @@ def _get_traits_table(obj: GameObject) -> str:
 
 def _get_personal_history_table(obj: GameObject) -> str:
     """Generate a string table for a PersonalEventHistory component."""
-    history = obj.try_component(LifeEventHistory)
+    life_event_history = obj.try_component(LifeEventHistory)
 
-    if history is None:
+    if life_event_history is None:
         return ""
 
     event_data: list[tuple[str, str]] = [
-        (str(event.timestamp), event.get_description()) for event in history.history
+        (str(event.timestamp), event.get_description()) for event in life_event_history.history
     ]
 
     output = "=== Event History ===\n\n"

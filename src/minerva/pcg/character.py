@@ -9,6 +9,13 @@ from typing import Optional, Union
 from ordered_set import OrderedSet
 
 from minerva import constants
+from minerva.actions.base_types import AIBrain, AIContext
+from minerva.actions.behavior_helpers import (
+    TerritoriesControlledByOpps,
+    TerritoriesInRevoltSensor,
+    UnControlledTerritoriesSensor,
+    UnexpandedTerritoriesSensor,
+)
 from minerva.characters.betrothal_data import BetrothalTracker
 from minerva.characters.components import (
     Boldness,
@@ -305,6 +312,20 @@ def generate_character(
     obj.add_component(MarriageTracker())
     obj.add_component(RomanticAffairTracker())
     obj.add_component(BetrothalTracker())
+    obj.add_component(
+        AIBrain(
+            AIContext(
+                world,
+                character=obj,
+                sensors={
+                    "territories_in_revolt": TerritoriesInRevoltSensor(),
+                    "unexpanded_territories": UnexpandedTerritoriesSensor(),
+                    "uncontrolled_territories": UnControlledTerritoriesSensor(),
+                    "opp_controlled_territories": TerritoriesControlledByOpps(),
+                },
+            )
+        )
+    )
 
     # Create all the stat components and add them to the stats class for str look-ups
     obj.add_component(
@@ -603,10 +624,12 @@ def generate_initial_families(world: World) -> None:
         if unassigned_settlements:
             home_base = unassigned_settlements.pop()
             set_settlement_controlling_family(home_base, family)
-            set_family_home_base(family, home_base)
-            continue
+        else:
+            home_base = rng.choice(settlements)
 
         set_family_home_base(family, rng.choice(settlements))
+        family_component = family.get_component(Family)
+        family_component.territories.add(home_base)
 
 
 def _generate_initial_families(world: World) -> list[GameObject]:

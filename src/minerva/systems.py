@@ -7,9 +7,13 @@ from typing import Callable, ClassVar, Optional
 from ordered_set import OrderedSet
 
 from minerva import constants
-from minerva.actions.actions import Die
-from minerva.actions.base_types import AIBehaviorLibrary, IAIBehavior
-from minerva.actions.behavior_helpers import get_behavior_utility
+from minerva.actions.actions import DieAction
+from minerva.actions.base_types import (
+    AIBehavior,
+    AIBehaviorCollection,
+    AIBehaviorLibrary,
+    AIBrain,
+)
 from minerva.characters.components import (
     Character,
     Diplomacy,
@@ -43,7 +47,6 @@ from minerva.characters.helpers import (
     set_relation_sibling,
     start_marriage,
 )
-from minerva.characters.motive_helpers import get_character_motives
 from minerva.characters.succession_helpers import (
     SuccessionChartCache,
     get_succession_depth_chart,
@@ -199,11 +202,11 @@ class CharacterLifespanSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (character, life_span, _) in world.get_components(
-            (Character, Lifespan, Active)
+        for _, (character, brain, life_span, _) in world.get_components(
+            (Character, AIBrain, Lifespan, Active)
         ):
             if character.age >= life_span.value:
-                Die(character.gameobject).execute()
+                DieAction(brain.context).execute()
 
 
 class SuccessionDepthChartUpdateSystem(System):
@@ -296,6 +299,15 @@ class CharacterBehaviorSystem(System):
         rng = world.resources.get_resource(random.Random)
         behavior_library = world.resources.get_resource(AIBehaviorLibrary)
 
+        selection_strategy_map = {
+            "max": CharacterBehaviorSystem.select_max_utility,
+            "weighted": CharacterBehaviorSystem.select_weighted_random,
+        }
+
+        selection_strategy_fn: Callable[[AIBehaviorCollection], AIBehavior] = (
+            selection_strategy_map[constants.BEHAVIOR_SELECTION_STRATEGY]
+        )
+
         family_heads = [
             world.gameobjects.get_gameobject(uid)
             for uid, _ in world.get_components((HeadOfFamily, Active))
@@ -316,22 +328,32 @@ class CharacterBehaviorSystem(System):
 
         for character in acting_order:
             if character.is_active:
-                character_motives = get_character_motives(character)
-                potential_behaviors: list[IAIBehavior] = []
-                behavior_scores: list[float] = []
+                behaviors = AIBehaviorCollection(rng)
+                brain = character.get_component(AIBrain)
+                brain.context.update_sensors()
+
                 for behavior in behavior_library.iter_behaviors():
                     if behavior.passes_preconditions(character):
-                        _, utility = get_behavior_utility(character_motives, behavior)
-                        if utility >= BEHAVIOR_UTILITY_THRESHOLD:
-                            potential_behaviors.append(behavior)
-                            behavior_scores.append(utility)
+                        utility = behavior.calculate_utility(character)
+                        if utility >= BEHAVIOR_UTILITY_THRESHOLD and utility > 0:
+                            behaviors.add(behavior, utility)
 
-                if behavior_scores:
-                    selected_behavior = rng.choices(
-                        potential_behaviors, behavior_scores, k=1
-                    )[0]
+                if len(behaviors) > 0:
+                    selected_behavior = selection_strategy_fn(behaviors)
 
                     selected_behavior.execute(character)
+
+                brain.context.clear_sensors()
+
+    @staticmethod
+    def select_max_utility(behaviors: AIBehaviorCollection) -> AIBehavior:
+        """Select the behavior with the highest utility."""
+        return behaviors.select_max()
+
+    @staticmethod
+    def select_weighted_random(behaviors: AIBehaviorCollection) -> AIBehavior:
+        """Select behavior using weighted random, where utilities are weights."""
+        return behaviors.select_weighted_random()
 
 
 class FamilyRoleSystem(System):

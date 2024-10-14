@@ -16,19 +16,6 @@ I started this project as a fork of Neighborly because I felt that Neighborly wa
 >
 > It does not have any releases yet. Most of the simulation infrastructure is built. I still need to create all the various character behaviors and some associated systems. I will try to always keep the samples functional. However, you may notice breaking changes between updates.
 
-## 🔎 The Research Problem: Finding Emergent Story Entry Points
-
-Simulation games like Dwarf Fortress or Crusader Kings III often do not have central pre-authored narratives for players to follow. Instead they provide a play space for players to craft their own stories as the game progresses. Game designers might provide various hooks or "narrative entry points" (in-game events, special characters, storylets) as catalysts for players to further engage the lore of the world and build stories about their experiences/discoveries.
-
-A current design challenge in  simulationist interactive storytelling (telling stories using simulations or simulation techniques), is identifying and communicating narrative entry points that emerge organically from the interplay between a game's systems and mechanics. For example, in Dwarf Fortress, a narrative entry point might be discovering a cool artifact in adventure mode and tracing the history of its maker. In Minerva, a narrative entry point might be finding a ruler who is a descendent of a defunct family that once ruled the land.
-
-Minerva is rather simple simulation compared to some commercial games. So, I use it to generate data for research on developing novel techniques for game designers to detect and monitor emergent narrative entry points.
-
-### References
-
-- Ryan, James. Curating simulated storyworlds. University of California, Santa Cruz, 2018.
-- Lessard, Jonathan, and Antoine Beauchesne. "Automatic Interactive Documentation for Emergent Story Discovery." Proceedings of the 17th International Conference on the Foundations of Digital Games. 2022.
-
 ## 🚀 How Does Minerva Work?
 
 Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories.

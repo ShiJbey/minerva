@@ -2,54 +2,60 @@
 
 from __future__ import annotations
 
-from minerva.actions.base_types import Action
+from minerva.actions.base_types import (
+    AIAction,
+    AIActionLibrary,
+    AIActionType,
+    AIContext,
+)
 from minerva.characters.helpers import remove_character_from_play, set_character_alive
 from minerva.ecs import GameObject
 from minerva.life_events.aging import CharacterDeathEvent
 
 
-class GetMarried(Action["GetMarried"]):
+class GetMarriedActionType(AIActionType):
     """Two characters get married."""
 
-    __slot__ = ("initiator", "partner")
-
-    initiator: GameObject
-    partner: GameObject
-
-    def __init__(self, initiator: GameObject, partner: GameObject) -> None:
-        super().__init__(world=initiator.world)
-        self.initiator = initiator
-        self.partner = partner
-
-    def execute(self) -> bool:
+    def execute(self, context: AIContext) -> bool:
+        # Do nothing
         return True
 
 
-@GetMarried.consideration
-def marriage_empty_consideration(action: Action[GetMarried]) -> float:
-    """Empty marriage consideration"""
-    assert action.data.initiator
-    return 1.0
+class GetMarriedAction(AIAction):
+    """An instance of a get married action."""
+
+    def __init__(self, context: AIContext, partner: GameObject) -> None:
+        action_library = context.world.resources.get_resource(AIActionLibrary)
+        super().__init__(
+            context, action_library.get_action_with_name(GetMarriedActionType.__name__)
+        )
+        self.context = context.copy()
+        self.context.blackboard["partner"] = partner
 
 
-class Die(Action["Die"]):
+class DieActionType(AIActionType):
     """A character dies."""
 
-    __slots__ = ("character",)
-
-    character: GameObject
-
-    def __init__(self, character: GameObject) -> None:
-        super().__init__(world=character.world)
-        self.character = character
-
-    def execute(self) -> bool:
+    def execute(self, context: AIContext) -> bool:
         """Have a character die."""
-        set_character_alive(self.character, False)
-        self.character.deactivate()
+        character = context.character
 
-        CharacterDeathEvent(self.character).dispatch()
+        set_character_alive(character, False)
+        character.deactivate()
 
-        remove_character_from_play(self.character)
+        CharacterDeathEvent(character).dispatch()
+
+        remove_character_from_play(character)
 
         return True
+
+
+class DieAction(AIAction):
+    """Instance of an action where a character dies."""
+
+    def __init__(self, context: AIContext) -> None:
+        action_library = context.world.resources.get_resource(AIActionLibrary)
+        super().__init__(
+            context, action_library.get_action_with_name(DieActionType.__name__)
+        )
+        self.context = context.copy()

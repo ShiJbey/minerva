@@ -8,8 +8,24 @@ import random
 import sqlite3
 from typing import Optional
 
+import minerva.actions.behaviors as behaviors
 import minerva.systems
-from minerva.actions.base_types import AIBehaviorLibrary
+from minerva.actions.actions import DieActionType, GetMarriedActionType
+from minerva.actions.base_types import (
+    AIActionLibrary,
+    AIBehaviorLibrary,
+    AIConsiderationGroupOp,
+    AIPreconditionGroup,
+    AIUtilityConsiderationGroup,
+    ConstantPrecondition,
+    ConstantSuccessConsideration,
+    ConstantUtilityConsideration,
+)
+from minerva.actions.behavior_helpers import (
+    BehaviorCostPrecondition,
+    HasTerritoriesInRevolt,
+    IsFamilyHeadPrecondition,
+)
 from minerva.businesses.data import BusinessLibrary, OccupationLibrary
 from minerva.characters.components import (
     DynastyTracker,
@@ -18,6 +34,7 @@ from minerva.characters.components import (
     SexualOrientation,
     SpeciesLibrary,
 )
+from minerva.characters.motive_helpers import MotiveVector
 from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.config import Config
 from minerva.datetime import SimDate
@@ -83,6 +100,7 @@ class Simulation:
         self.initialize_systems()
         self.initialize_logging()
         self.initialize_database()
+        self.initialize_actions()
 
     def initialize_resources(self) -> None:
         """Initialize built-in resources."""
@@ -100,6 +118,7 @@ class Simulation:
         self._world.resources.add_resource(SuccessionChartCache())
         self._world.resources.add_resource(AIBehaviorLibrary())
         self._world.resources.add_resource(DynastyTracker())
+        self._world.resources.add_resource(AIActionLibrary())
 
         effect_lib = EffectLibrary()
         self._world.resources.add_resource(effect_lib)
@@ -178,10 +197,270 @@ class Simulation:
             minerva.systems.ChildBirthSystem(),
         )
         self.world.systems.add_system(
-            minerva.systems.TakeOverProvincePlaceholderSystem(),
-        )
-        self.world.systems.add_system(
             minerva.systems.ProvinceInfluencePointBoostSystem(),
+        )
+
+    def initialize_actions(self) -> None:
+        """Initialize actions."""
+        action_library = self.world.resources.get_resource(AIActionLibrary)
+
+        action_library.add_action(
+            DieActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        action_library.add_action(
+            GetMarriedActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(False),
+            )
+        )
+
+        action_library.add_action(
+            behaviors.GiveBackToTerritoryActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        action_library.add_action(
+            behaviors.QuellRevoltActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        action_library.add_action(
+            behaviors.SeizeTerritoryActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        action_library.add_action(
+            behaviors.ExpandIntoTerritoryActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        action_library.add_action(
+            behaviors.StartWarSchemeActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        behavior_library = self.world.resources.get_resource(AIBehaviorLibrary)
+
+        behavior_library.add_behavior(
+            behaviors.IdleBehavior(
+                motives=MotiveVector(),
+                cost=0,
+                precondition=AIPreconditionGroup(
+                    [
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.IncreasePoliticalPower(
+                motives=MotiveVector(),
+                cost=200,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.QuellRevolt(
+                motives=MotiveVector(),
+                cost=300,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                        HasTerritoriesInRevolt(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.MAX,
+                    considerations=[
+                        ConstantUtilityConsideration(0.6),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.TaxTerritory(
+                motives=MotiveVector(),
+                cost=50,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                        HasTerritoriesInRevolt(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.MAX,
+                    considerations=[
+                        ConstantUtilityConsideration(0.6),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.ExpandPoliticalDomain(
+                motives=MotiveVector(),
+                cost=500,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.SeizeControlOfTerritory(
+                motives=MotiveVector(),
+                cost=500,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.FormAlliance(
+                motives=MotiveVector(),
+                cost=500,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.JoinAllianceScheme(
+                motives=MotiveVector(),
+                cost=500,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.JoinExistingAlliance(
+                motives=MotiveVector(),
+                cost=500,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.DisbandAlliance(
+                motives=MotiveVector(),
+                cost=500,
+                precondition=AIPreconditionGroup(
+                    [
+                        IsFamilyHeadPrecondition(),
+                        BehaviorCostPrecondition(),
+                    ]
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        # BehaviorMotiveConsideration(),
+                    ],
+                ),
+            )
         )
 
     def initialize_logging(self) -> None:

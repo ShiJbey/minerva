@@ -89,7 +89,7 @@ def load_species_types(
             error_dict = exc.errors()[0]
             if error_dict["type"] == "missing":
                 print(
-                    f"ERROR: Missing required field '{error_dict["loc"][0]}' "
+                    f"ERROR: Missing required field '{error_dict['loc'][0]}' "
                     f"for species type '{definition_id}' "
                     f"in '{filepath}'."
                 )
@@ -112,7 +112,7 @@ def load_social_rules(
             error_dict = exc.errors()[0]
             if error_dict["type"] == "missing":
                 print(
-                    f"ERROR: Missing required field '{error_dict["loc"][0]}' "
+                    f"ERROR: Missing required field '{error_dict['loc'][0]}' "
                     f"for social rule '{entry['rule_id']}' "
                     f"in '{filepath}'."
                 )
@@ -144,7 +144,7 @@ def load_traits(sim: Simulation, filepath: Union[os.PathLike[str], str, bytes]) 
             error_dict = exc.errors()[0]
             if error_dict["type"] == "missing":
                 print(
-                    f"ERROR: Missing required field '{error_dict["loc"][0]}' "
+                    f"ERROR: Missing required field '{error_dict['loc'][0]}' "
                     f"for trait type '{trait_id}' "
                     f"in '{filepath}'."
                 )
@@ -177,7 +177,7 @@ def load_businesses_types(
             error_dict = exc.errors()[0]
             if error_dict["type"] == "missing":
                 print(
-                    f"ERROR: Missing required field '{error_dict["loc"][0]}' "
+                    f"ERROR: Missing required field '{error_dict['loc'][0]}' "
                     f"for business type '{business_id}' "
                     f"in '{filepath}'."
                 )
@@ -210,7 +210,7 @@ def load_occupation_types(
             error_dict = exc.errors()[0]
             if error_dict["type"] == "missing":
                 print(
-                    f"ERROR: Missing required field '{error_dict["loc"][0]}' "
+                    f"ERROR: Missing required field '{error_dict['loc'][0]}' "
                     f"for occupation type '{entry_id}' "
                     f"in '{filepath}'."
                 )
