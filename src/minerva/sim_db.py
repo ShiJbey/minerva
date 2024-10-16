@@ -24,6 +24,9 @@ DROP TABLE IF EXISTS alliances;
 DROP TABLE IF EXISTS alliance_members;
 DROP TABLE IF EXISTS wars;
 DROP TABLE IF EXISTS war_participants;
+DROP TABLE IF EXISTS schemes;
+DROP TABLE IF EXISTS scheme_members;
+DROP TABLE IF EXISTS scheme_targets;
 
 CREATE TABLE characters (
     uid INT NOT NULL PRIMARY KEY,
@@ -288,6 +291,31 @@ CREATE TABLE war_participants (
     date_joined TEXT,
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (war_id) REFERENCES wars(uid)
+);
+
+CREATE TABLE schemes (
+    uid INT PRIMARY KEY,
+    scheme_type TEXT,
+    start_date TEXT,
+    initiator_id INT,
+    description TEXT,
+    FOREIGN KEY (initiator_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE scheme_members (
+    scheme_id INT,
+    member_id INT,
+    PRIMARY KEY (scheme_id, member_id),
+    FOREIGN KEY (scheme_id) REFERENCES schemes(uid),
+    FOREIGN KEY (member_id) REFERENCES characters(uid)
+);
+
+CREATE TABLE scheme_targets (
+    scheme_id INT,
+    target_id INT,
+    PRIMARY KEY (scheme_id, target_id),
+    FOREIGN KEY (scheme_id) REFERENCES schemes(uid),
+    FOREIGN KEY (target_id) REFERENCES characters(uid)
 );
 """
 

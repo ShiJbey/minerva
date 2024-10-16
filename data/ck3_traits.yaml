@@ -293,9 +293,9 @@ diligent:
     - type: AddStatModifier
       stat: Stewardship
       value: 25
-    - type: AddStatModifier
-      stat: WantToWork
-      value: 25
+    # - type: AddStatModifier
+    #   stat: WantToWork
+    #   value: 25
     - type: AddRelationshipModifier
       direction: incoming
       effects:
@@ -335,9 +335,9 @@ lazy:
     - type: AddStatModifier
       stat: Stewardship
       value: -15
-    - type: AddStatModifier
-      stat: WantToWork
-      value: -25
+    # - type: AddStatModifier
+    #   stat: WantToWork
+    #   value: -25
     - type: AddStatModifier
       stat: Sociability
       value: -15

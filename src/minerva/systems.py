@@ -10,10 +10,11 @@ from minerva import constants
 from minerva.actions.actions import DieAction
 from minerva.actions.base_types import (
     AIBehavior,
-    AIBehaviorCollection,
     AIBehaviorLibrary,
     AIBrain,
+    Scheme,
 )
+from minerva.actions.scheme_helpers import destroy_scheme
 from minerva.characters.components import (
     Character,
     Diplomacy,
@@ -65,7 +66,6 @@ from minerva.life_events.events import (
     GiveBirthEvent,
     MarriageEvent,
     PregnancyEvent,
-    TakeOverProvinceEvent,
 )
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.character import generate_child_from
@@ -299,15 +299,6 @@ class CharacterBehaviorSystem(System):
         rng = world.resources.get_resource(random.Random)
         behavior_library = world.resources.get_resource(AIBehaviorLibrary)
 
-        selection_strategy_map = {
-            "max": CharacterBehaviorSystem.select_max_utility,
-            "weighted": CharacterBehaviorSystem.select_weighted_random,
-        }
-
-        selection_strategy_fn: Callable[[AIBehaviorCollection], AIBehavior] = (
-            selection_strategy_map[constants.BEHAVIOR_SELECTION_STRATEGY]
-        )
-
         family_heads = [
             world.gameobjects.get_gameobject(uid)
             for uid, _ in world.get_components((HeadOfFamily, Active))
@@ -328,7 +319,7 @@ class CharacterBehaviorSystem(System):
 
         for character in acting_order:
             if character.is_active:
-                behaviors = AIBehaviorCollection(rng)
+                behaviors: list[AIBehavior] = []
                 brain = character.get_component(AIBrain)
                 brain.context.update_sensors()
 
@@ -336,24 +327,18 @@ class CharacterBehaviorSystem(System):
                     if behavior.passes_preconditions(character):
                         utility = behavior.calculate_utility(character)
                         if utility >= BEHAVIOR_UTILITY_THRESHOLD and utility > 0:
-                            behaviors.add(behavior, utility)
+                            behaviors.append(behavior)
 
                 if len(behaviors) > 0:
-                    selected_behavior = selection_strategy_fn(behaviors)
+                    selected_behavior = (
+                        brain.behavior_selection_strategy.choose_behavior(
+                            character, behaviors
+                        )
+                    )
 
                     selected_behavior.execute(character)
 
                 brain.context.clear_sensors()
-
-    @staticmethod
-    def select_max_utility(behaviors: AIBehaviorCollection) -> AIBehavior:
-        """Select the behavior with the highest utility."""
-        return behaviors.select_max()
-
-    @staticmethod
-    def select_weighted_random(behaviors: AIBehaviorCollection) -> AIBehavior:
-        """Select behavior using weighted random, where utilities are weights."""
-        return behaviors.select_weighted_random()
 
 
 class FamilyRoleSystem(System):
@@ -979,40 +964,15 @@ class ChildBirthSystem(System):
             ).dispatch()
 
 
-class TakeOverProvincePlaceholderSystem(System):
-    """Automatically selects a family to take over a province based on influence."""
+class SchemeUpdateSystem(System):
+    """Update all active schemes."""
 
     __system_group__ = "UpdateSystems"
 
     def on_update(self, world: World) -> None:
-        rng = world.resources.get_resource(random.Random)
-        for _, (province, _) in world.get_components((Settlement, Active)):
-            if province.controlling_family is not None:
+        for _, (scheme, _) in world.get_components((Scheme, Active)):
+            if not scheme.is_valid:
+                destroy_scheme(scheme.gameobject)
                 continue
 
-            max_influence_points = -1
-
-            for influence_points in province.political_influence.values():
-                if influence_points > max_influence_points:
-                    max_influence_points = influence_points
-
-            eligible_families: list[GameObject] = []
-
-            for family, influence_points in province.political_influence.items():
-                family_component = family.get_component(Family)
-                if (
-                    influence_points == max_influence_points
-                    and family_component.head is not None
-                ):
-                    eligible_families.append(family)
-
-            if eligible_families:
-                chosen_family = rng.choice(eligible_families)
-                family_component = chosen_family.get_component(Family)
-                set_settlement_controlling_family(province.gameobject, chosen_family)
-                assert family_component.head is not None
-                TakeOverProvinceEvent(
-                    character=family_component.head,
-                    province=province.gameobject,
-                    family=chosen_family,
-                ).dispatch()
+            scheme.update()

@@ -20,11 +20,23 @@ from minerva.actions.base_types import (
     ConstantPrecondition,
     ConstantSuccessConsideration,
     ConstantUtilityConsideration,
+    SchemeStrategyLibrary,
 )
 from minerva.actions.behavior_helpers import (
+    AreAllianceSchemesActive,
+    AreAlliancesActive,
     BehaviorCostPrecondition,
+    DiplomacyConsideration,
+    FamilyInAlliancePrecondition,
+    GreedConsideration,
     HasTerritoriesInRevolt,
+    HonorConsideration,
+    Invert,
     IsFamilyHeadPrecondition,
+    JoinedAllianceScheme,
+    Not,
+    RationalityConsideration,
+    StewardshipConsideration,
 )
 from minerva.businesses.data import BusinessLibrary, OccupationLibrary
 from minerva.characters.components import (
@@ -101,6 +113,8 @@ class Simulation:
         self.initialize_logging()
         self.initialize_database()
         self.initialize_actions()
+        self.initialize_behaviors()
+        self.initialize_schemes()
 
     def initialize_resources(self) -> None:
         """Initialize built-in resources."""
@@ -119,6 +133,7 @@ class Simulation:
         self._world.resources.add_resource(AIBehaviorLibrary())
         self._world.resources.add_resource(DynastyTracker())
         self._world.resources.add_resource(AIActionLibrary())
+        self._world.resources.add_resource(SchemeStrategyLibrary())
 
         effect_lib = EffectLibrary()
         self._world.resources.add_resource(effect_lib)
@@ -199,6 +214,17 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.ProvinceInfluencePointBoostSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.SchemeUpdateSystem(),
+        )
+
+    def initialize_schemes(self) -> None:
+        """Initialize Scheme Strategies."""
+        scheme_library = self.world.resources.get_resource(SchemeStrategyLibrary)
+
+        scheme_library.add_strategy("alliance", behaviors.AllianceScheme(3))
+        scheme_library.add_strategy("war", behaviors.WarScheme(3))
+        scheme_library.add_strategy("coup", behaviors.CoupScheme(3))
 
     def initialize_actions(self) -> None:
         """Initialize actions."""
@@ -260,6 +286,8 @@ class Simulation:
             )
         )
 
+    def initialize_behaviors(self) -> None:
+        """Initialize behaviors."""
         behavior_library = self.world.resources.get_resource(AIBehaviorLibrary)
 
         behavior_library.add_behavior(
@@ -267,15 +295,12 @@ class Simulation:
                 motives=MotiveVector(),
                 cost=0,
                 precondition=AIPreconditionGroup(
-                    [
-                        BehaviorCostPrecondition(),
-                    ]
+                    BehaviorCostPrecondition(),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
-                        # BehaviorMotiveConsideration(),
                     ],
                 ),
             )
@@ -283,19 +308,16 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.IncreasePoliticalPower(
-                motives=MotiveVector(),
+                motives=MotiveVector(power=0.6),
                 cost=200,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
-                        # BehaviorMotiveConsideration(),
                     ],
                 ),
             )
@@ -306,17 +328,16 @@ class Simulation:
                 motives=MotiveVector(),
                 cost=300,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                        HasTerritoriesInRevolt(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    HasTerritoriesInRevolt(),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.MAX,
                     considerations=[
                         ConstantUtilityConsideration(0.6),
-                        # BehaviorMotiveConsideration(),
+                        StewardshipConsideration(),
+                        RationalityConsideration(),
                     ],
                 ),
             )
@@ -327,17 +348,14 @@ class Simulation:
                 motives=MotiveVector(),
                 cost=50,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                        HasTerritoriesInRevolt(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.MAX,
                     considerations=[
-                        ConstantUtilityConsideration(0.6),
-                        # BehaviorMotiveConsideration(),
+                        ConstantUtilityConsideration(0.5),
+                        GreedConsideration(),
                     ],
                 ),
             )
@@ -348,16 +366,14 @@ class Simulation:
                 motives=MotiveVector(),
                 cost=500,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
-                        # BehaviorMotiveConsideration(),
+                        GreedConsideration(),
                     ],
                 ),
             )
@@ -368,16 +384,14 @@ class Simulation:
                 motives=MotiveVector(),
                 cost=500,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
-                        # BehaviorMotiveConsideration(),
+                        GreedConsideration(),
                     ],
                 ),
             )
@@ -388,16 +402,17 @@ class Simulation:
                 motives=MotiveVector(),
                 cost=500,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    Not(FamilyInAlliancePrecondition()),
+                    Not(JoinedAllianceScheme()),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
-                        # BehaviorMotiveConsideration(),
+                        DiplomacyConsideration(),
+                        StewardshipConsideration(),
                     ],
                 ),
             )
@@ -406,17 +421,18 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.JoinAllianceScheme(
                 motives=MotiveVector(),
-                cost=500,
+                cost=0,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    Not(FamilyInAlliancePrecondition()),
+                    AreAllianceSchemesActive(),
+                    Not(JoinedAllianceScheme()),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
-                        ConstantUtilityConsideration(0.5),
+                        ConstantUtilityConsideration(1.0),
                         # BehaviorMotiveConsideration(),
                     ],
                 ),
@@ -426,12 +442,13 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.JoinExistingAlliance(
                 motives=MotiveVector(),
-                cost=500,
+                cost=300,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    Not(FamilyInAlliancePrecondition()),
+                    AreAlliancesActive(),
+                    Not(JoinedAllianceScheme()),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
@@ -448,16 +465,31 @@ class Simulation:
                 motives=MotiveVector(),
                 cost=500,
                 precondition=AIPreconditionGroup(
-                    [
-                        IsFamilyHeadPrecondition(),
-                        BehaviorCostPrecondition(),
-                    ]
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    FamilyInAlliancePrecondition(),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
-                        # BehaviorMotiveConsideration(),
+                        Invert(DiplomacyConsideration()),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.CoupDEtat(
+                motives=MotiveVector(),
+                cost=800,
+                precondition=AIPreconditionGroup(),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.5),
+                        Invert(DiplomacyConsideration()),
+                        Invert(HonorConsideration()),
                     ],
                 ),
             )

@@ -9,12 +9,14 @@ from typing import Optional, Union
 from ordered_set import OrderedSet
 
 from minerva import constants
-from minerva.actions.base_types import AIBrain, AIContext
+from minerva.actions.base_types import AIBrain, AIContext, SchemeManager
 from minerva.actions.behavior_helpers import (
     TerritoriesControlledByOpps,
     TerritoriesInRevoltSensor,
     UnControlledTerritoriesSensor,
     UnexpandedTerritoriesSensor,
+    WeightedActionSelectStrategy,
+    WeightedBehaviorSelectStrategy,
 )
 from minerva.characters.betrothal_data import BetrothalTracker
 from minerva.characters.components import (
@@ -57,7 +59,6 @@ from minerva.characters.components import (
     WantForChildren,
     WantForMarriage,
     WantForPower,
-    WantToWork,
     Zeal,
 )
 from minerva.characters.helpers import (
@@ -314,18 +315,21 @@ def generate_character(
     obj.add_component(BetrothalTracker())
     obj.add_component(
         AIBrain(
-            AIContext(
+            context=AIContext(
                 world,
                 character=obj,
-                sensors={
-                    "territories_in_revolt": TerritoriesInRevoltSensor(),
-                    "unexpanded_territories": UnexpandedTerritoriesSensor(),
-                    "uncontrolled_territories": UnControlledTerritoriesSensor(),
-                    "opp_controlled_territories": TerritoriesControlledByOpps(),
-                },
-            )
+                sensors=[
+                    TerritoriesInRevoltSensor(),
+                    UnexpandedTerritoriesSensor(),
+                    UnControlledTerritoriesSensor(),
+                    TerritoriesControlledByOpps(),
+                ],
+            ),
+            action_selection_strategy=WeightedActionSelectStrategy(rng=rng),
+            behavior_selection_strategy=WeightedBehaviorSelectStrategy(rng=rng),
         )
     )
+    obj.add_component(SchemeManager())
 
     # Create all the stat components and add them to the stats class for str look-ups
     obj.add_component(
@@ -335,27 +339,58 @@ def generate_character(
         )
     )
     obj.add_component(Fertility(default_stat_calc_strategy, base_value=100))
-    obj.add_component(Diplomacy(default_stat_calc_strategy))
-    obj.add_component(Martial(default_stat_calc_strategy))
-    obj.add_component(Stewardship(default_stat_calc_strategy))
-    obj.add_component(Intrigue(default_stat_calc_strategy))
-    obj.add_component(Learning(default_stat_calc_strategy))
-    obj.add_component(Prowess(default_stat_calc_strategy))
-    obj.add_component(Boldness(default_stat_calc_strategy))
-    obj.add_component(Compassion(default_stat_calc_strategy))
-    obj.add_component(Greed(default_stat_calc_strategy))
-    obj.add_component(Honor(default_stat_calc_strategy))
-    obj.add_component(Rationality(default_stat_calc_strategy))
-    obj.add_component(Sociability(default_stat_calc_strategy))
-    obj.add_component(Vengefulness(default_stat_calc_strategy))
-    obj.add_component(Zeal(default_stat_calc_strategy))
-    obj.add_component(Luck(default_stat_calc_strategy))
-    obj.add_component(RomancePropensity(default_stat_calc_strategy))
-    obj.add_component(ViolencePropensity(default_stat_calc_strategy))
-    obj.add_component(WantForPower(default_stat_calc_strategy))
-    obj.add_component(WantForChildren(default_stat_calc_strategy))
-    obj.add_component(WantToWork(default_stat_calc_strategy))
-    obj.add_component(WantForMarriage(default_stat_calc_strategy))
+    obj.add_component(
+        Diplomacy(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Martial(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Stewardship(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Intrigue(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Learning(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Prowess(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Boldness(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Compassion(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(Greed(default_stat_calc_strategy, base_value=rng.randint(0, 80)))
+    obj.add_component(Honor(default_stat_calc_strategy, base_value=rng.randint(0, 80)))
+    obj.add_component(
+        Rationality(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Sociability(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        Vengefulness(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(Zeal(default_stat_calc_strategy, base_value=rng.randint(0, 80)))
+    obj.add_component(Luck(default_stat_calc_strategy, base_value=rng.randint(0, 80)))
+    obj.add_component(
+        RomancePropensity(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        ViolencePropensity(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        WantForPower(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        WantForChildren(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
+    obj.add_component(
+        WantForMarriage(default_stat_calc_strategy, base_value=rng.randint(0, 80))
+    )
     obj.add_component(MoneyMotive(default_stat_calc_strategy))
     obj.add_component(PowerMotive(default_stat_calc_strategy))
     obj.add_component(RespectMotive(default_stat_calc_strategy))

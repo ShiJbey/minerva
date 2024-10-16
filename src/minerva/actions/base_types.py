@@ -18,27 +18,60 @@ from ordered_set import OrderedSet
 from minerva.characters.motive_helpers import MotiveVector
 from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject, World
-from minerva.sim_db import SimDB
+
+
+class ActionSelectionStrategy(ABC):
+    """A utility object that helps AIBrains choose an action to execute."""
+
+    @abstractmethod
+    def choose_action(self, actions: Iterable[AIAction]) -> AIAction:
+        """Select an action from the given collection of actions."""
+        raise NotImplementedError()
+
+
+class BehaviorSelectionStrategy(ABC):
+    """A utility object that helps AIBrains choose a behavior to execute."""
+
+    @abstractmethod
+    def choose_behavior(
+        self, character: GameObject, behaviors: Iterable[AIBehavior]
+    ) -> AIBehavior:
+        """Select a behavior from the given collection of behaviors."""
+        raise NotImplementedError()
 
 
 class AIBrain(Component):
     """A brain used to make choices for a character."""
 
-    __slots__ = ("context",)
+    __slots__ = ("context", "action_selection_strategy", "behavior_selection_strategy")
 
     context: AIContext
+    action_selection_strategy: ActionSelectionStrategy
+    behavior_selection_strategy: BehaviorSelectionStrategy
 
-    def __init__(self, context: AIContext) -> None:
+    def __init__(
+        self,
+        context: AIContext,
+        action_selection_strategy: ActionSelectionStrategy,
+        behavior_selection_strategy: BehaviorSelectionStrategy,
+    ) -> None:
         super().__init__()
         self.context = context
+        self.action_selection_strategy = action_selection_strategy
+        self.behavior_selection_strategy = behavior_selection_strategy
 
 
 class AISensor(ABC):
     """An object that retrieves some world state to help fill AI blackboard."""
 
     @abstractmethod
-    def evaluate(self, context: AIContext) -> Any:
+    def evaluate(self, context: AIContext) -> None:
         """Run the sensor and write to the context's blackboard."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def clear_output(self, context: AIContext) -> None:
+        """Clear the output from the sensor."""
         raise NotImplementedError()
 
 
@@ -50,26 +83,25 @@ class AIContext:
     blackboard: dict[str, Any]
     world: World
     character: GameObject
-    sensors: dict[str, AISensor]
+    sensors: list[AISensor]
 
     def __init__(
-        self, world: World, character: GameObject, sensors: dict[str, AISensor]
+        self, world: World, character: GameObject, sensors: list[AISensor]
     ) -> None:
         self.blackboard = {}
         self.world = world
         self.character = character
-        self.sensors = {**sensors}
+        self.sensors = [*sensors]
 
     def update_sensors(self) -> None:
         """Run all the sensors."""
-        for key, sensor in self.sensors.items():
-            self.blackboard[key] = sensor.evaluate(self)
+        for sensor in self.sensors:
+            sensor.evaluate(self)
 
     def clear_sensors(self) -> None:
         """Clear the output from all sensors."""
-        for key in self.sensors:
-            if key in self.blackboard:
-                del self.blackboard[key]
+        for sensor in self.sensors:
+            sensor.clear_output(self)
 
     def copy(self) -> AIContext:
         """Create a copy of the context."""
@@ -157,7 +189,7 @@ class AIPreconditionGroup(AIPrecondition):
 
     preconditions: list[AIPrecondition]
 
-    def __init__(self, preconditions: Iterable[AIPrecondition]) -> None:
+    def __init__(self, *preconditions: AIPrecondition) -> None:
         super().__init__()
         self.preconditions = list(preconditions)
 
@@ -645,23 +677,44 @@ class AIBehaviorCollection:
         return bool(self.behaviors)
 
 
-class SchemeState(ABC):
+class SchemeStrategy(ABC):
     """An plan that takes has a delay before execution that others can join."""
 
+    __slots__ = ("required_time",)
+
+    required_time: int
+    """Amount of time required for this scheme to mature."""
+
+    def __init__(self, required_time: int) -> None:
+        super().__init__()
+        self.required_time = required_time
+
+    @abstractmethod
+    def get_description(self, scheme: Scheme) -> str:
+        """Get a string description of the scheme."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def update(self, scheme: Scheme) -> None:
+        """Update the scheme and execute any code."""
+        raise NotImplementedError()
+
+
+class Scheme(Component):
+    """Encapsulates a SchemeState object within the ECS."""
+
     __slots__ = (
-        "world",
-        "required_time",
+        "scheme_type",
         "start_date",
         "initiator",
         "members",
         "targets",
-        "_scheme_id",
+        "strategy",
+        "is_valid",
     )
 
-    world: World
-    """A reference to the world instance."""
-    required_time: int
-    """The number of months required for the scheme to mature."""
+    scheme_type: str
+    """The name of this scheme type."""
     start_date: SimDate
     """The date the scheme was started."""
     initiator: GameObject
@@ -670,222 +723,41 @@ class SchemeState(ABC):
     """All characters involved in planning the scheme."""
     targets: OrderedSet[GameObject]
     """All characters who are targets of the scheme."""
-    _scheme_id: int
-    """ID used to refer to the scheme in the database."""
+    strategy: SchemeStrategy
+    """The strategy used to update and and check the validity of a scheme."""
+    is_valid: bool
+    """Is the scheme still valid."""
 
     def __init__(
         self,
-        required_time: int,
+        scheme_type: str,
         date_started: SimDate,
         initiator: GameObject,
-        targets: Iterable[GameObject],
+        strategy: SchemeStrategy,
     ) -> None:
         super().__init__()
-        self.world = initiator.world
-        self.required_time = required_time
+        self.scheme_type = scheme_type
         self.start_date = date_started.copy()
         self.initiator = initiator
-        self.members = OrderedSet([initiator])
-        self.targets = OrderedSet(targets)
-        self._scheme_id = -1
-        self._remove_database_entries()
+        self.members = OrderedSet([])
+        self.targets = OrderedSet([])
+        self.strategy = strategy
+        self.is_valid = True
 
-    def _insert_database_entries(self) -> None:
-        """Insert database entries for this scheme."""
-        db = self.world.resources.get_resource(SimDB).db
-        cursor = db.cursor()
-
-        cursor.execute(
-            """
-            INSERT INTO schemes (scheme_type, start_date, initiator_id, description)
-            VALUES (?, ?, ?, ?);
-            """,
-            (
-                self.get_type(),
-                self.start_date,
-                self.initiator.uid,
-                self.get_description(),
-            ),
-        )
-
-        last_row_id = cursor.lastrowid
-
-        if last_row_id is None:
-            raise RuntimeError("Scheme is missing ID")
-
-        self._scheme_id = last_row_id
-
-        cursor.executemany(
-            """
-            INSERT INTO scheme_members (scheme_id, member_id) VALUES (?, ?);
-            """,
-            [(self._scheme_id, m.uid) for m in self.members],
-        )
-
-        cursor.executemany(
-            """
-            INSERT INTO scheme_targets (scheme_id, target_id) VALUES (?, ?);
-            """,
-            [(self._scheme_id, t.uid) for t in self.targets],
-        )
-
-        db.commit()
-
-    def _remove_database_entries(self) -> None:
-        """Remove database entries for this scheme."""
-
-        db = self.world.resources.get_resource(SimDB).db
-        cursor = db.cursor()
-
-        cursor.execute(
-            """
-            DELETE FROM schemes WHERE scheme_id=?;
-            """,
-            (self._scheme_id,),
-        )
-
-        cursor.execute(
-            """
-            DELETE FROM scheme_members WHERE scheme_id=?;
-            """,
-            (self._scheme_id,),
-        )
-
-        cursor.execute(
-            """
-            DELETE FROM scheme_targets WHERE scheme_id=?;
-            """,
-            (self._scheme_id,),
-        )
-
-        db.commit()
-
-    @abstractmethod
     def get_type(self) -> str:
         """Get a type name for this Scheme."""
-        raise NotImplementedError()
+        return self.scheme_type
 
-    @abstractmethod
     def get_description(self) -> str:
         """Get a string description of the scheme."""
-        raise NotImplementedError()
+        return self.strategy.get_description(self)
 
-    def will_continue(self) -> bool:
-        """Will the scheme continue."""
-        current_date = self.world.resources.get_resource(SimDate).copy()
-        elapsed_months = (current_date - self.start_date).total_months
-
-        return elapsed_months > self.required_time
-
-    @abstractmethod
     def update(self) -> None:
         """Update the scheme and execute any code."""
-        raise NotImplementedError()
-
-    def disband(self) -> None:
-        """Disband the scheme and perform any clean-up."""
-        for member in [*self.members]:
-            self.remove_member(member)
-
-        self._remove_database_entries()
-
-    def add_member(self, new_member: GameObject) -> None:
-        """Add a member to the scheme."""
-        self.members.add(new_member)
-
-        db = self.world.resources.get_resource(SimDB).db
-        cursor = db.cursor()
-
-        cursor.execute(
-            """
-            INSERT INTO scheme_members (scheme_id, member_id) VALUES (?, ?);
-            """,
-            (self._scheme_id, new_member.uid),
-        )
-
-        db.commit()
-
-    def remove_member(self, member: GameObject) -> None:
-        """Remove a member from the scheme."""
-        self.members.remove(member)
-
-        db = self.world.resources.get_resource(SimDB).db
-        cursor = db.cursor()
-
-        cursor.execute(
-            """
-            DELETE FROM scheme_members WHERE scheme_id=? AND member_id=?;
-            """,
-            (self._scheme_id, member.uid),
-        )
-
-        db.commit()
-
-    def get_members(self) -> Iterable[GameObject]:
-        """Get the members of the scheme."""
-        return self.members
-
-    def get_initiator(self) -> GameObject:
-        """Get the character that initiated the scheme."""
-        return self.initiator
+        self.strategy.update(self)
 
     def __str__(self) -> str:
         return self.get_description()
-
-
-class Scheme(Component):
-    """Encapsulates a SchemeState object within the ECS."""
-
-    __slots__ = ("_state",)
-
-    _state: SchemeState
-
-    def __init__(self, state: SchemeState) -> None:
-        super().__init__()
-        self._state = state
-
-    @property
-    def state(self) -> SchemeState:
-        """Get the state of the scheme."""
-        return self._state
-
-    def get_type(self) -> str:
-        """Get a type name for this Scheme."""
-        return self.state.get_description()
-
-    def get_description(self) -> str:
-        """Get a string description of the scheme."""
-        return self.state.get_description()
-
-    def will_continue(self) -> bool:
-        """Will the scheme continue."""
-        return self.state.will_continue()
-
-    def update(self) -> None:
-        """Update the scheme and execute any code."""
-        self.state.update()
-
-    def disband(self) -> None:
-        """Disband the scheme and perform any clean-up."""
-        self.state.disband()
-
-    def add_member(self, new_member: GameObject) -> None:
-        """Add a member to the scheme."""
-        self.add_member(new_member)
-        new_member.get_component(SchemeManager).remove_scheme(self.gameobject)
-
-    def remove_member(self, member: GameObject) -> None:
-        """Remove a member from the scheme."""
-        self.remove_member(member)
-        member.get_component(SchemeManager).remove_scheme(self.gameobject)
-
-    def get_members(self) -> Iterable[GameObject]:
-        """Get the members of the scheme."""
-        return self.state.members
-
-    def get_initiator(self) -> GameObject:
-        """Get the character that initiated the scheme."""
-        return self.state.initiator
 
 
 class SchemeManager(Component):
@@ -909,13 +781,13 @@ class SchemeManager(Component):
     def add_scheme(self, scheme: GameObject) -> None:
         """Add a scheme to the manager."""
         self.schemes.append(scheme)
-        if scheme.get_component(Scheme).state.get_initiator() == self.gameobject:
+        if scheme.get_component(Scheme).initiator == self.gameobject:
             self.initiated_schemes.append(scheme)
 
     def remove_scheme(self, scheme: GameObject) -> None:
         """Remove a scheme from the manager."""
         self.schemes.remove(scheme)
-        if scheme.get_component(Scheme).state.get_initiator() == self.gameobject:
+        if scheme.get_component(Scheme).initiator == self.gameobject:
             self.initiated_schemes.remove(scheme)
 
     def get_initiated_schemes(self) -> Iterable[GameObject]:
@@ -925,3 +797,24 @@ class SchemeManager(Component):
     def get_schemes(self) -> Iterable[GameObject]:
         """Get all the schemes the character is a member of."""
         return self.schemes
+
+
+class SchemeStrategyLibrary:
+    """Manages a repository of scheme strategies."""
+
+    strategies: dict[str, SchemeStrategy]
+
+    def __init__(self) -> None:
+        self.strategies = {}
+
+    def add_strategy(self, key: str, strategy: SchemeStrategy) -> None:
+        """Add a strategy to the library."""
+        self.strategies[key] = strategy
+
+    def get_strategy(self, key: str) -> SchemeStrategy:
+        """Retrieve a strategy using a key."""
+        return self.strategies[key]
+
+    def has_strategy(self, key: str) -> bool:
+        """Check if a strategy exists for the given key."""
+        return key in self.strategies

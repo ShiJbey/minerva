@@ -15,8 +15,9 @@ from minerva.actions.base_types import (
     AIBrain,
     AIContext,
     Scheme,
-    SchemeState,
+    SchemeStrategy,
 )
+from minerva.actions.scheme_helpers import add_member_to_scheme, create_scheme
 from minerva.characters.components import Character, Family, HeadOfFamily
 from minerva.characters.war_data import Alliance
 from minerva.characters.war_helpers import end_alliance, join_alliance, start_alliance
@@ -200,27 +201,46 @@ class QuellRevolt(AIBehavior):
         return False
 
 
-class AllianceScheme(SchemeState):
+class AllianceScheme(SchemeStrategy):
     """Create a new alliance scheme"""
 
-    def get_type(self) -> str:
-        """Get a type name for this Scheme."""
-        return "alliance"
-
-    def get_description(self) -> str:
+    def get_description(self, scheme: Scheme) -> str:
         """Get a string description of the scheme."""
-        return f"{self.initiator.name_with_uid} is trying to start an alliance."
+        return f"{scheme.initiator.name_with_uid} is trying to start an alliance."
 
-    def update(self) -> None:
+    def update(self, scheme: Scheme) -> None:
         """Update the scheme and execute any code."""
-        current_date = self.world.resources.get_resource(SimDate).copy()
-        elapsed_months = (current_date - self.start_date).total_months
+        world = scheme.gameobject.world
+        current_date = world.resources.get_resource(SimDate).copy()
+        elapsed_months = (current_date - scheme.start_date).total_months
 
         if elapsed_months >= self.required_time:
             # Check that other people have joined the scheme for the alliance to be
             # created. Otherwise, this scheme fails
-            if len(self.members) > 1:
-                start_alliance(*self.members)
+            if len(scheme.members) > 1:
+
+                # Need to get all the families of scheme members
+                alliance_families: list[GameObject] = []
+                for member in scheme.members:
+                    character_component = member.get_component(Character)
+                    if character_component.family is None:
+                        raise RuntimeError("Alliance member is missing family.")
+                    alliance_families.append(character_component.family)
+
+                start_alliance(*alliance_families)
+                _logger.info(
+                    "[%s]: %s founded a new alliance.",
+                    world.resources.get_resource(SimDate).to_iso_str(),
+                    scheme.initiator.name_with_uid,
+                )
+            else:
+                _logger.info(
+                    "[%s]: %s failed to start a new alliance.",
+                    world.resources.get_resource(SimDate).to_iso_str(),
+                    scheme.initiator.name_with_uid,
+                )
+
+            scheme.is_valid = False
 
 
 class FormAlliance(AIBehavior):
@@ -233,19 +253,13 @@ class FormAlliance(AIBehavior):
         character_component.influence_points -= self.cost
 
         world = character.world
-        current_date = world.resources.get_resource(SimDate)
 
-        world.gameobjects.spawn_gameobject(
-            components=[
-                Scheme(
-                    AllianceScheme(
-                        required_time=6,
-                        date_started=current_date.copy(),
-                        initiator=character,
-                        targets=[],
-                    )
-                )
-            ]
+        create_scheme(world=world, scheme_type="alliance", initiator=character)
+
+        _logger.info(
+            "[%s]: %s is attempting to form a new alliance.",
+            world.resources.get_resource(SimDate).to_iso_str(),
+            character.name_with_uid,
         )
 
         return True
@@ -267,7 +281,7 @@ class JoinAllianceScheme(AIBehavior):
             if scheme.get_type() != "alliance":
                 continue
 
-            initiator = scheme.get_initiator()
+            initiator = scheme.initiator
 
             reputation_score = (
                 get_relationship(character, initiator).get_component(Reputation).value
@@ -284,7 +298,14 @@ class JoinAllianceScheme(AIBehavior):
             rng = world.resources.get_resource(random.Random)
             chosen_scheme = rng.choices(eligible_schemes, scheme_scores, k=1)[0]
 
-            chosen_scheme.get_component(Scheme).add_member(character)
+            add_member_to_scheme(chosen_scheme, character)
+
+            _logger.info(
+                "[%s]: %s has joined %s's alliance scheme.",
+                world.resources.get_resource(SimDate).to_iso_str(),
+                character.name_with_uid,
+                chosen_scheme.get_component(Scheme).initiator.name_with_uid,
+            )
 
         return True
 
@@ -334,6 +355,13 @@ class JoinExistingAlliance(AIBehavior):
 
             join_alliance(alliance=chosen_alliance, family=family)
 
+            _logger.info(
+                "[%s]: the %s family has joined the alliance started by the %s family.",
+                world.resources.get_resource(SimDate).to_iso_str(),
+                family.name_with_uid,
+                chosen_alliance.get_component(Alliance).founder_family.name_with_uid,
+            )
+
         return True
 
 
@@ -357,30 +385,40 @@ class DisbandAlliance(AIBehavior):
                 f"{family.name_with_uid} is not currently in an alliance"
             )
 
+        founding_family = family_component.alliance.get_component(
+            Alliance
+        ).founder_family
+
         end_alliance(family_component.alliance)
+
+        world = character.world
+
+        _logger.info(
+            "[%s]: the %s family has disbanded the alliance started by the %s family.",
+            world.resources.get_resource(SimDate).to_iso_str(),
+            family.name_with_uid,
+            founding_family.name_with_uid,
+        )
 
         return True
 
 
-class WarScheme(SchemeState):
+class WarScheme(SchemeStrategy):
     """Create a new war scheme"""
 
-    def get_type(self) -> str:
-        """Get a type name for this Scheme."""
-        return "war"
-
-    def get_description(self) -> str:
+    def get_description(self, scheme: Scheme) -> str:
         """Get a string description of the scheme."""
-        target = self.targets[0]
+        target = scheme.targets[0]
         return (
-            f"{self.initiator.name_with_uid} is trying to start an war against "
+            f"{scheme.initiator.name_with_uid} is trying to start an war against "
             f"{target.name_with_uid}."
         )
 
-    def update(self) -> None:
+    def update(self, scheme: Scheme) -> None:
         """Update the scheme and execute any code."""
-        current_date = self.world.resources.get_resource(SimDate).copy()
-        elapsed_months = (current_date - self.start_date).total_months
+        world = scheme.gameobject.world
+        current_date = world.resources.get_resource(SimDate).copy()
+        elapsed_months = (current_date - scheme.start_date).total_months
 
         if elapsed_months >= self.required_time:
             # Check that other people have joined the scheme for the alliance to be
@@ -465,25 +503,22 @@ class TaxTerritory(AIBehavior):
         return False
 
 
-class CoupScheme(SchemeState):
+class CoupScheme(SchemeStrategy):
     """A scheme to overthrow the royal family and establish the coup organizer."""
 
-    def get_type(self) -> str:
-        """Get a type name for this Scheme."""
-        return "coup"
-
-    def get_description(self) -> str:
+    def get_description(self, scheme: Scheme) -> str:
         """Get a string description of the scheme."""
-        target = self.targets[0]
+        target = scheme.targets[0]
         return (
-            f"{self.initiator.name_with_uid} is planning a coup against "
+            f"{scheme.initiator.name_with_uid} is planning a coup against "
             f"{target.name_with_uid}."
         )
 
-    def update(self) -> None:
+    def update(self, scheme: Scheme) -> None:
         """Update the scheme and execute any code."""
-        current_date = self.world.resources.get_resource(SimDate).copy()
-        elapsed_months = (current_date - self.start_date).total_months
+        world = scheme.gameobject.world
+        current_date = world.resources.get_resource(SimDate).copy()
+        elapsed_months = (current_date - scheme.start_date).total_months
 
         # Check if the scheme is discovered by the ruling family
 
@@ -576,7 +611,7 @@ class ExpandIntoTerritoryAction(AIAction):
             context=context,
             action=context.world.resources.get_resource(
                 AIActionLibrary
-            ).get_action_with_name(ExpandIntoTerritoryAction.__name__),
+            ).get_action_with_name(ExpandIntoTerritoryActionType.__name__),
         )
         self.context.blackboard["family_head"] = family_head
         self.context.blackboard["territory"] = territory
