@@ -32,10 +32,13 @@ class War(Component):
         "defender",
         "aggressor_allies",
         "defender_allies",
+        "contested_territory",
         "_start_date",
         "_end_date",
     )
 
+    contested_territory: GameObject
+    """The land they are fighting over."""
     aggressor: GameObject
     """The family that started the war by attacking the defender."""
     defender: GameObject
@@ -50,9 +53,14 @@ class War(Component):
     """The date the war ended."""
 
     def __init__(
-        self, aggressor: GameObject, defender: GameObject, start_date: SimDate
+        self,
+        aggressor: GameObject,
+        defender: GameObject,
+        contested_territory: GameObject,
+        start_date: SimDate,
     ) -> None:
         super().__init__()
+        self.contested_territory = contested_territory
         self.aggressor = aggressor
         self.defender = defender
         self.start_date = start_date

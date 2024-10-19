@@ -20,23 +20,35 @@ from minerva.actions.base_types import (
     ConstantPrecondition,
     ConstantSuccessConsideration,
     ConstantUtilityConsideration,
-    SchemeStrategyLibrary,
 )
 from minerva.actions.behavior_helpers import (
-    AreAllianceSchemesActive,
     AreAlliancesActive,
+    AreAllianceSchemesActive,
+    AreCoupSchemesActive,
     BehaviorCostPrecondition,
+    BoldnessConsideration,
+    CompassionConsideration,
     DiplomacyConsideration,
     FamilyInAlliancePrecondition,
     GreedConsideration,
+    HasActiveSchemes,
     HasTerritoriesInRevolt,
     HonorConsideration,
+    InfluencePointConsideration,
+    IntrigueConsideration,
     Invert,
+    IsAllianceMemberPlottingCoup,
+    IsCurrentlyAtWar,
     IsFamilyHeadPrecondition,
+    IsRulerPrecondition,
     JoinedAllianceScheme,
+    MartialConsideration,
     Not,
+    OpinionOfAllianceLeader,
+    OpinionOfRulerConsideration,
     RationalityConsideration,
     StewardshipConsideration,
+    WantForPowerConsideration,
 )
 from minerva.businesses.data import BusinessLibrary, OccupationLibrary
 from minerva.characters.components import (
@@ -46,7 +58,6 @@ from minerva.characters.components import (
     SexualOrientation,
     SpeciesLibrary,
 )
-from minerva.characters.motive_helpers import MotiveVector
 from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.config import Config
 from minerva.datetime import SimDate
@@ -114,7 +125,6 @@ class Simulation:
         self.initialize_database()
         self.initialize_actions()
         self.initialize_behaviors()
-        self.initialize_schemes()
 
     def initialize_resources(self) -> None:
         """Initialize built-in resources."""
@@ -133,7 +143,6 @@ class Simulation:
         self._world.resources.add_resource(AIBehaviorLibrary())
         self._world.resources.add_resource(DynastyTracker())
         self._world.resources.add_resource(AIActionLibrary())
-        self._world.resources.add_resource(SchemeStrategyLibrary())
 
         effect_lib = EffectLibrary()
         self._world.resources.add_resource(effect_lib)
@@ -196,9 +205,9 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.RevoltUpdateSystem(),
         )
-        self.world.systems.add_system(
-            minerva.systems.SettlementRandomEventSystem(),
-        )
+        # self.world.systems.add_system(
+        #     minerva.systems.SettlementRandomEventSystem(),
+        # )
         self.world.systems.add_system(
             minerva.systems.InfluencePointGainSystem(),
         )
@@ -215,16 +224,23 @@ class Simulation:
             minerva.systems.ProvinceInfluencePointBoostSystem(),
         )
         self.world.systems.add_system(
-            minerva.systems.SchemeUpdateSystem(),
+            minerva.systems.SchemeUpdateSystems(),
         )
-
-    def initialize_schemes(self) -> None:
-        """Initialize Scheme Strategies."""
-        scheme_library = self.world.resources.get_resource(SchemeStrategyLibrary)
-
-        scheme_library.add_strategy("alliance", behaviors.AllianceScheme(3))
-        scheme_library.add_strategy("war", behaviors.WarScheme(3))
-        scheme_library.add_strategy("coup", behaviors.CoupScheme(3))
+        self.world.systems.add_system(
+            minerva.systems.AllianceSchemeUpdateSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.WarSchemeUpdateSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.CoupSchemeUpdateSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.WarUpdateSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.BehaviorCooldownSystem(),
+        )
 
     def initialize_actions(self) -> None:
         """Initialize actions."""
@@ -286,13 +302,22 @@ class Simulation:
             )
         )
 
+        action_library.add_action(
+            behaviors.TaxTerritoryActionType(
+                success_consideration=ConstantSuccessConsideration(1.0),
+                utility_consideration=ConstantUtilityConsideration(1.0),
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
     def initialize_behaviors(self) -> None:
         """Initialize behaviors."""
         behavior_library = self.world.resources.get_resource(AIBehaviorLibrary)
 
         behavior_library.add_behavior(
             behaviors.IdleBehavior(
-                motives=MotiveVector(),
+                name="Idle",
+                cooldown=0,
                 cost=0,
                 precondition=AIPreconditionGroup(
                     BehaviorCostPrecondition(),
@@ -307,8 +332,9 @@ class Simulation:
         )
 
         behavior_library.add_behavior(
-            behaviors.IncreasePoliticalPower(
-                motives=MotiveVector(power=0.6),
+            behaviors.GiveToSmallfolkBehavior(
+                name="GiveToSmallfolk",
+                cooldown=2,
                 cost=200,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
@@ -318,6 +344,8 @@ class Simulation:
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
+                        Invert(GreedConsideration()),
+                        CompassionConsideration(),
                     ],
                 ),
             )
@@ -325,7 +353,8 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.QuellRevolt(
-                motives=MotiveVector(),
+                name="QuellRevolt",
+                cooldown=2,
                 cost=300,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
@@ -345,7 +374,8 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.TaxTerritory(
-                motives=MotiveVector(),
+                name="TaxTerritory",
+                cooldown=4,
                 cost=50,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
@@ -356,6 +386,8 @@ class Simulation:
                     considerations=[
                         ConstantUtilityConsideration(0.5),
                         GreedConsideration(),
+                        Invert(CompassionConsideration()),
+                        Invert(InfluencePointConsideration(600)),
                     ],
                 ),
             )
@@ -363,7 +395,8 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.ExpandPoliticalDomain(
-                motives=MotiveVector(),
+                name="ExpandPoliticalDomain",
+                cooldown=3,
                 cost=500,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
@@ -381,7 +414,8 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.SeizeControlOfTerritory(
-                motives=MotiveVector(),
+                name="SeizeControlOfTerritory",
+                cooldown=3,
                 cost=500,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
@@ -399,13 +433,16 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.FormAlliance(
-                motives=MotiveVector(),
+                name="FormAlliance",
+                cooldown=2,
                 cost=500,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
                     BehaviorCostPrecondition(),
                     Not(FamilyInAlliancePrecondition()),
                     Not(JoinedAllianceScheme()),
+                    Not(HasActiveSchemes()),
+                    Not(IsCurrentlyAtWar()),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
@@ -413,6 +450,7 @@ class Simulation:
                         ConstantUtilityConsideration(0.5),
                         DiplomacyConsideration(),
                         StewardshipConsideration(),
+                        BoldnessConsideration(),
                     ],
                 ),
             )
@@ -420,7 +458,8 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.JoinAllianceScheme(
-                motives=MotiveVector(),
+                name="JoinAllianceScheme",
+                cooldown=0,
                 cost=0,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
@@ -428,12 +467,14 @@ class Simulation:
                     Not(FamilyInAlliancePrecondition()),
                     AreAllianceSchemesActive(),
                     Not(JoinedAllianceScheme()),
+                    Not(HasActiveSchemes()),
+                    Not(IsCurrentlyAtWar()),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(1.0),
-                        # BehaviorMotiveConsideration(),
+                        WantForPowerConsideration(),
                     ],
                 ),
             )
@@ -441,7 +482,8 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.JoinExistingAlliance(
-                motives=MotiveVector(),
+                name="JoinExistingAlliance",
+                cooldown=0,
                 cost=300,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
@@ -449,12 +491,15 @@ class Simulation:
                     Not(FamilyInAlliancePrecondition()),
                     AreAlliancesActive(),
                     Not(JoinedAllianceScheme()),
+                    Not(HasActiveSchemes()),
+                    Not(IsCurrentlyAtWar()),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
-                        ConstantUtilityConsideration(0.5),
-                        # BehaviorMotiveConsideration(),
+                        ConstantUtilityConsideration(0.4),
+                        WantForPowerConsideration(),
+                        DiplomacyConsideration(),
                     ],
                 ),
             )
@@ -462,34 +507,100 @@ class Simulation:
 
         behavior_library.add_behavior(
             behaviors.DisbandAlliance(
-                motives=MotiveVector(),
+                name="DisbandAlliance",
+                cooldown=0,
                 cost=500,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
                     BehaviorCostPrecondition(),
                     FamilyInAlliancePrecondition(),
+                    Not(HasActiveSchemes()),
+                    Not(IsCurrentlyAtWar()),
                 ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
                         ConstantUtilityConsideration(0.5),
                         Invert(DiplomacyConsideration()),
+                        Invert(OpinionOfAllianceLeader()),
                     ],
                 ),
             )
         )
 
         behavior_library.add_behavior(
-            behaviors.CoupDEtat(
-                motives=MotiveVector(),
-                cost=800,
-                precondition=AIPreconditionGroup(),
+            behaviors.DeclareWar(
+                name="DeclareWar",
+                cooldown=3,
+                cost=300,
+                precondition=AIPreconditionGroup(
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    Not(HasActiveSchemes()),
+                    Not(IsCurrentlyAtWar()),
+                ),
                 utility_consideration=AIUtilityConsiderationGroup(
                     op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
                     considerations=[
-                        ConstantUtilityConsideration(0.5),
+                        ConstantUtilityConsideration(1.0),
+                        MartialConsideration(),
+                        BoldnessConsideration(),
+                        WantForPowerConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.PlanCoupBehavior(
+                name="PlanCoup",
+                cooldown=2,
+                cost=2000,
+                precondition=AIPreconditionGroup(
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    Not(IsRulerPrecondition()),
+                    Not(IsAllianceMemberPlottingCoup()),
+                    Not(HasActiveSchemes()),
+                    Not(IsCurrentlyAtWar()),
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.2),
                         Invert(DiplomacyConsideration()),
                         Invert(HonorConsideration()),
+                        BoldnessConsideration(),
+                        WantForPowerConsideration(),
+                        Invert(OpinionOfRulerConsideration()),
+                        IntrigueConsideration(),
+                    ],
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.JoinCoupScheme(
+                name="JoinCoupScheme",
+                cooldown=2,
+                cost=300,
+                precondition=AIPreconditionGroup(
+                    IsFamilyHeadPrecondition(),
+                    BehaviorCostPrecondition(),
+                    Not(IsRulerPrecondition()),
+                    AreCoupSchemesActive(),
+                    Not(HasActiveSchemes()),
+                    Not(IsCurrentlyAtWar()),
+                ),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
+                    considerations=[
+                        ConstantUtilityConsideration(0.3),
+                        Invert(DiplomacyConsideration()),
+                        Invert(HonorConsideration()),
+                        BoldnessConsideration(),
+                        WantForPowerConsideration(),
+                        Invert(OpinionOfRulerConsideration()),
                     ],
                 ),
             )

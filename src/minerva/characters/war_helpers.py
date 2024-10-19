@@ -1,6 +1,8 @@
 """Helper functions for wrs and alliances."""
 
-from minerva.characters.components import Family
+from minerva.actions.scheme_helpers import create_scheme, destroy_scheme
+from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
+from minerva.characters.components import Family, Martial
 from minerva.characters.war_data import Alliance, War, WarRole, WarTracker
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject
@@ -145,7 +147,9 @@ def end_alliance(alliance: GameObject) -> None:
     alliance.destroy()
 
 
-def start_war(family_a: GameObject, family_b: GameObject) -> GameObject:
+def start_war(
+    family_a: GameObject, family_b: GameObject, contested_territory: GameObject
+) -> GameObject:
     """One family declares war on another."""
     world = family_a.world
     current_date = world.resources.get_resource(SimDate)
@@ -156,7 +160,14 @@ def start_war(family_a: GameObject, family_b: GameObject) -> GameObject:
     family_b_wars = family_b.get_component(WarTracker)
 
     war_obj = world.gameobjects.spawn_gameobject(
-        components=[War(family_a, family_b, current_date.copy())]
+        components=[
+            War(
+                family_a,
+                family_b,
+                start_date=current_date.copy(),
+                contested_territory=contested_territory,
+            )
+        ]
     )
 
     family_a_wars.offensive_wars.add(war_obj)
@@ -259,3 +270,86 @@ def join_war_as(war: GameObject, family: GameObject, role: WarRole) -> None:
     )
 
     db.commit()
+
+
+def create_alliance_scheme(initiator: GameObject) -> GameObject:
+    """Creates a new alliance scheme."""
+    scheme = create_scheme(
+        world=initiator.world,
+        scheme_type="alliance",
+        required_time=3,
+        initiator=initiator,
+        data=AllianceScheme(),
+    )
+
+    # Update the database with scheme-specific information
+
+    return scheme
+
+
+def destroy_alliance_scheme(scheme: GameObject) -> None:
+    """Destroy an alliance scheme."""
+    destroy_scheme(scheme)
+
+
+def create_war_scheme(
+    initiator: GameObject, target: GameObject, territory: GameObject
+) -> GameObject:
+    """Create a new war scheme."""
+    scheme = create_scheme(
+        world=initiator.world,
+        scheme_type="war",
+        required_time=3,
+        initiator=initiator,
+        data=WarScheme(aggressor=initiator, defender=target, territory=territory),
+    )
+
+    # Update the database with scheme-specific information
+
+    return scheme
+
+
+def destroy_war_scheme(scheme: GameObject) -> None:
+    """Destroy a war scheme."""
+    destroy_scheme(scheme)
+
+
+def create_coup_scheme(initiator: GameObject, target: GameObject) -> GameObject:
+    """Create a new war scheme."""
+    scheme = create_scheme(
+        world=initiator.world,
+        scheme_type="coup",
+        required_time=5,
+        initiator=initiator,
+        data=CoupScheme(target=target),
+    )
+
+    # Update the database with scheme-specific information
+
+    return scheme
+
+
+def destroy_coup_scheme(scheme: GameObject) -> None:
+    """Destroy a coup scheme."""
+    destroy_scheme(scheme)
+
+
+def calculate_alliance_martial(*families: GameObject) -> float:
+    """Calculates the avg martial score of a collection of families."""
+    martial_sum: float = 0.0
+    total_warriors: int = 0
+
+    for family in families:
+        family_component = family.get_component(Family)
+
+        if len(family_component.warriors) == 0:
+            assert family_component.head
+            martial_sum += family_component.head.get_component(Martial).value
+            total_warriors += 1
+
+        else:
+            for character in family_component.warriors:
+                martial_sum += character.get_component(Martial).value
+                total_warriors += 1
+
+    return martial_sum / total_warriors

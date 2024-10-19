@@ -11,11 +11,11 @@ from __future__ import annotations
 import enum
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Iterator, Optional
+from collections import defaultdict
+from typing import Any, DefaultDict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet
 
-from minerva.characters.motive_helpers import MotiveVector
 from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject, World
 
@@ -43,11 +43,17 @@ class BehaviorSelectionStrategy(ABC):
 class AIBrain(Component):
     """A brain used to make choices for a character."""
 
-    __slots__ = ("context", "action_selection_strategy", "behavior_selection_strategy")
+    __slots__ = (
+        "context",
+        "action_selection_strategy",
+        "behavior_selection_strategy",
+        "behavior_cooldowns",
+    )
 
     context: AIContext
     action_selection_strategy: ActionSelectionStrategy
     behavior_selection_strategy: BehaviorSelectionStrategy
+    behavior_cooldowns: DefaultDict[str, int]
 
     def __init__(
         self,
@@ -59,6 +65,7 @@ class AIBrain(Component):
         self.context = context
         self.action_selection_strategy = action_selection_strategy
         self.behavior_selection_strategy = behavior_selection_strategy
+        self.behavior_cooldowns = defaultdict(lambda: 0)
 
 
 class AISensor(ABC):
@@ -458,52 +465,63 @@ class AIBehavior(ABC):
     """A behavior that can be performed by a character."""
 
     __slots__ = (
+        "name",
         "motives",
         "cost",
+        "cooldown",
         "precondition",
         "utility_consideration",
     )
 
+    name: str
+    """The name of the behavior."""
     precondition: AIPrecondition
     """Calculates if the action can be performed."""
     utility_consideration: AIUtilityConsideration
     """Calculates the utility of the behavior."""
-    motives: MotiveVector
-    """The motives satisfied by this behavior."""
     cost: int
     """The number of influence point required to execute this behavior."""
+    cooldown: int
+    """Number of months between recurred uses of th this behavior by the same person."""
 
     def __init__(
         self,
-        motives: MotiveVector,
+        name: str,
         cost: int,
+        cooldown: int,
         precondition: AIPrecondition,
         utility_consideration: AIUtilityConsideration,
     ) -> None:
+        self.name = name
         self.utility_consideration = utility_consideration
         self.precondition = precondition
-        self.motives = motives
         self.cost = cost
+        self.cooldown = cooldown
+
+    def get_name(self) -> str:
+        """Get the name of the behavior."""
+        return self.name
+
+    def get_cooldown(self) -> int:
+        """Get the cooldown time."""
+        return self.cooldown
 
     def can_execute(self, gameobject: GameObject) -> bool:
         """Check if the action can be executed."""
         context = gameobject.get_component(AIBrain).context.copy()
         context.blackboard["behavior_cost"] = self.cost
-        context.blackboard["behavior_motives"] = self.motives
         return self.precondition.evaluate(context)
 
     def calculate_utility(self, gameobject: GameObject) -> float:
         """Get the utility of this action."""
         context = gameobject.get_component(AIBrain).context.copy()
         context.blackboard["behavior_cost"] = self.cost
-        context.blackboard["behavior_motives"] = self.motives
         return self.utility_consideration.evaluate(context)
 
     def passes_preconditions(self, gameobject: GameObject) -> bool:
         """check if the given character passes all the preconditions."""
         context = gameobject.get_component(AIBrain).context.copy()
         context.blackboard["behavior_cost"] = self.cost
-        context.blackboard["behavior_motives"] = self.motives
         return self.precondition.evaluate(context)
 
     @abstractmethod
@@ -677,26 +695,15 @@ class AIBehaviorCollection:
         return bool(self.behaviors)
 
 
-class SchemeStrategy(ABC):
-    """An plan that takes has a delay before execution that others can join."""
+class SchemeData(Component, ABC):
+    """Context-specific data for a scheme.
 
-    __slots__ = ("required_time",)
-
-    required_time: int
-    """Amount of time required for this scheme to mature."""
-
-    def __init__(self, required_time: int) -> None:
-        super().__init__()
-        self.required_time = required_time
+    This class should be derived from when creating new scheme types.
+    """
 
     @abstractmethod
     def get_description(self, scheme: Scheme) -> str:
         """Get a string description of the scheme."""
-        raise NotImplementedError()
-
-    @abstractmethod
-    def update(self, scheme: Scheme) -> None:
-        """Update the scheme and execute any code."""
         raise NotImplementedError()
 
 
@@ -704,15 +711,17 @@ class Scheme(Component):
     """Encapsulates a SchemeState object within the ECS."""
 
     __slots__ = (
+        "required_time",
         "scheme_type",
         "start_date",
         "initiator",
         "members",
-        "targets",
-        "strategy",
+        "data",
         "is_valid",
     )
 
+    required_time: int
+    """Amount of time required for this scheme to mature."""
     scheme_type: str
     """The name of this scheme type."""
     start_date: SimDate
@@ -721,27 +730,26 @@ class Scheme(Component):
     """The character that initiated the scheme."""
     members: OrderedSet[GameObject]
     """All characters involved in planning the scheme."""
-    targets: OrderedSet[GameObject]
-    """All characters who are targets of the scheme."""
-    strategy: SchemeStrategy
-    """The strategy used to update and and check the validity of a scheme."""
+    data: SchemeData
+    """Context-specific data about this scheme."""
     is_valid: bool
     """Is the scheme still valid."""
 
     def __init__(
         self,
         scheme_type: str,
+        required_time: int,
         date_started: SimDate,
         initiator: GameObject,
-        strategy: SchemeStrategy,
+        data: SchemeData,
     ) -> None:
         super().__init__()
         self.scheme_type = scheme_type
+        self.required_time = required_time
         self.start_date = date_started.copy()
         self.initiator = initiator
         self.members = OrderedSet([])
-        self.targets = OrderedSet([])
-        self.strategy = strategy
+        self.data = data
         self.is_valid = True
 
     def get_type(self) -> str:
@@ -750,11 +758,7 @@ class Scheme(Component):
 
     def get_description(self) -> str:
         """Get a string description of the scheme."""
-        return self.strategy.get_description(self)
-
-    def update(self) -> None:
-        """Update the scheme and execute any code."""
-        self.strategy.update(self)
+        return self.data.get_description(self)
 
     def __str__(self) -> str:
         return self.get_description()
@@ -797,24 +801,3 @@ class SchemeManager(Component):
     def get_schemes(self) -> Iterable[GameObject]:
         """Get all the schemes the character is a member of."""
         return self.schemes
-
-
-class SchemeStrategyLibrary:
-    """Manages a repository of scheme strategies."""
-
-    strategies: dict[str, SchemeStrategy]
-
-    def __init__(self) -> None:
-        self.strategies = {}
-
-    def add_strategy(self, key: str, strategy: SchemeStrategy) -> None:
-        """Add a strategy to the library."""
-        self.strategies[key] = strategy
-
-    def get_strategy(self, key: str) -> SchemeStrategy:
-        """Retrieve a strategy using a key."""
-        return self.strategies[key]
-
-    def has_strategy(self, key: str) -> bool:
-        """Check if a strategy exists for the given key."""
-        return key in self.strategies

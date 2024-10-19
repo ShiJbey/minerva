@@ -1,6 +1,7 @@
 """Minerva Base Systems."""
 
 import logging
+import math
 import random
 from typing import Callable, ClassVar, Optional
 
@@ -8,13 +9,8 @@ from ordered_set import OrderedSet
 
 from minerva import constants
 from minerva.actions.actions import DieAction
-from minerva.actions.base_types import (
-    AIBehavior,
-    AIBehaviorLibrary,
-    AIBrain,
-    Scheme,
-)
-from minerva.actions.scheme_helpers import destroy_scheme
+from minerva.actions.base_types import AIBehavior, AIBehaviorLibrary, AIBrain, Scheme
+from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
 from minerva.characters.components import (
     Character,
     Diplomacy,
@@ -24,6 +20,7 @@ from minerva.characters.components import (
     FamilyRoleFlags,
     Fertility,
     HeadOfFamily,
+    Intrigue,
     Lifespan,
     LifeStage,
     Marriage,
@@ -50,8 +47,20 @@ from minerva.characters.helpers import (
 )
 from minerva.characters.succession_helpers import (
     SuccessionChartCache,
+    get_current_ruler,
     get_succession_depth_chart,
     set_current_ruler,
+)
+from minerva.characters.war_data import Alliance, War, WarRole
+from minerva.characters.war_helpers import (
+    calculate_alliance_martial,
+    destroy_alliance_scheme,
+    destroy_coup_scheme,
+    destroy_war_scheme,
+    end_war,
+    join_war_as,
+    start_alliance,
+    start_war,
 )
 from minerva.constants import (
     BEHAVIOR_UTILITY_THRESHOLD,
@@ -59,7 +68,7 @@ from minerva.constants import (
     MAX_WARRIORS_PER_FAMILY,
 )
 from minerva.datetime import MONTHS_PER_YEAR, SimDate
-from minerva.ecs import Active, GameObject, System, World
+from minerva.ecs import Active, GameObject, System, SystemGroup, World
 from minerva.life_events.aging import LifeStageChangeEvent
 from minerva.life_events.events import (
     BornEvent,
@@ -69,6 +78,8 @@ from minerva.life_events.events import (
 )
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.character import generate_child_from
+from minerva.relationships.base_types import Reputation
+from minerva.relationships.helpers import get_relationship
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
 from minerva.world_map.components import InRevolt, PopulationHappiness, Settlement
@@ -324,6 +335,9 @@ class CharacterBehaviorSystem(System):
                 brain.context.update_sensors()
 
                 for behavior in behavior_library.iter_behaviors():
+                    if brain.behavior_cooldowns[behavior.get_name()] > 0:
+                        continue
+
                     if behavior.passes_preconditions(character):
                         utility = behavior.calculate_utility(character)
                         if utility >= BEHAVIOR_UTILITY_THRESHOLD and utility > 0:
@@ -336,7 +350,15 @@ class CharacterBehaviorSystem(System):
                         )
                     )
 
-                    selected_behavior.execute(character)
+                    brain.behavior_cooldowns[selected_behavior.get_name()] = (
+                        selected_behavior.get_cooldown()
+                    )
+
+                    success = selected_behavior.execute(character)
+
+                    if success:
+                        character_component = character.get_component(Character)
+                        character_component.influence_points -= selected_behavior.cost
 
                 brain.context.clear_sensors()
 
@@ -415,6 +437,7 @@ class SettlementRevoltSystem(System):
 
             settlement.gameobject.add_component(InRevolt(start_date=current_date))
 
+            # TODO: Fire an event for revolting
             _logger.info(
                 "[%s]: %s is revolting.",
                 current_date.to_iso_str(),
@@ -454,6 +477,7 @@ class RevoltUpdateSystem(System):
             settlement.gameobject.remove_component(InRevolt)
             happiness.base_value = constants.BASE_SETTLEMENT_HAPPINESS
 
+            # TODO: Fire and log an event when a family is removed from power
             _logger.info(
                 "[%s]: %s has removed the %s family from power.",
                 current_date.to_iso_str(),
@@ -964,15 +988,359 @@ class ChildBirthSystem(System):
             ).dispatch()
 
 
-class SchemeUpdateSystem(System):
+class BehaviorCooldownSystem(System):
     """Update all active schemes."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        for _, (brain, _) in world.get_components((AIBrain, Active)):
+            for key in brain.behavior_cooldowns:
+                brain.behavior_cooldowns[key] -= 1
+
+
+class SchemeUpdateSystems(SystemGroup):
+    """Groups all the scheme updaters."""
+
+    __system_group__ = "EarlyUpdateSystems"
+
+
+class AllianceSchemeUpdateSystem(System):
+    """Updates all alliance schemes."""
+
+    __system_group__ = "SchemeUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate).copy()
+
+        for _, (scheme, _, _) in world.get_components((Scheme, AllianceScheme, Active)):
+            if scheme.is_valid is False:
+                destroy_alliance_scheme(scheme.gameobject)
+                continue
+
+            elapsed_months = (current_date - scheme.start_date).total_months
+
+            if elapsed_months >= scheme.required_time:
+                # Check that other people have joined the scheme for the alliance to be
+                # created. Otherwise, this scheme fails
+                if len(scheme.members) > 1:
+
+                    # Need to get all the families of scheme members
+                    alliance_families: list[GameObject] = []
+                    for member in scheme.members:
+                        character_component = member.get_component(Character)
+                        if character_component.family is None:
+                            raise RuntimeError("Alliance member is missing family.")
+                        alliance_families.append(character_component.family)
+
+                    start_alliance(*alliance_families)
+
+                    # Increase the reputation between alliance members.
+                    for member_a in scheme.members:
+                        for member_b in scheme.members:
+                            if member_a == member_b:
+                                continue
+
+                            get_relationship(member_a, member_b).get_component(
+                                Reputation
+                            ).base_value += 20
+                            get_relationship(member_b, member_a).get_component(
+                                Reputation
+                            ).base_value += 20
+
+                    # TODO: Swap this out with a new life event
+                    _logger.info(
+                        "[%s]: %s founded a new alliance.",
+                        world.resources.get_resource(SimDate).to_iso_str(),
+                        scheme.initiator.name_with_uid,
+                    )
+
+                else:
+                    # TODO: Swap this out with a new life event
+                    _logger.info(
+                        "[%s]: %s failed to start a new alliance.",
+                        world.resources.get_resource(SimDate).to_iso_str(),
+                        scheme.initiator.name_with_uid,
+                    )
+
+                scheme.is_valid = False
+
+
+class WarSchemeUpdateSystem(System):
+    """Updates all active war schemes."""
+
+    __system_group__ = "SchemeUpdateSystems"
+
+    @staticmethod
+    def are_in_same_alliance(character_a: GameObject, character_b: GameObject) -> bool:
+        """Check if two characters belong to the same alliance."""
+        character_a_family = character_a.get_component(Character).family
+
+        if character_a_family is None:
+            return False
+
+        character_a_alliance = character_a_family.get_component(Family).alliance
+
+        character_b_family = character_b.get_component(Character).family
+
+        if character_b_family is None:
+            return False
+
+        character_b_alliance = character_a_family.get_component(Family).alliance
+
+        return (
+            character_a_alliance is not None
+            and character_b_alliance is not None
+            and character_a_alliance == character_b_alliance
+        )
+
+    @staticmethod
+    def get_family(character: GameObject) -> GameObject:
+        """Get the reference to a character's family."""
+        character_family = character.get_component(Character).family
+        if character_family is None:
+            raise RuntimeError(f"{character.name_with_uid} does not have a family.")
+        return character_family
+
+    @staticmethod
+    def get_alliance(family: GameObject) -> GameObject:
+        """Get  reference to a family's alliance."""
+        family_alliance = family.get_component(Family).alliance
+        if family_alliance is None:
+            raise RuntimeError(f"{family.name_with_uid} does not have an alliance.")
+        return family_alliance
+
+    @staticmethod
+    def add_alliance_members_as_allies(
+        war: GameObject, character: GameObject, role: WarRole
+    ) -> None:
+        """Add a character's alliance members as allies in a war."""
+        character_family = WarSchemeUpdateSystem.get_family(character)
+        character_alliance = character_family.get_component(Family).alliance
+
+        if character_alliance is not None:
+            alliance_component = character_alliance.get_component(Alliance)
+            for member_family in alliance_component.member_families:
+                if member_family == character_family:
+                    continue
+
+                member_family_head = member_family.get_component(Family).head
+                if member_family_head is None:
+                    raise RuntimeError(
+                        f"{member_family.name_with_uid} is missing a head."
+                    )
+
+                join_war_as(war, member_family, role)
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate).copy()
+
+        for _, (scheme, war_scheme, _) in world.get_components(
+            (Scheme, WarScheme, Active)
+        ):
+            # Cancel the scheme if has been invalidated by an external system
+            if scheme.is_valid is False:
+                destroy_war_scheme(scheme.gameobject)
+                continue
+
+            # Cancel the scheme if the initiator and scheme target belong to the
+            # same alliance
+            if self.are_in_same_alliance(scheme.initiator, war_scheme.defender):
+                scheme.is_valid = False
+                continue
+
+            elapsed_months = (current_date - scheme.start_date).total_months
+
+            if elapsed_months >= scheme.required_time:
+                aggressor_family = self.get_family(scheme.initiator)
+                defender_family = self.get_family(war_scheme.defender)
+
+                war = start_war(aggressor_family, defender_family, war_scheme.territory)
+
+                self.add_alliance_members_as_allies(
+                    war, scheme.initiator, WarRole.AGGRESSOR_ALLY
+                )
+
+                self.add_alliance_members_as_allies(
+                    war, war_scheme.defender, WarRole.DEFENDER_ALLY
+                )
+
+                # TODO: Swap this log out with a life event.
+                _logger.info(
+                    "[%s]: %s is at war with %s for the %s territory.",
+                    current_date.to_iso_str(),
+                    scheme.initiator.name_with_uid,
+                    war_scheme.defender.name_with_uid,
+                    war_scheme.territory.name_with_uid,
+                )
+
+                scheme.is_valid = False
+
+
+class CoupSchemeUpdateSystem(System):
+    """Updates all active war schemes."""
+
+    __system_group__ = "SchemeUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate).copy()
+        rng = world.resources.get_resource(random.Random)
+
+        for _, (scheme, coup_scheme, _) in world.get_components(
+            (Scheme, CoupScheme, Active)
+        ):
+            if scheme.is_valid is False:
+                destroy_coup_scheme(scheme.gameobject)
+                continue
+
+            if not coup_scheme.target.is_active:
+                scheme.is_valid = False
+                continue
+
+            elapsed_months = (current_date - scheme.start_date).total_months
+
+            if elapsed_months >= scheme.required_time:
+                # Check that other people have joined the scheme for the alliance to be
+                # created. Otherwise, this scheme fails
+                if len(scheme.members) > 2:
+
+                    # Kill the current ruler.
+                    current_ruler = get_current_ruler(world)
+
+                    if current_ruler is None:
+                        scheme.is_valid = False
+                        continue
+
+                    # TODO: Swap this out for a logged life event
+                    _logger.info(
+                        "[%s]: %s has overthrown %s as the ruler.",
+                        world.resources.get_resource(SimDate).to_iso_str(),
+                        scheme.initiator.name_with_uid,
+                        current_ruler.name_with_uid,
+                    )
+
+                    ruler_family = current_ruler.get_component(Character).family
+
+                    # TODO: Add cause of death (coup) to the death
+                    DieAction(current_ruler.get_component(AIBrain).context).execute()
+
+                    if ruler_family is not None:
+                        # Remove the rulers family from being in control of their home
+                        # base
+                        family_component = ruler_family.get_component(Family)
+
+                        for territory in family_component.territories:
+                            territory_component = territory.get_component(Settlement)
+                            if territory_component.controlling_family == ruler_family:
+                                set_settlement_controlling_family(territory, None)
+
+                scheme.is_valid = False
+
+            else:
+                # Check if the coup is discovered by the royal family
+                intrigue_score = scheme.initiator.get_component(Intrigue).normalized
+
+                # Nothing happens
+                if (rng.random() * 0.75) < intrigue_score:
+                    continue
+
+                # TODO: Swap this out for logged life event
+                _logger.info(
+                    "[%s]: %s's coup scheme was discovered.",
+                    world.resources.get_resource(SimDate).to_iso_str(),
+                    scheme.initiator.name_with_uid,
+                )
+
+                # They are discovered and put to death
+                for member in scheme.members:
+                    # TODO: Swap this out for a logged life event
+                    _logger.info(
+                        "[%s]: %s has been sentenced to death for conspiring a coup.",
+                        world.resources.get_resource(SimDate).to_iso_str(),
+                        member.name_with_uid,
+                    )
+                    # TODO: Add cause of death (execution) to the action
+                    DieAction(member.get_component(AIBrain).context).execute()
+
+                scheme.is_valid = False
+
+
+class WarUpdateSystem(System):
+    """Updates all active wars."""
 
     __system_group__ = "UpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (scheme, _) in world.get_components((Scheme, Active)):
-            if not scheme.is_valid:
-                destroy_scheme(scheme.gameobject)
-                continue
+        rng = world.resources.get_resource(random.Random)
 
-            scheme.update()
+        for _, (war, _) in world.get_components((War, Active)):
+            aggressor_martial = calculate_alliance_martial(
+                war.aggressor, *war.aggressor_allies
+            )
+
+            defender_martial = calculate_alliance_martial(
+                war.defender, *war.defender_allies
+            )
+
+            aggressor_success_chance = self.calculate_probability_of_winning(
+                aggressor_martial, defender_martial
+            )
+
+            if rng.random() < aggressor_success_chance:
+                # Aggressor wins the battle
+
+                # Remove the defender from controlling the territory and instate the
+                set_settlement_controlling_family(
+                    war.contested_territory, war.aggressor
+                )
+
+                # TODO: Fire and log events for winning and losing wars
+                _logger.info(
+                    "[%s]: the %s family defeated the %s family and has taken control "
+                    "of the %s territory.",
+                    world.resources.get_resource(SimDate).to_iso_str(),
+                    war.aggressor.name_with_uid,
+                    war.defender.name_with_uid,
+                    war.contested_territory.name_with_uid,
+                )
+
+                end_war(war.gameobject, war.aggressor)
+
+            else:
+                # Defender wins the battle
+                # Aggressor loses influence points
+
+                # TODO: Fire and log events for winning and losing wars
+                _logger.info(
+                    "[%s]: the %s family failed to defeat the %s family over control "
+                    "of the %s territory.",
+                    world.resources.get_resource(SimDate).to_iso_str(),
+                    war.aggressor.name_with_uid,
+                    war.defender.name_with_uid,
+                    war.contested_territory.name_with_uid,
+                )
+
+                end_war(war.gameobject, war.defender)
+
+    @staticmethod
+    def update_power_level(
+        winner_rating: float,
+        loser_rating: float,
+        winner_expectation: float,
+        loser_expectation: float,
+        k: int = 16,
+    ) -> tuple[float, float]:
+        """Perform ELO calculation for martial scores."""
+        winner_martial_value: int = round(winner_rating + k * (1 - winner_expectation))
+        winner_martial_value = min(100, max(0, winner_martial_value))
+        loser_martial_value: int = round(loser_rating + k * (0 - loser_expectation))
+        loser_martial_value = min(100, max(0, loser_martial_value))
+
+        return winner_martial_value, loser_martial_value
+
+    @staticmethod
+    def calculate_probability_of_winning(
+        martial_score_a: float, martial_score_b: float
+    ) -> float:
+        """Return the probability of a defeating b."""
+        return 1.0 / (1 + math.pow(10, (martial_score_a - martial_score_b) / 100))

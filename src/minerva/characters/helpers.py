@@ -9,6 +9,8 @@ import random
 from typing import Optional
 
 import minerva.constants
+from minerva.actions.base_types import Scheme, SchemeManager
+from minerva.actions.scheme_helpers import remove_member_from_scheme
 from minerva.characters.components import (
     Character,
     Diplomacy,
@@ -31,6 +33,7 @@ from minerva.characters.succession_helpers import (
     get_succession_depth_chart,
     set_current_ruler,
 )
+from minerva.characters.war_helpers import end_alliance
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Event, GameObject
 from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
@@ -263,6 +266,10 @@ def remove_family_from_play(family: GameObject) -> None:
 
     family.deactivate()
 
+    # Remove family from their alliance and disband it
+    if family_component.alliance:
+        end_alliance(family_component.alliance)
+
     FamilyRemovedFromPlay(family).dispatch()
 
 
@@ -318,6 +325,16 @@ def remove_character_from_play(character: GameObject) -> None:
         end_marriage(character, character_component.spouse)
 
     deactivate_relationships(character)
+
+    # Invalidate all schemes
+    scheme_manager = character.get_component(SchemeManager)
+    for scheme in [*scheme_manager.get_schemes()]:
+        scheme_component = scheme.get_component(Scheme)
+
+        remove_member_from_scheme(scheme, character)
+
+        if scheme_component.initiator == character:
+            scheme_component.is_valid = False
 
 
 def set_character_birth_family(

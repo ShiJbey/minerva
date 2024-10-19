@@ -15,12 +15,19 @@ from minerva.actions.base_types import (
     AIBrain,
     AIContext,
     Scheme,
-    SchemeStrategy,
 )
-from minerva.actions.scheme_helpers import add_member_to_scheme, create_scheme
+from minerva.actions.scheme_helpers import add_member_to_scheme
+from minerva.actions.scheme_types import CoupScheme
 from minerva.characters.components import Character, Family, HeadOfFamily
+from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance
-from minerva.characters.war_helpers import end_alliance, join_alliance, start_alliance
+from minerva.characters.war_helpers import (
+    create_alliance_scheme,
+    create_coup_scheme,
+    create_war_scheme,
+    end_alliance,
+    join_alliance,
+)
 from minerva.datetime import SimDate
 from minerva.ecs import Active, GameObject
 from minerva.life_events.events import TakeOverProvinceEvent
@@ -39,7 +46,11 @@ class IdleBehavior(AIBehavior):
     """A behavior that does nothing."""
 
     def execute(self, character: GameObject) -> bool:
-        # Do Nothing
+        current_date = character.world.resources.get_resource(SimDate)
+
+        _logger.debug(
+            "[%s]: %s is idle.", current_date.to_iso_str(), character.name_with_uid
+        )
         return True
 
 
@@ -56,11 +67,11 @@ class GiveBackToTerritoryActionType(AIActionType):
 
         territory.get_component(PopulationHappiness).base_value += 5
 
+        # TODO: Fire and log event
         _logger.info(
-            "[%s]: %s increased influence of %s in %s.",
+            "[%s]: %s gave back to the smallfolk of %s.",
             current_date.to_iso_str(),
             context.character.name_with_uid,
-            family.name_with_uid,
             territory.name_with_uid,
         )
 
@@ -82,7 +93,7 @@ class GiveBackToTerritoryAction(AIAction):
         self.context.blackboard["territory"] = territory
 
 
-class IncreasePoliticalPower(AIBehavior):
+class GiveToSmallfolkBehavior(AIBehavior):
     """A family head  will try to increase their political influence in a settlement."""
 
     def execute(self, character: GameObject) -> bool:
@@ -90,9 +101,6 @@ class IncreasePoliticalPower(AIBehavior):
         # and spend influence points to increase political power
         rng = character.world.resources.get_resource(random.Random)
         brain = character.get_component(AIBrain)
-
-        character_component = character.get_component(Character)
-        character_component.influence_points -= self.cost
 
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
@@ -114,9 +122,6 @@ class IncreasePoliticalPower(AIBehavior):
             rng = character.world.resources.get_resource(random.Random)
             selected_action = actions.select_weighted_random(rng)
 
-            character_component = character.get_component(Character)
-            character_component.influence_points -= self.cost
-
             return selected_action.execute()
 
         return False
@@ -137,6 +142,7 @@ class QuellRevoltActionType(AIActionType):
 
         population_happiness.base_value = constants.BASE_SETTLEMENT_HAPPINESS
 
+        # TODO: Fire and log events
         _logger.info(
             "[%s]: %s quelled the revolt in %s",
             current_date.to_iso_str(),
@@ -193,54 +199,9 @@ class QuellRevolt(AIBehavior):
             rng = character.world.resources.get_resource(random.Random)
             selected_action = actions.select_weighted_random(rng)
 
-            character_component = character.get_component(Character)
-            character_component.influence_points -= self.cost
-
             return selected_action.execute()
 
         return False
-
-
-class AllianceScheme(SchemeStrategy):
-    """Create a new alliance scheme"""
-
-    def get_description(self, scheme: Scheme) -> str:
-        """Get a string description of the scheme."""
-        return f"{scheme.initiator.name_with_uid} is trying to start an alliance."
-
-    def update(self, scheme: Scheme) -> None:
-        """Update the scheme and execute any code."""
-        world = scheme.gameobject.world
-        current_date = world.resources.get_resource(SimDate).copy()
-        elapsed_months = (current_date - scheme.start_date).total_months
-
-        if elapsed_months >= self.required_time:
-            # Check that other people have joined the scheme for the alliance to be
-            # created. Otherwise, this scheme fails
-            if len(scheme.members) > 1:
-
-                # Need to get all the families of scheme members
-                alliance_families: list[GameObject] = []
-                for member in scheme.members:
-                    character_component = member.get_component(Character)
-                    if character_component.family is None:
-                        raise RuntimeError("Alliance member is missing family.")
-                    alliance_families.append(character_component.family)
-
-                start_alliance(*alliance_families)
-                _logger.info(
-                    "[%s]: %s founded a new alliance.",
-                    world.resources.get_resource(SimDate).to_iso_str(),
-                    scheme.initiator.name_with_uid,
-                )
-            else:
-                _logger.info(
-                    "[%s]: %s failed to start a new alliance.",
-                    world.resources.get_resource(SimDate).to_iso_str(),
-                    scheme.initiator.name_with_uid,
-                )
-
-            scheme.is_valid = False
 
 
 class FormAlliance(AIBehavior):
@@ -249,13 +210,11 @@ class FormAlliance(AIBehavior):
     def execute(self, character: GameObject) -> bool:
         # Character will start a new scheme to form an alliance. Other family heads can
         # choose to join before the alliance is officially formed.
-        character_component = character.get_component(Character)
-        character_component.influence_points -= self.cost
-
         world = character.world
 
-        create_scheme(world=world, scheme_type="alliance", initiator=character)
+        create_alliance_scheme(character)
 
+        # TODO: Fire and log event
         _logger.info(
             "[%s]: %s is attempting to form a new alliance.",
             world.resources.get_resource(SimDate).to_iso_str(),
@@ -284,7 +243,9 @@ class JoinAllianceScheme(AIBehavior):
             initiator = scheme.initiator
 
             reputation_score = (
-                get_relationship(character, initiator).get_component(Reputation).value
+                get_relationship(character, initiator)
+                .get_component(Reputation)
+                .normalized
             )
 
             if reputation_score > 0:
@@ -292,14 +253,13 @@ class JoinAllianceScheme(AIBehavior):
                 scheme_scores.append(reputation_score)
 
         if eligible_schemes:
-            character_component = character.get_component(Character)
-            character_component.influence_points -= self.cost
 
             rng = world.resources.get_resource(random.Random)
             chosen_scheme = rng.choices(eligible_schemes, scheme_scores, k=1)[0]
 
             add_member_to_scheme(chosen_scheme, character)
 
+            # TODO: Fire and log event
             _logger.info(
                 "[%s]: %s has joined %s's alliance scheme.",
                 world.resources.get_resource(SimDate).to_iso_str(),
@@ -342,19 +302,18 @@ class JoinExistingAlliance(AIBehavior):
                 alliance_scores.append(reputation_score)
 
         if eligible_alliances:
-            character_component = character.get_component(Character)
-            character_component.influence_points -= self.cost
 
             rng = world.resources.get_resource(random.Random)
             chosen_alliance = rng.choices(eligible_alliances, alliance_scores, k=1)[0]
 
-            family = character_component.family
+            family = character.get_component(Character).family
 
             if family is None:
                 raise RuntimeError(f"{character.name_with_uid} is missing a family.")
 
             join_alliance(alliance=chosen_alliance, family=family)
 
+            # TODO: Fire and log event
             _logger.info(
                 "[%s]: the %s family has joined the alliance started by the %s family.",
                 world.resources.get_resource(SimDate).to_iso_str(),
@@ -389,10 +348,23 @@ class DisbandAlliance(AIBehavior):
             Alliance
         ).founder_family
 
+        alliance_component = family_component.alliance.get_component(Alliance)
+        for member_family in alliance_component.member_families:
+            if member_family == family:
+                continue
+
+            member_family_component = member_family.get_component(Family)
+
+            if member_family_component.head is not None:
+                get_relationship(
+                    member_family_component.head, member_family
+                ).get_component(Reputation).base_value -= 20
+
         end_alliance(family_component.alliance)
 
         world = character.world
 
+        # TODO: Fire and log event
         _logger.info(
             "[%s]: the %s family has disbanded the alliance started by the %s family.",
             world.resources.get_resource(SimDate).to_iso_str(),
@@ -403,35 +375,26 @@ class DisbandAlliance(AIBehavior):
         return True
 
 
-class WarScheme(SchemeStrategy):
-    """Create a new war scheme"""
-
-    def get_description(self, scheme: Scheme) -> str:
-        """Get a string description of the scheme."""
-        target = scheme.targets[0]
-        return (
-            f"{scheme.initiator.name_with_uid} is trying to start an war against "
-            f"{target.name_with_uid}."
-        )
-
-    def update(self, scheme: Scheme) -> None:
-        """Update the scheme and execute any code."""
-        world = scheme.gameobject.world
-        current_date = world.resources.get_resource(SimDate).copy()
-        elapsed_months = (current_date - scheme.start_date).total_months
-
-        if elapsed_months >= self.required_time:
-            # Check that other people have joined the scheme for the alliance to be
-            # created. Otherwise, this scheme fails
-            # start_war()
-            pass
-
-
 class StartWarSchemeActionType(AIActionType):
     """Executes action starting a war scheme."""
 
     def execute(self, context: AIContext) -> bool:
-        # return super().execute(context)
+        current_date = context.world.resources.get_resource(SimDate)
+        character: GameObject = context.blackboard["aggressor"]
+        defender: GameObject = context.blackboard["defender"]
+        territory: GameObject = context.blackboard["territory"]
+
+        create_war_scheme(initiator=character, target=defender, territory=territory)
+
+        # TODO: Fire and log event
+        _logger.info(
+            "[%s]: %s started a war scheme against %s for the %s territory.",
+            current_date.to_iso_str(),
+            character.name_with_uid,
+            defender.name_with_uid,
+            territory.name_with_uid,
+        )
+
         return True
 
 
@@ -439,7 +402,11 @@ class StartWarSchemeAction(AIAction):
     """Action instance data for starting a war scheme against a specific person."""
 
     def __init__(
-        self, context: AIContext, aggressor: GameObject, defender: GameObject
+        self,
+        context: AIContext,
+        aggressor: GameObject,
+        defender: GameObject,
+        territory: GameObject,
     ) -> None:
         super().__init__(
             context,
@@ -449,6 +416,7 @@ class StartWarSchemeAction(AIAction):
         )
         self.context.blackboard["aggressor"] = aggressor
         self.context.blackboard["defender"] = defender
+        self.context.blackboard["territory"] = territory
 
 
 class DeclareWar(AIBehavior):
@@ -459,7 +427,83 @@ class DeclareWar(AIBehavior):
         # over that territory. They will not declare war on a territory held by someone
         # in their alliance.
 
+        brain = character.get_component(AIBrain)
+
+        potential_targets: list[GameObject] = brain.context.blackboard[
+            "enemy_territories"
+        ]
+
+        actions: AIActionCollection = AIActionCollection()
+
+        for territory in potential_targets:
+            territory_component = territory.get_component(Settlement)
+
+            if territory_component.controlling_family is None:
+                continue
+
+            family_component = territory_component.controlling_family.get_component(
+                Family
+            )
+
+            if family_component.head is None:
+                continue
+
+            if family_component.head == character:
+                continue
+
+            action = StartWarSchemeAction(
+                context=brain.context,
+                aggressor=character,
+                defender=family_component.head,
+                territory=territory,
+            )
+
+            utility = action.calculate_utility()
+
+            actions.add(action, utility)
+
+        if len(actions) > 0:
+            rng = character.world.resources.get_resource(random.Random)
+            selected_action = actions.select_weighted_random(rng)
+            selected_action.execute()
+
         return True
+
+
+class TaxTerritoryActionType(AIActionType):
+    """Two characters get married."""
+
+    def execute(self, context: AIContext) -> bool:
+        current_date = context.world.resources.get_resource(SimDate)
+
+        territory: GameObject = context.blackboard["territory"]
+
+        character_component = context.character.get_component(Character)
+        character_component.influence_points += 200
+
+        territory.get_component(PopulationHappiness).base_value -= 15
+
+        # TODO: Fire and log event
+        _logger.info(
+            "[%s]: %s taxed the %s territory.",
+            current_date.to_iso_str(),
+            context.character.name_with_uid,
+            territory.name_with_uid,
+        )
+
+        return True
+
+
+class TaxTerritoryAction(AIAction):
+    """An instance of a get married action."""
+
+    def __init__(self, context: AIContext, territory: GameObject) -> None:
+        action_library = context.world.resources.get_resource(AIActionLibrary)
+        super().__init__(
+            context,
+            action_library.get_action_with_name(TaxTerritoryActionType.__name__),
+        )
+        self.context.blackboard["territory"] = territory
 
 
 class TaxTerritory(AIBehavior):
@@ -471,18 +515,14 @@ class TaxTerritory(AIBehavior):
         rng = character.world.resources.get_resource(random.Random)
         brain = character.get_component(AIBrain)
 
-        character_component = character.get_component(Character)
-        character_component.influence_points -= self.cost
-
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
-        actions: list[GiveBackToTerritoryAction] = []
+        actions: list[TaxTerritoryAction] = []
         action_weights: list[float] = []
         for territory in family_component.territories:
-            action = GiveBackToTerritoryAction(
+            action = TaxTerritoryAction(
                 brain.context,
-                family=family_component.gameobject,
                 territory=territory,
             )
             utility = action.calculate_utility()
@@ -503,32 +543,6 @@ class TaxTerritory(AIBehavior):
         return False
 
 
-class CoupScheme(SchemeStrategy):
-    """A scheme to overthrow the royal family and establish the coup organizer."""
-
-    def get_description(self, scheme: Scheme) -> str:
-        """Get a string description of the scheme."""
-        target = scheme.targets[0]
-        return (
-            f"{scheme.initiator.name_with_uid} is planning a coup against "
-            f"{target.name_with_uid}."
-        )
-
-    def update(self, scheme: Scheme) -> None:
-        """Update the scheme and execute any code."""
-        world = scheme.gameobject.world
-        current_date = world.resources.get_resource(SimDate).copy()
-        elapsed_months = (current_date - scheme.start_date).total_months
-
-        # Check if the scheme is discovered by the ruling family
-
-        if elapsed_months >= self.required_time:
-            # Check that other people have joined the scheme for the alliance to be
-            # created. Otherwise, this scheme fails
-            # start_war()
-            pass
-
-
 class PlanCoupActionType(AIActionType):
     """Start a scheme to overthrow the ruling family."""
 
@@ -538,6 +552,7 @@ class PlanCoupActionType(AIActionType):
         initiator: GameObject = context.blackboard["initiator"]
         target: GameObject = context.blackboard["target"]
 
+        # TODO: Fire and log event
         _logger.info(
             "[%s]: %s began a scheme to overthrow %s",
             current_date.to_iso_str(),
@@ -564,7 +579,7 @@ class PlanCoupAction(AIAction):
         self.context.blackboard["target"] = target
 
 
-class CoupDEtat(AIBehavior):
+class PlanCoupBehavior(AIBehavior):
     """A family head will attempt to overthrow the royal family."""
 
     def execute(self, character: GameObject) -> bool:
@@ -573,7 +588,70 @@ class CoupDEtat(AIBehavior):
         # alliances don't join and if discovered, all family heads involved are
         # executed and their families lose control of provinces
 
+        current_date = character.world.resources.get_resource(SimDate)
+
+        current_ruler = get_current_ruler(character.world)
+
+        if current_ruler is None:
+            return False
+
+        create_coup_scheme(initiator=character, target=current_ruler)
+
+        # TODO: Fire and log events
+        _logger.info(
+            "[%s]: %s began a coup scheme to overthrow %s",
+            current_date.to_iso_str(),
+            character.name_with_uid,
+            current_ruler.name_with_uid,
+        )
+
         return True
+
+
+class JoinCoupScheme(AIBehavior):
+    """A family head joins someones coup scheme."""
+
+    def execute(self, character: GameObject) -> bool:
+        world = character.world
+
+        # Find all active alliances and join one based on the opinion of the character
+        # toward the person who is the head of the founding family.
+        eligible_schemes: list[GameObject] = []
+        scheme_scores: list[float] = []
+        for _, (scheme, _, _) in world.get_components((Scheme, CoupScheme, Active)):
+
+            initiator = scheme.initiator
+
+            reputation_score = (
+                get_relationship(character, initiator)
+                .get_component(Reputation)
+                .normalized
+            )
+
+            if character in scheme.members:
+                continue
+
+            if reputation_score > 0:
+                eligible_schemes.append(scheme.gameobject)
+                scheme_scores.append(reputation_score)
+
+        if eligible_schemes:
+            rng = world.resources.get_resource(random.Random)
+            chosen_scheme = rng.choices(eligible_schemes, scheme_scores, k=1)[0]
+
+            add_member_to_scheme(chosen_scheme, character)
+
+            # TODO: Fire and log event
+            _logger.info(
+                "[%s]: %s has joined %s's coup scheme.",
+                world.resources.get_resource(SimDate).to_iso_str(),
+                character.name_with_uid,
+                chosen_scheme.get_component(Scheme).initiator.name_with_uid,
+            )
+
+            return True
+
+        return False
 
 
 class ExpandIntoTerritoryActionType(AIActionType):
@@ -590,6 +668,7 @@ class ExpandIntoTerritoryActionType(AIActionType):
         territory_component = territory.get_component(Settlement)
         territory_component.political_influence[family_head_component.family] = 50
 
+        # TODO: Fire and log event
         _logger.info(
             "[%s]: %s expanded the %s family into %s",
             current_date.to_iso_str(),
@@ -638,9 +717,6 @@ class ExpandPoliticalDomain(AIBehavior):
         if len(actions) > 0:
             rng = character.world.resources.get_resource(random.Random)
             selected_action = actions.select_weighted_random(rng)
-
-            character_component = character.get_component(Character)
-            character_component.influence_points -= self.cost
 
             return selected_action.execute()
 
@@ -708,9 +784,6 @@ class SeizeControlOfTerritory(AIBehavior):
         if len(actions) > 0:
             rng = character.world.resources.get_resource(random.Random)
             selected_action = actions.select_weighted_random(rng)
-
-            character_component = character.get_component(Character)
-            character_component.influence_points -= self.cost
 
             return selected_action.execute()
 

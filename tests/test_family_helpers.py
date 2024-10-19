@@ -38,6 +38,7 @@ from minerva.loaders import (
     load_settlement_names,
     load_species_types,
     load_surnames,
+    load_traits,
 )
 from minerva.pcg.character import generate_character, generate_family
 from minerva.pcg.settlement import generate_settlement
@@ -57,6 +58,8 @@ def test_sim() -> Simulation:
     load_surnames(sim, data_dir / "japanese_surnames.txt")
     load_settlement_names(sim, data_dir / "japanese_city_names.txt")
     load_species_types(sim, data_dir / "species_types.yaml")
+    load_traits(sim, data_dir / "ck3_traits.yaml")
+    load_traits(sim, data_dir / "relationship_traits.yaml")
 
     return sim
 

@@ -301,6 +301,20 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
     db.commit()
 
 
+def get_current_ruler(world: World) -> Optional[GameObject]:
+    """Get the current ruler."""
+
+    dynasty_tracker = world.resources.get_resource(DynastyTracker)
+
+    if dynasty_tracker.current_dynasty is not None:
+
+        dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
+
+        return dynasty_component.current_ruler
+
+    return None
+
+
 def _start_new_dynasty(founding_character: GameObject) -> GameObject:
     """Start a new dynasty and return it."""
     world = founding_character.world

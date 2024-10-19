@@ -1,31 +1,34 @@
 """Helper functions for interacting with Schemes."""
 
-from minerva.actions.base_types import Scheme, SchemeManager, SchemeStrategyLibrary
+from minerva.actions.base_types import Scheme, SchemeData, SchemeManager
 from minerva.datetime import SimDate
-from minerva.ecs import World, GameObject
+from minerva.ecs import GameObject, World
 from minerva.sim_db import SimDB
 
 
-def create_scheme(world: World, scheme_type: str, initiator: GameObject) -> GameObject:
+def create_scheme(
+    world: World,
+    scheme_type: str,
+    required_time: int,
+    initiator: GameObject,
+    data: SchemeData,
+) -> GameObject:
     """Create a new scheme."""
     scheme_obj = world.gameobjects.spawn_gameobject()
 
-    strategy_library = world.resources.get_resource(SchemeStrategyLibrary)
-
-    if not strategy_library.has_strategy(scheme_type):
-        raise KeyError(f"Missing strategy for scheme type: {scheme_type}")
-
-    scheme_strategy = strategy_library.get_strategy(scheme_type)
     current_date = world.resources.get_resource(SimDate)
 
     scheme_component = scheme_obj.add_component(
         Scheme(
             scheme_type=scheme_type,
             initiator=initiator,
-            strategy=scheme_strategy,
+            required_time=required_time,
+            data=data,
             date_started=current_date.copy(),
         )
     )
+
+    scheme_obj.add_component(data)
 
     db = world.resources.get_resource(SimDB).db
     cursor = db.cursor()
@@ -128,25 +131,6 @@ def remove_member_from_scheme(scheme: GameObject, member: GameObject) -> None:
     db.commit()
 
     member.get_component(SchemeManager).remove_scheme(scheme)
-
-
-def add_target_to_scheme(scheme: GameObject, new_target: GameObject) -> None:
-    """Add a new target to a scheme."""
-    scheme_component = scheme.get_component(Scheme)
-
-    scheme_component.targets.add(new_target)
-
-    db = scheme.world.resources.get_resource(SimDB).db
-    cursor = db.cursor()
-
-    cursor.execute(
-        """
-        INSERT INTO scheme_targets (scheme_id, target_id) VALUES (?, ?);
-        """,
-        (scheme.uid, new_target.uid),
-    )
-
-    db.commit()
 
 
 def get_character_schemes_of_type(

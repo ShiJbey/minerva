@@ -91,12 +91,12 @@ max-attributes = 10
 max-args = 8
 
 [tool.pylint.'MESSAGES CONTROL']
-disable = "c-extension-no-member"
+disable = ["c-extension-no-member", "fixme"]
 
 [tool.pylint.basic]
 # Allow us to use "_T1, _T2, _T3, ..." as typevar names
-typevar-rgx = "^_{0,2}(?!T[A-Z])(?:[A-Z]+|(?:[A-Z]+[a-z]+)+T?(?<!Type))(?:_co(?:ntra)?)?_?[0-9]*$"
 
+typevar-rgx = "^_{0,2}(?!T[A-Z])(?:[A-Z]+|(?:[A-Z]+[a-z]+)+T?(?<!Type))(?:_co(?:ntra)?)?_?[0-9]*$"
 [tool.pylint.similarities]
 # Increases the default threshold for declaring code similarity
 min-similarity-lines = 30
