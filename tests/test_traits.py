@@ -6,9 +6,9 @@ import pytest
 from minerva.characters.components import Sociability
 from minerva.ecs import GameObject, World
 from minerva.relationships.base_types import (
+    Attraction,
     RelationshipManager,
     RelationshipModifier,
-    Romance,
     SocialRuleLibrary,
 )
 from minerva.relationships.helpers import add_relationship
@@ -58,7 +58,7 @@ def world() -> World:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        romance_modifier=StatModifier(
+                        attraction_modifier=StatModifier(
                             modifier_type=StatModifierType.FLAT, value=10
                         ),
                     )
@@ -74,7 +74,7 @@ def world() -> World:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        romance_modifier=StatModifier(12),
+                        attraction_modifier=StatModifier(12),
                     )
                 )
             ],
@@ -191,18 +191,18 @@ def test_trait_relationship_modifiers(world: World) -> None:
     c2 = create_test_character(world)
 
     relationship = add_relationship(c1, c2)
-    romance = relationship.get_component(Romance)
+    attraction = relationship.get_component(Attraction)
 
-    assert romance.value == 0
+    assert attraction.value == 0
 
     add_trait(c1, "flirtatious")
 
-    assert romance.value == 10
+    assert attraction.value == 10
 
     add_trait(c2, "charming")
 
-    assert romance.value == 22
+    assert attraction.value == 22
 
     remove_trait(c1, "flirtatious")
 
-    assert romance.value == 12
+    assert attraction.value == 12

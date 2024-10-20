@@ -56,7 +56,7 @@ class IStatCalculationStrategy(Protocol):
 
 
 class StatComponent(Component, ABC):
-    """A stat such as strength, reputation, or attraction.
+    """A stat such as strength, opinion, or attraction.
 
     Parameters
     ----------

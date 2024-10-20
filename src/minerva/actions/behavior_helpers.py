@@ -41,7 +41,7 @@ from minerva.characters.components import (
 from minerva.characters.motive_helpers import MotiveVector, get_character_motives
 from minerva.characters.war_data import Alliance, WarTracker
 from minerva.ecs import Active, GameObject
-from minerva.relationships.base_types import Reputation
+from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.world_map.components import InRevolt, Territory
 
@@ -213,7 +213,7 @@ class OpinionOfRulerConsideration(AIUtilityConsideration):
             else:
                 return (
                     get_relationship(context.character, dynasty_component.current_ruler)
-                    .get_component(Reputation)
+                    .get_component(Opinion)
                     .normalized
                 )
 

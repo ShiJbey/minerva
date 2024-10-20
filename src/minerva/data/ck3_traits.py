@@ -51,20 +51,20 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        romance_modifier=StatModifier(20),
-                        reputation_modifier=StatModifier(10),
+                        attraction_modifier=StatModifier(20),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("craven"),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("brave"),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
             ],
@@ -87,14 +87,14 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        romance_modifier=StatModifier(-10),
-                        reputation_modifier=StatModifier(-15),
+                        attraction_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-15),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("craven"),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
             ],
@@ -117,13 +117,13 @@ def load_traits(world: World) -> None:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("calm"),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("wrathful"),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -145,7 +145,7 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -165,13 +165,13 @@ def load_traits(world: World) -> None:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("chaste"),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("lustful"),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -192,13 +192,13 @@ def load_traits(world: World) -> None:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("lustful"),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("chaste"),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -217,7 +217,7 @@ def load_traits(world: World) -> None:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("content"),
-                        reputation_modifier=StatModifier(20),
+                        opinion_modifier=StatModifier(20),
                     )
                 ),
             ],
@@ -239,13 +239,13 @@ def load_traits(world: World) -> None:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("ambitious"),
-                        reputation_modifier=StatModifier(-15),
+                        opinion_modifier=StatModifier(-15),
                     )
                 ),
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
             ],
@@ -265,19 +265,19 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(15),
+                        opinion_modifier=StatModifier(15),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("diligent"),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("lazy"),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -298,7 +298,7 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -318,13 +318,13 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(15),
+                        opinion_modifier=StatModifier(15),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("greedy"),
-                        reputation_modifier=StatModifier(-20),
+                        opinion_modifier=StatModifier(-20),
                     )
                 ),
             ],
@@ -343,7 +343,7 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(-15),
+                        opinion_modifier=StatModifier(-15),
                     )
                 ),
             ],
@@ -387,8 +387,8 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(10),
-                        romance_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
+                        attraction_modifier=StatModifier(10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
@@ -396,7 +396,7 @@ def load_traits(world: World) -> None:
                         precondition=RelationshipPrecondition.any(
                             TargetHasTrait("sadistic"), TargetHasTrait("callous")
                         ),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -419,13 +419,13 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("deceitful"),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -448,7 +448,7 @@ def load_traits(world: World) -> None:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("honest"),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -468,7 +468,7 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(-5),
+                        opinion_modifier=StatModifier(-5),
                     )
                 ),
             ],
@@ -486,7 +486,7 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 )
             ],
@@ -520,7 +520,7 @@ def load_traits(world: World) -> None:
                 AddIncomingRelationshipModifier(
                     RelationshipModifier(
                         precondition=ConstantPrecondition(True),
-                        reputation_modifier=StatModifier(-10),
+                        opinion_modifier=StatModifier(-10),
                     )
                 ),
             ],
@@ -539,7 +539,7 @@ def load_traits(world: World) -> None:
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
                         precondition=TargetHasTrait("eccentric"),
-                        reputation_modifier=StatModifier(10),
+                        opinion_modifier=StatModifier(10),
                     )
                 ),
             ],

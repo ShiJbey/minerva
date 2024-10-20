@@ -588,16 +588,16 @@ class Simulation:
         """Initialize social rules"""
         social_rule_library = self.world.resources.get_resource(SocialRuleLibrary)
 
-        social_rule_library.add_rule(social_rules.reputation_boost_for_family)
-        social_rule_library.add_rule(social_rules.reputation_boost_for_birth_family)
+        social_rule_library.add_rule(social_rules.opinion_boost_for_family)
+        social_rule_library.add_rule(social_rules.opinion_boost_for_birth_family)
         social_rule_library.add_rule(social_rules.not_attracted_to_parents)
-        social_rule_library.add_rule(social_rules.reputation_boost_for_parents)
-        social_rule_library.add_rule(social_rules.romance_drop_for_children)
-        social_rule_library.add_rule(social_rules.reputation_boost_for_children)
-        social_rule_library.add_rule(social_rules.romance_drop_for_siblings)
-        social_rule_library.add_rule(social_rules.reputation_boost_for_siblings)
-        social_rule_library.add_rule(social_rules.reputation_boost_for_spouse)
-        social_rule_library.add_rule(social_rules.romance_boost_for_spouse)
+        social_rule_library.add_rule(social_rules.opinion_boost_for_parents)
+        social_rule_library.add_rule(social_rules.attraction_drop_for_children)
+        social_rule_library.add_rule(social_rules.opinion_boost_for_children)
+        social_rule_library.add_rule(social_rules.attraction_drop_for_siblings)
+        social_rule_library.add_rule(social_rules.opinion_boost_for_siblings)
+        social_rule_library.add_rule(social_rules.opinion_boost_for_spouse)
+        social_rule_library.add_rule(social_rules.attraction_boost_for_spouse)
 
     def initialize_species_types(self) -> None:
         """Initialize species types."""

@@ -87,8 +87,8 @@ class RelationshipManager(Component):
         self.outgoing_modifiers = []
 
 
-class Reputation(StatComponent):
-    """Tracks a relationship's reputations stat."""
+class Opinion(StatComponent):
+    """Tracks a character's opinion of another."""
 
     def __init__(
         self,
@@ -98,8 +98,8 @@ class Reputation(StatComponent):
         super().__init__(calculation_strategy, base_value, (-100, 100), True)
 
 
-class Romance(StatComponent):
-    """Tracks a relationship's romance stat."""
+class Attraction(StatComponent):
+    """Tracks a character's romantic attraction to another."""
 
     def __init__(
         self,
@@ -114,26 +114,26 @@ class RelationshipModifier:
 
     __slots__ = (
         "precondition",
-        "romance_modifier",
-        "reputation_modifier",
+        "attraction_modifier",
+        "opinion_modifier",
     )
 
     precondition: RelationshipPrecondition
     """Precondition to evaluate against a relationship GameObject."""
-    romance_modifier: Optional[StatModifier]
-    """A modifier applied to the romance stat."""
-    reputation_modifier: Optional[StatModifier]
-    """A modifier applied to the reputation stat."""
+    attraction_modifier: Optional[StatModifier]
+    """A modifier applied to the a stat."""
+    opinion_modifier: Optional[StatModifier]
+    """A modifier applied to the opinion stat."""
 
     def __init__(
         self,
         precondition: RelationshipPrecondition,
-        romance_modifier: Optional[StatModifier] = None,
-        reputation_modifier: Optional[StatModifier] = None,
+        attraction_modifier: Optional[StatModifier] = None,
+        opinion_modifier: Optional[StatModifier] = None,
     ) -> None:
         self.precondition = precondition
-        self.romance_modifier = romance_modifier
-        self.reputation_modifier = reputation_modifier
+        self.attraction_modifier = attraction_modifier
+        self.opinion_modifier = opinion_modifier
 
     def evaluate_precondition(self, relationship: GameObject) -> bool:
         """Check the preconditions against the given relationship."""
@@ -215,26 +215,26 @@ class SocialRule:
     __slots__ = (
         "rule_id",
         "precondition",
-        "reputation_modifier",
-        "romance_modifier",
+        "opinion_modifier",
+        "attraction_modifier",
     )
 
     rule_id: str
     precondition: RelationshipPrecondition
-    reputation_modifier: Optional[StatModifier]
-    romance_modifier: Optional[StatModifier]
+    opinion_modifier: Optional[StatModifier]
+    attraction_modifier: Optional[StatModifier]
 
     def __init__(
         self,
         rule_id: str,
         precondition: RelationshipPrecondition,
-        reputation_modifier: Optional[StatModifier] = None,
-        romance_modifier: Optional[StatModifier] = None,
+        opinion_modifier: Optional[StatModifier] = None,
+        attraction_modifier: Optional[StatModifier] = None,
     ) -> None:
         self.rule_id = rule_id
         self.precondition = precondition
-        self.reputation_modifier = reputation_modifier
-        self.romance_modifier = romance_modifier
+        self.opinion_modifier = opinion_modifier
+        self.attraction_modifier = attraction_modifier
 
     def evaluate_precondition(self, relationship: GameObject) -> bool:
         """Check if a relationship passes the preconditions for this rule."""

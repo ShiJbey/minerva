@@ -24,7 +24,7 @@ Affairs are an emergent quality of the cheating system. These are represented by
 
 Cheating characters' spouses can discover their partners' infidelity at random. Each time step a system runs that calculates the probability of a cheater being caught. This probability is calculated using the number of times they have cheated in the marriage, the cheater's intrigue score, and the intrigue score of the last cheat partner.
 
-When a cheater is discovered, their reputation with their spouse drops, and the spouse drops their reputation of the person they cheated with.
+When a cheater is discovered, their spouses opinion of them, and the spouse drops their opinion of the person they cheated with.
 
 The partner who discovered the cheating has the option of forgiving their spouse or divorcing them.
 

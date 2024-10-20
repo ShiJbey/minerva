@@ -73,7 +73,7 @@ from minerva.life_events.events import (
 )
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.base_types import PCGFactories
-from minerva.relationships.base_types import Reputation
+from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
@@ -1038,17 +1038,17 @@ class AllianceSchemeUpdateSystem(System):
 
                     start_alliance(*alliance_families)
 
-                    # Increase the reputation between alliance members.
+                    # Increase the opinion between alliance members.
                     for member_a in scheme.members:
                         for member_b in scheme.members:
                             if member_a == member_b:
                                 continue
 
                             get_relationship(member_a, member_b).get_component(
-                                Reputation
+                                Opinion
                             ).base_value += 20
                             get_relationship(member_b, member_a).get_component(
-                                Reputation
+                                Opinion
                             ).base_value += 20
 
                     # TODO: Swap this out with a new life event

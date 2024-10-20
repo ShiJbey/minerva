@@ -31,7 +31,7 @@ from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, GameObject
 from minerva.life_events.events import TakeOverProvinceEvent
-from minerva.relationships.base_types import Reputation
+from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
 from minerva.world_map.helpers import (
@@ -243,15 +243,13 @@ class JoinAllianceScheme(AIBehavior):
 
             initiator = scheme.initiator
 
-            reputation_score = (
-                get_relationship(character, initiator)
-                .get_component(Reputation)
-                .normalized
+            opinion_score = (
+                get_relationship(character, initiator).get_component(Opinion).normalized
             )
 
-            if reputation_score > 0:
+            if opinion_score > 0:
                 eligible_schemes.append(scheme.gameobject)
-                scheme_scores.append(reputation_score)
+                scheme_scores.append(opinion_score)
 
         if eligible_schemes:
 
@@ -292,15 +290,15 @@ class JoinExistingAlliance(AIBehavior):
             if founder_family_head is None:
                 continue
 
-            reputation_score = (
+            opinion_score = (
                 get_relationship(character, founder_family_head)
-                .get_component(Reputation)
+                .get_component(Opinion)
                 .value
             )
 
-            if reputation_score > 0:
+            if opinion_score > 0:
                 eligible_alliances.append(alliance.gameobject)
-                alliance_scores.append(reputation_score)
+                alliance_scores.append(opinion_score)
 
         if eligible_alliances:
 
@@ -359,7 +357,7 @@ class DisbandAlliance(AIBehavior):
             if member_family_component.head is not None:
                 get_relationship(
                     member_family_component.head, member_family
-                ).get_component(Reputation).base_value -= 20
+                ).get_component(Opinion).base_value -= 20
 
         end_alliance(family_component.alliance)
 
@@ -623,18 +621,16 @@ class JoinCoupScheme(AIBehavior):
 
             initiator = scheme.initiator
 
-            reputation_score = (
-                get_relationship(character, initiator)
-                .get_component(Reputation)
-                .normalized
+            opinion_score = (
+                get_relationship(character, initiator).get_component(Opinion).normalized
             )
 
             if character in scheme.members:
                 continue
 
-            if reputation_score > 0:
+            if opinion_score > 0:
                 eligible_schemes.append(scheme.gameobject)
-                scheme_scores.append(reputation_score)
+                scheme_scores.append(opinion_score)
 
         if eligible_schemes:
             rng = world.resources.get_resource(random.Random)

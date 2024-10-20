@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from minerva.ecs import Event, GameObject
 from minerva.relationships.base_types import (
+    Attraction,
+    Opinion,
     Relationship,
     RelationshipManager,
-    Reputation,
-    Romance,
     SocialRuleLibrary,
 )
 from minerva.stats.base_types import (
@@ -89,8 +89,8 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     relationship.add_component(Relationship(owner=owner, target=target))
     relationship.add_component(StatusEffectManager())
     relationship.add_component(TraitManager())
-    relationship.add_component(Reputation(reputation_calc_strategy))
-    relationship.add_component(Romance(romance_calc_strategy))
+    relationship.add_component(Opinion(opinion_calc_strategy))
+    relationship.add_component(Attraction(attraction_calc_strategy))
 
     relationship.name = f"[{owner.name} -> {target.name}]"
 
@@ -204,8 +204,8 @@ def _remove_incoming_relationship(
     return False
 
 
-def reputation_calc_strategy(stat_component: StatComponent) -> float:
-    """Calculation strategy for reputation stats."""
+def opinion_calc_strategy(stat_component: StatComponent) -> float:
+    """Calculation strategy for opinion stats."""
 
     relationship = stat_component.gameobject
     relationship_component = relationship.get_component(Relationship)
@@ -230,11 +230,11 @@ def reputation_calc_strategy(stat_component: StatComponent) -> float:
         RelationshipManager
     ).outgoing_modifiers
     for relationship_modifier in owner_relationship_modifiers:
-        if relationship_modifier.reputation_modifier is None:
+        if relationship_modifier.opinion_modifier is None:
             continue
 
         if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.reputation_modifier
+            modifier = relationship_modifier.opinion_modifier
             if modifier.modifier_type == StatModifierType.FLAT:
                 final_value += modifier.value
 
@@ -246,11 +246,11 @@ def reputation_calc_strategy(stat_component: StatComponent) -> float:
         RelationshipManager
     ).incoming_modifiers
     for relationship_modifier in target_relationship_modifiers:
-        if relationship_modifier.reputation_modifier is None:
+        if relationship_modifier.opinion_modifier is None:
             continue
 
         if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.reputation_modifier
+            modifier = relationship_modifier.opinion_modifier
             if modifier.modifier_type == StatModifierType.FLAT:
                 final_value += modifier.value
 
@@ -260,11 +260,11 @@ def reputation_calc_strategy(stat_component: StatComponent) -> float:
     # Get modifiers from social rules
     social_rule_library = relationship.world.resources.get_resource(SocialRuleLibrary)
     for rule in social_rule_library.iter_rules():
-        if rule.reputation_modifier is None:
+        if rule.opinion_modifier is None:
             continue
 
         if rule.evaluate_precondition(relationship):
-            modifier = rule.reputation_modifier
+            modifier = rule.opinion_modifier
             if modifier.modifier_type == StatModifierType.FLAT:
                 final_value += modifier.value
 
@@ -276,8 +276,8 @@ def reputation_calc_strategy(stat_component: StatComponent) -> float:
     return final_value
 
 
-def romance_calc_strategy(stat_component: StatComponent) -> float:
-    """Calculation strategy for romance stats"""
+def attraction_calc_strategy(stat_component: StatComponent) -> float:
+    """Calculation strategy for attraction stats."""
     relationship = stat_component.gameobject
     relationship_component = relationship.get_component(Relationship)
     owner = relationship_component.owner
@@ -301,11 +301,11 @@ def romance_calc_strategy(stat_component: StatComponent) -> float:
         RelationshipManager
     ).outgoing_modifiers
     for relationship_modifier in owner_relationship_modifiers:
-        if relationship_modifier.romance_modifier is None:
+        if relationship_modifier.attraction_modifier is None:
             continue
 
         if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.romance_modifier
+            modifier = relationship_modifier.attraction_modifier
             if modifier.modifier_type == StatModifierType.FLAT:
                 final_value += modifier.value
 
@@ -317,11 +317,11 @@ def romance_calc_strategy(stat_component: StatComponent) -> float:
         RelationshipManager
     ).incoming_modifiers
     for relationship_modifier in target_relationship_modifiers:
-        if relationship_modifier.romance_modifier is None:
+        if relationship_modifier.attraction_modifier is None:
             continue
 
         if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.romance_modifier
+            modifier = relationship_modifier.attraction_modifier
             if modifier.modifier_type == StatModifierType.FLAT:
                 final_value += modifier.value
 
@@ -331,11 +331,11 @@ def romance_calc_strategy(stat_component: StatComponent) -> float:
     # Get modifiers from social rules
     social_rule_library = relationship.world.resources.get_resource(SocialRuleLibrary)
     for rule in social_rule_library.iter_rules():
-        if rule.romance_modifier is None:
+        if rule.attraction_modifier is None:
             continue
 
         if rule.evaluate_precondition(relationship):
-            modifier = rule.romance_modifier
+            modifier = rule.attraction_modifier
             if modifier.modifier_type == StatModifierType.FLAT:
                 final_value += modifier.value
 

@@ -5,12 +5,12 @@ from __future__ import annotations
 
 from minerva.ecs import Component, GameObject, World
 from minerva.relationships.base_types import (
+    Attraction,
+    Opinion,
     Relationship,
     RelationshipManager,
     RelationshipModifier,
     RelationshipPrecondition,
-    Reputation,
-    Romance,
     SocialRule,
     SocialRuleLibrary,
 )
@@ -284,13 +284,13 @@ def test_get_relationship_stat() -> None:
     )
 
     relationship = add_relationship(c1, c2)
-    reputation = relationship.get_component(Reputation)
+    opinion = relationship.get_component(Opinion)
 
-    assert reputation.value == 0
+    assert opinion.value == 0
 
-    relationship.get_component(Reputation).base_value = 15
+    relationship.get_component(Opinion).base_value = 15
 
-    assert reputation.value == 15
+    assert opinion.value == 15
 
 
 def test_get_modifier_to_relationship_stat() -> None:
@@ -318,13 +318,13 @@ def test_get_modifier_to_relationship_stat() -> None:
     )
 
     relationship = add_relationship(c1, c2)
-    reputation = relationship.get_component(Reputation)
+    opinion = relationship.get_component(Opinion)
 
-    assert reputation.value == 0
+    assert opinion.value == 0
 
-    reputation.add_modifier(StatModifier(modifier_type=StatModifierType.FLAT, value=35))
+    opinion.add_modifier(StatModifier(modifier_type=StatModifierType.FLAT, value=35))
 
-    assert reputation.value == 35
+    assert opinion.value == 35
 
 
 def test_relationship_modifiers() -> None:
@@ -354,7 +354,7 @@ def test_relationship_modifiers() -> None:
     c1.get_component(RelationshipManager).outgoing_modifiers.append(
         RelationshipModifier(
             precondition=ConstantPrecondition(True),
-            reputation_modifier=StatModifier(
+            opinion_modifier=StatModifier(
                 modifier_type=StatModifierType.FLAT,
                 value=20,
             ),
@@ -364,7 +364,7 @@ def test_relationship_modifiers() -> None:
     c2.get_component(RelationshipManager).incoming_modifiers.append(
         RelationshipModifier(
             precondition=ConstantPrecondition(True),
-            romance_modifier=StatModifier(
+            attraction_modifier=StatModifier(
                 modifier_type=StatModifierType.FLAT,
                 value=12,
             ),
@@ -372,10 +372,10 @@ def test_relationship_modifiers() -> None:
     )
 
     relationship = get_relationship(c1, c2)
-    reputation = relationship.get_component(Reputation)
+    opinion = relationship.get_component(Opinion)
 
-    assert reputation.value == 20
-    assert relationship.get_component(Romance).value == 12
+    assert opinion.value == 20
+    assert relationship.get_component(Attraction).value == 12
 
 
 def test_social_rules() -> None:
@@ -390,7 +390,7 @@ def test_social_rules() -> None:
         SocialRule(
             rule_id="rival_clans_clash",
             precondition=RivalClansPrecondition(),
-            reputation_modifier=StatModifier(
+            opinion_modifier=StatModifier(
                 modifier_type=StatModifierType.FLAT, value=-10
             ),
         )
@@ -419,7 +419,7 @@ def test_social_rules() -> None:
     c1.get_component(RelationshipManager).outgoing_modifiers.append(
         RelationshipModifier(
             precondition=ConstantPrecondition(True),
-            reputation_modifier=StatModifier(
+            opinion_modifier=StatModifier(
                 modifier_type=StatModifierType.FLAT,
                 value=20,
             ),
@@ -429,21 +429,21 @@ def test_social_rules() -> None:
     c2.get_component(RelationshipManager).incoming_modifiers.append(
         RelationshipModifier(
             precondition=ConstantPrecondition(True),
-            romance_modifier=StatModifier(
+            attraction_modifier=StatModifier(
                 modifier_type=StatModifierType.FLAT,
                 value=12,
             ),
         )
     )
 
-    assert get_relationship(c1, c2).get_component(Reputation).value == 10
+    assert get_relationship(c1, c2).get_component(Opinion).value == 10
 
 
 def test_relationship_stat_listener() -> None:
     """Test attaching listeners to relationship stats."""
 
-    def reputation_listener(gameobject: GameObject, stat: StatComponent) -> None:
-        reputation_intervals = [
+    def opinion_listener(gameobject: GameObject, stat: StatComponent) -> None:
+        opinion_intervals = [
             (-75, "TERRIBLE"),
             (-25, "POOR"),
             (25, "NEUTRAL"),
@@ -451,9 +451,9 @@ def test_relationship_stat_listener() -> None:
             (100, "EXCELLENT"),
         ]
 
-        for level, label in reputation_intervals:
+        for level, label in opinion_intervals:
             if stat.value <= level:
-                gameobject.metadata["reputation_state"] = label
+                gameobject.metadata["opinion_state"] = label
                 return
 
     world = World()
@@ -478,17 +478,17 @@ def test_relationship_stat_listener() -> None:
     )
     relationship = get_relationship(c1, c2)
 
-    reputation = relationship.get_component(Reputation)
+    opinion = relationship.get_component(Opinion)
 
-    reputation.listeners.append(reputation_listener)
+    opinion.listeners.append(opinion_listener)
 
-    assert reputation.value == 0
-    assert relationship.metadata["reputation_state"] == "NEUTRAL"
+    assert opinion.value == 0
+    assert relationship.metadata["opinion_state"] == "NEUTRAL"
 
-    reputation.base_value = 80
-    assert reputation.value == 80
-    assert relationship.metadata["reputation_state"] == "EXCELLENT"
+    opinion.base_value = 80
+    assert opinion.value == 80
+    assert relationship.metadata["opinion_state"] == "EXCELLENT"
 
-    reputation.base_value = -60
-    assert reputation.value == -60
-    assert relationship.metadata["reputation_state"] == "POOR"
+    opinion.base_value = -60
+    assert opinion.value == -60
+    assert relationship.metadata["opinion_state"] == "POOR"

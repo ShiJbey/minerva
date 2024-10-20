@@ -22,10 +22,10 @@ from minerva.characters.components import (
 from minerva.ecs import Active, GameObject, GameObjectNotFoundError
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.relationships.base_types import (
+    Attraction,
+    Opinion,
     Relationship,
     RelationshipManager,
-    Reputation,
-    Romance,
 )
 from minerva.simulation import Simulation
 from minerva.traits.base_types import TraitManager
@@ -377,15 +377,15 @@ def _get_relationships_table(obj: GameObject) -> str:
     relationship_data: list[tuple[bool, int, str, str, str, str]] = []
 
     for target, relationship in relationships.outgoing_relationships.items():
-        reputation = relationship.get_component(Reputation)
-        romance = relationship.get_component(Romance)
+        opinion = relationship.get_component(Opinion)
+        attraction = relationship.get_component(Attraction)
         traits = ", ".join(
             t.name for t in relationship.get_component(TraitManager).traits.values()
         )
-        rep_base = int(reputation.base_value)
-        rom_base = int(romance.base_value)
-        rep_boost = int(reputation.value - reputation.base_value)
-        rom_boost = int(romance.value - romance.base_value)
+        rep_base = int(opinion.base_value)
+        rom_base = int(attraction.base_value)
+        rep_boost = int(opinion.value - opinion.base_value)
+        rom_boost = int(attraction.value - attraction.base_value)
 
         relationship_data.append(
             (
@@ -406,8 +406,8 @@ def _get_relationships_table(obj: GameObject) -> str:
             "Active",
             "UID",
             "Target",
-            "Reputation",
-            "Romance",
+            "Opinion",
+            "Attraction",
             "Traits",
         ),
     )

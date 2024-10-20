@@ -11,19 +11,19 @@ from minerva.relationships.preconditions import (
 )
 from minerva.stats.base_types import StatModifier, StatModifierType
 
-reputation_boost_for_family = SocialRule(
+opinion_boost_for_family = SocialRule(
     rule_id="boost_for_family_members",
     precondition=BelongToSameFamily(),
-    reputation_modifier=StatModifier(
+    opinion_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=10,
     ),
 )
 
-reputation_boost_for_birth_family = SocialRule(
+opinion_boost_for_birth_family = SocialRule(
     rule_id="boost_for_birth_family_members",
     precondition=BelongToSameBirthFamily(),
-    reputation_modifier=StatModifier(
+    opinion_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=5,
     ),
@@ -32,70 +32,70 @@ reputation_boost_for_birth_family = SocialRule(
 not_attracted_to_parents = SocialRule(
     "not_attracted_to_parents",
     precondition=TargetIsParent(),
-    romance_modifier=StatModifier(
+    attraction_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=-50,
     ),
 )
 
-reputation_boost_for_parents = SocialRule(
-    "reputation_boost_for_parents",
+opinion_boost_for_parents = SocialRule(
+    "opinion_boost_for_parents",
     precondition=TargetIsParent(),
-    reputation_modifier=StatModifier(
+    opinion_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=10,
     ),
 )
 
-romance_drop_for_children = SocialRule(
-    "romance_drop_for_children",
+attraction_drop_for_children = SocialRule(
+    "attraction_drop_for_children",
     precondition=TargetIsChild(),
-    romance_modifier=StatModifier(
+    attraction_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=-100,
     ),
 )
 
-reputation_boost_for_children = SocialRule(
-    "reputation_boost_for_children",
+opinion_boost_for_children = SocialRule(
+    "opinion_boost_for_children",
     precondition=TargetIsChild(),
-    reputation_modifier=StatModifier(
+    opinion_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=10,
     ),
 )
 
-romance_drop_for_siblings = SocialRule(
-    "romance_drop_for_siblings",
+attraction_drop_for_siblings = SocialRule(
+    "attraction_drop_for_siblings",
     precondition=TargetIsSibling(),
-    romance_modifier=StatModifier(
+    attraction_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=-50,
     ),
 )
 
-reputation_boost_for_siblings = SocialRule(
-    "reputation_boost_for_siblings",
+opinion_boost_for_siblings = SocialRule(
+    "opinion_boost_for_siblings",
     precondition=TargetIsSibling(),
-    reputation_modifier=StatModifier(
+    opinion_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=10,
     ),
 )
 
-reputation_boost_for_spouse = SocialRule(
-    "reputation_boost_for_spouse",
+opinion_boost_for_spouse = SocialRule(
+    "opinion_boost_for_spouse",
     precondition=TargetIsSpouse(),
-    reputation_modifier=StatModifier(
+    opinion_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=10,
     ),
 )
 
-romance_boost_for_spouse = SocialRule(
-    "romance_boost_for_spouse",
+attraction_boost_for_spouse = SocialRule(
+    "attraction_boost_for_spouse",
     precondition=TargetIsSpouse(),
-    romance_modifier=StatModifier(
+    attraction_modifier=StatModifier(
         modifier_type=StatModifierType.FLAT,
         value=10,
     ),
