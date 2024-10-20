@@ -43,7 +43,7 @@ from minerva.characters.war_data import Alliance, WarTracker
 from minerva.ecs import Active, GameObject
 from minerva.relationships.base_types import Reputation
 from minerva.relationships.helpers import get_relationship
-from minerva.world_map.components import InRevolt, Settlement
+from minerva.world_map.components import InRevolt, Territory
 
 
 class IfAny(AIPrecondition):
@@ -360,7 +360,7 @@ class IsCurrentlyAtWar(AIPrecondition):
 
 
 class TerritoriesInRevoltSensor(AISensor):
-    """Get all settlements in revolt and write it to the blackboard."""
+    """Get all territories in revolt and write it to the blackboard."""
 
     def evaluate(self, context: AIContext) -> None:
         # Check if the character is a family head
@@ -390,8 +390,8 @@ class UnexpandedTerritoriesSensor(AISensor):
         if family_head_component := context.character.try_component(HeadOfFamily):
             family_component = family_head_component.family.get_component(Family)
             for territory in family_component.territories:
-                settlement_component = territory.get_component(Settlement)
-                for neighboring_territory in settlement_component.neighbors:
+                territory_component = territory.get_component(Territory)
+                for neighboring_territory in territory_component.neighbors:
                     if neighboring_territory not in family_component.territories:
                         unexpanded_territories.add(neighboring_territory)
 
@@ -413,8 +413,8 @@ class UnControlledTerritoriesSensor(AISensor):
             family_component = family_head_component.family.get_component(Family)
 
             for territory in family_component.territories:
-                settlement_component = territory.get_component(Settlement)
-                if settlement_component.controlling_family is None:
+                territory_component = territory.get_component(Territory)
+                if territory_component.controlling_family is None:
                     uncontrolled_territories.add(territory)
 
         context.blackboard["uncontrolled_territories"] = list(uncontrolled_territories)
@@ -444,10 +444,10 @@ class TerritoriesControlledByOpps(AISensor):
                     allies.add(member)
 
             for territory in family_component.territories:
-                settlement_component = territory.get_component(Settlement)
+                territory_component = territory.get_component(Territory)
                 if (
-                    settlement_component.controlling_family is not None
-                    and settlement_component.controlling_family not in allies
+                    territory_component.controlling_family is not None
+                    and territory_component.controlling_family not in allies
                 ):
                     enemy_territories.add(territory)
 

@@ -418,9 +418,9 @@ class Family(Component):
     alliance: Optional[GameObject]
     """The alliance this family belongs to."""
     home_base: Optional[GameObject]
-    """The settlement this family belongs to."""
+    """The territory this family belongs to."""
     territories: OrderedSet[GameObject]
-    """The settlements this family has control over."""
+    """The territories this family has control over."""
     active_members: OrderedSet[GameObject]
     """Characters actively a part of this family."""
     warriors: OrderedSet[GameObject]

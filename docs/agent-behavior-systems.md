@@ -1,6 +1,6 @@
 # Minerva: Agent Behavior Systems
 
-Minerva considers agents and settlements to be agents operating within a shared multi-agent domain. As such, each can
+Minerva considers agents and territories to be agents operating within a shared multi-agent domain. As such, each can
 perform various behaviors depending on their current state. Minerva uses utility-based AI calculations to determine what
 behaviors an agent wants to perform and if they are successful at it.
 
@@ -44,11 +44,11 @@ agent and randomly choses one to perform from the top scoring behaviors.
 - `CharacterBehaviorsSystem`: Handles basic character behaviors like getting a job, getting married, sex, committing
   marriage infidelity, and having children.
 - `FamilyHeadBehaviorSystem`: Handles behaviors performed by family heads. These behaviors might include naming an heir,
-  increasing taxes on the settlement they control, giving back to the settlement they control, challenging for control
+  increasing taxes on the territory they control, giving back to the territory they control, challenging for control
   over the family, betrothing children, assassinating other family heads, making alliances, seizing power over
-  uncontrolled settlements, declaring wars on other families, etc.
-- `SettlementBehaviorSystem`: Handles behaviors performed by settlements. These behaviors include revolting against the
-  current family in charge of the settlement.
+  uncontrolled territories, declaring wars on other families, etc.
+- `TerritoryBehaviorSystem`: Handles behaviors performed by territories. These behaviors include revolting against the
+  current family in charge of the territory.
 
 ## Behavior System Parameters
 
@@ -71,9 +71,9 @@ sim_config = Config(
         # Sets the maximum number of 'family head' behaviors a
         # family head can perform each timestep/tick
         "family_head_behaviors_per_tick": 1,
-        # Sets the maximum number of 'settlement' behaviors a
-        # settlement can perform each timestep/tick
-        "settlement_behaviors_per_tick": 1,
+        # Sets the maximum number of 'territory' behaviors a
+        # territory can perform each timestep/tick
+        "territory_behaviors_per_tick": 1,
         # Other settings ...
     }
 )

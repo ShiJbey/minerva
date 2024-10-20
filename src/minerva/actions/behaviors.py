@@ -33,10 +33,10 @@ from minerva.ecs import Active, GameObject
 from minerva.life_events.events import TakeOverProvinceEvent
 from minerva.relationships.base_types import Reputation
 from minerva.relationships.helpers import get_relationship
-from minerva.world_map.components import InRevolt, PopulationHappiness, Settlement
+from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
 from minerva.world_map.helpers import (
     increment_political_influence,
-    set_settlement_controlling_family,
+    set_territory_controlling_family,
 )
 
 _logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ class GiveBackToTerritoryAction(AIAction):
 
 
 class GiveToSmallfolkBehavior(AIBehavior):
-    """A family head  will try to increase their political influence in a settlement."""
+    """A family head  will try to increase their political influence in a territory."""
 
     def execute(self, character: GameObject) -> bool:
         # Choose the territory with the lowest political influence
@@ -171,10 +171,10 @@ class QuellRevoltAction(AIAction):
 
 
 class QuellRevolt(AIBehavior):
-    """The head of the family controlling a settlement will try to quell a revolt."""
+    """The head of the family controlling a territory will try to quell a revolt."""
 
     def execute(self, character: GameObject) -> bool:
-        # This behavior requires at least on settlement to be in revolt. This
+        # This behavior requires at least on territory to be in revolt. This
         # information is picked up by the
 
         # Get all the villages in revolt
@@ -437,7 +437,7 @@ class DeclareWar(AIBehavior):
         actions: AIActionCollection = AIActionCollection()
 
         for territory in potential_targets:
-            territory_component = territory.get_component(Settlement)
+            territory_component = territory.get_component(Territory)
 
             if territory_component.controlling_family is None:
                 continue
@@ -508,7 +508,7 @@ class TaxTerritoryAction(AIAction):
 
 
 class TaxTerritory(AIBehavior):
-    """A family head will tax their controlling settlement for influence points."""
+    """A family head will tax their controlling territory for influence points."""
 
     def execute(self, character: GameObject) -> bool:
         # Choose the territory with the lowest political influence
@@ -666,7 +666,7 @@ class ExpandIntoTerritoryActionType(AIActionType):
 
         family_head_component = family_head.get_component(HeadOfFamily)
 
-        territory_component = territory.get_component(Settlement)
+        territory_component = territory.get_component(Territory)
         territory_component.political_influence[family_head_component.family] = 50
 
         # TODO: Fire and log event
@@ -698,7 +698,7 @@ class ExpandIntoTerritoryAction(AIAction):
 
 
 class ExpandPoliticalDomain(AIBehavior):
-    """A family head expands the family's political influence to a new settlement."""
+    """A family head expands the family's political influence to a new territory."""
 
     def execute(self, character: GameObject) -> bool:
         # Loop through all provinces that neighbor existing political territories
@@ -733,7 +733,7 @@ class SeizeTerritoryActionType(AIActionType):
 
         family_head_component = family_head.get_component(HeadOfFamily)
 
-        set_settlement_controlling_family(territory, family_head_component.family)
+        set_territory_controlling_family(territory, family_head_component.family)
 
         TakeOverProvinceEvent(
             character=family_head,
@@ -761,11 +761,11 @@ class SeizeTerritoryAction(AIAction):
 
 
 class SeizeControlOfTerritory(AIBehavior):
-    """A family head takes control of an unclaimed settlement."""
+    """A family head takes control of an unclaimed territory."""
 
     def execute(self, character: GameObject) -> bool:
         # Loop through all the territories where this character has political influence
-        # For all those that that are unclaimed and the settlement to a list of
+        # For all those that that are unclaimed and the territory to a list of
         # potential provinces to expand into.
 
         actions: AIActionCollection = AIActionCollection()
@@ -775,8 +775,8 @@ class SeizeControlOfTerritory(AIBehavior):
         family_component = family_head_component.family.get_component(Family)
 
         for territory in family_component.territories:
-            settlement_component = territory.get_component(Settlement)
-            if settlement_component.controlling_family is None:
+            territory_component = territory.get_component(Territory)
+            if territory_component.controlling_family is None:
                 action = SeizeTerritoryAction(
                     character_brain.context, character, territory
                 )

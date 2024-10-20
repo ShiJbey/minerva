@@ -68,7 +68,7 @@ from minerva.pcg.character import (
     DefaultCharacterFactory,
     DefaultFamilyFactory,
 )
-from minerva.pcg.settlement import DefaultTerritoryFactory
+from minerva.pcg.territory_pcg import DefaultTerritoryFactory
 from minerva.pcg.text_gen import Tracery, TraceryNameFactory
 from minerva.relationships import social_rules
 from minerva.relationships.base_types import SocialRuleLibrary
@@ -178,13 +178,13 @@ class Simulation:
             minerva.systems.FamilyRoleSystem(),
         )
         self.world.systems.add_system(
-            minerva.systems.SettlementRevoltSystem(),
+            minerva.systems.TerritoryRevoltSystem(),
         )
         self.world.systems.add_system(
             minerva.systems.RevoltUpdateSystem(),
         )
         # self.world.systems.add_system(
-        #     minerva.systems.SettlementRandomEventSystem(),
+        #     minerva.systems.TerritoryRandomEventSystem(),
         # )
         self.world.systems.add_system(
             minerva.systems.InfluencePointGainSystem(),

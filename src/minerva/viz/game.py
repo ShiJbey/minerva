@@ -25,7 +25,7 @@ from minerva.viz.tile_sprites import (
 )
 from minerva.viz.utils import draw_text
 from minerva.viz.wiki import WikiWindow
-from minerva.world_map.components import CompassDir, Settlement, WorldMap
+from minerva.world_map.components import CompassDir, Territory, WorldMap
 
 
 class YSortCameraGroup(pygame.sprite.Group):  # type: ignore
@@ -237,23 +237,23 @@ class Game:
             else None
         )
 
-        for settlement in self.world_map.settlements:
-            castle_sprite = CastleSprite(settlement)
+        for territory in self.world_map.territories:
+            castle_sprite = CastleSprite(territory)
             castle_label = LabelSprite(
-                text=settlement.name,
+                text=territory.name,
                 font=self.font,
                 parent=castle_sprite,
             )
 
-            settlement_component = settlement.get_component(Settlement)
-            if settlement_component.controlling_family:
+            territory_component = territory.get_component(Territory)
+            if territory_component.controlling_family:
 
-                if settlement_component.controlling_family == royal_family:
+                if territory_component.controlling_family == royal_family:
                     crown_sprite = CrownSprite(castle_sprite)
                     self.visible_sprites.add(crown_sprite)  # type: ignore
 
                 # family_component = (
-                #     settlement_component.controlling_family.get_component(Family)
+                #     territory_component.controlling_family.get_component(Family)
                 # )
                 # if family_component.clan:
                 #     clan_component = family_component.clan.get_component(Clan)

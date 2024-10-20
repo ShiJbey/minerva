@@ -39,8 +39,8 @@ from minerva.ecs import Active, Event, GameObject
 from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
 from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
-from minerva.world_map.components import Settlement
-from minerva.world_map.helpers import set_settlement_controlling_family
+from minerva.world_map.components import Territory
+from minerva.world_map.helpers import set_territory_controlling_family
 
 _logger = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ def set_character_family(
     )
 
 
-def set_family_home_base(family: GameObject, settlement: Optional[GameObject]) -> None:
+def set_family_home_base(family: GameObject, territory: Optional[GameObject]) -> None:
     """Set the home base for the given family."""
     family_component = family.get_component(Family)
 
@@ -204,23 +204,23 @@ def set_family_home_base(family: GameObject, settlement: Optional[GameObject]) -
 
     if family_component.home_base is not None:
         former_home_base = family_component.home_base
-        settlement_component = former_home_base.get_component(Settlement)
-        settlement_component.families.remove(family)
+        territory_component = former_home_base.get_component(Territory)
+        territory_component.families.remove(family)
         family_component.home_base = None
         cur.execute("""UPDATE families SET home_base_id=NULL WHERE uid=?""", (family,))
-        if family in settlement_component.political_influence:
-            del settlement_component.political_influence[family]
+        if family in territory_component.political_influence:
+            del territory_component.political_influence[family]
 
-    if settlement is not None:
-        settlement_component = settlement.get_component(Settlement)
-        settlement_component.families.append(family)
-        family_component.home_base = settlement
+    if territory is not None:
+        territory_component = territory.get_component(Territory)
+        territory_component.families.append(family)
+        family_component.home_base = territory
         cur.execute(
             """UPDATE families SET home_base_id=? WHERE uid=?""",
-            (settlement.uid, family),
+            (territory.uid, family),
         )
-        if family not in settlement_component.political_influence:
-            settlement_component.political_influence[family] = 0
+        if family not in territory_component.political_influence:
+            territory_component.political_influence[family] = 0
 
     db.commit()
 
@@ -256,12 +256,12 @@ def remove_family_from_play(family: GameObject) -> None:
     # Remove the family from play
     set_family_home_base(family, None)
 
-    for _, (settlement, _) in world.get_components((Settlement, Active)):
-        if family in settlement.political_influence:
-            del settlement.political_influence[family]
+    for _, (territory, _) in world.get_components((Territory, Active)):
+        if family in territory.political_influence:
+            del territory.political_influence[family]
 
-        if settlement.controlling_family == family:
-            set_settlement_controlling_family(settlement.gameobject, None)
+        if territory.controlling_family == family:
+            set_territory_controlling_family(territory.gameobject, None)
 
     family.deactivate()
 

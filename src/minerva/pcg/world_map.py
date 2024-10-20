@@ -12,7 +12,7 @@ from minerva.pcg.base_types import PCGFactories
 from minerva.world_map.components import (
     CartesianGrid,
     CompassDir,
-    Settlement,
+    Territory,
     TerritoryInfo,
     WorldMap,
 )
@@ -230,7 +230,7 @@ class TerritoryGenerator:
 
 
 def generate_world_map(world: World) -> None:
-    """Divide the world map into territories and instantiate settlements."""
+    """Divide the world map into territories and instantiate territories."""
 
     config = world.resources.get_resource(Config)
 
@@ -246,31 +246,31 @@ def generate_world_map(world: World) -> None:
     territory_generator.generate_territories()
 
     world_map.territory_grid = territory_generator.territory_grid.copy()
-    world_map.settlements = []
+    world_map.territories = []
     world_map.borders = territory_generator.borders.copy()
 
-    territory_id_to_settlement: dict[int, GameObject] = {}
-    settlements: dict[int, GameObject] = {}
+    territory_id_to_gameobject: dict[int, GameObject] = {}
+    territories: dict[int, GameObject] = {}
 
     pcg_factories = world.resources.get_resource(PCGFactories)
 
-    for territory in territory_generator.territories:
-        settlement = pcg_factories.territory_factory.generate_territory(world)
-        territory_id_to_settlement[territory.uid] = settlement
-        settlements[settlement.uid] = settlement
-        world_map.settlements.append(settlement)
+    for territory_info in territory_generator.territories:
+        territory = pcg_factories.territory_factory.generate_territory(world)
+        territory_id_to_gameobject[territory_info.uid] = territory
+        territories[territory_info.uid] = territory
+        world_map.territories.append(territory)
 
-        settlement_component = settlement.get_component(Settlement)
-        settlement_component.castle_position = territory.castle_pos
+        territory_component = territory.get_component(Territory)
+        territory_component.castle_position = territory_info.castle_pos
 
-        # Convert the territory IDs to the UIDs of the settlement objects
+        # Convert the territory IDs to the UIDs of the territory objects
         for coord, territory_id in world_map.territory_grid.enumerate():
             if territory_id == territory.uid:
-                world_map.territory_grid.set(coord, settlement.uid)
+                world_map.territory_grid.set(coord, territory.uid)
 
     # Generate a the neighbor links
-    for territory in territory_generator.territories:
-        settlement = territory_id_to_settlement[territory.uid]
-        settlement_component = settlement.get_component(Settlement)
-        for neighbor in territory.neighbors:
-            settlement_component.neighbors.append(territory_id_to_settlement[neighbor])
+    for territory_info in territory_generator.territories:
+        territory = territory_id_to_gameobject[territory_info.uid]
+        territory_component = territory.get_component(Territory)
+        for neighbor in territory_info.neighbors:
+            territory_component.neighbors.append(territory_id_to_gameobject[neighbor])

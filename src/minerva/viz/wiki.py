@@ -14,7 +14,7 @@ from pygame_gui.ui_manager import UIManager
 from minerva.characters.components import Character, Family
 from minerva.ecs import Active, GameObject
 from minerva.simulation import Simulation
-from minerva.world_map.components import PopulationHappiness, Settlement
+from minerva.world_map.components import PopulationHappiness, Territory
 
 
 class WikiPageGenerator(ABC):
@@ -42,18 +42,18 @@ class IndexPageGenerator(WikiPageGenerator):
         return content
 
 
-class SettlementListPageGenerator(WikiPageGenerator):
-    """Generates the settlement list page for the wiki window."""
+class TerritoryListPageGenerator(WikiPageGenerator):
+    """Generates the territory list page for the wiki window."""
 
     def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
-        template = _jinja_env.get_template("settlement_list.jinja")
+        template = _jinja_env.get_template("territory_list.jinja")
 
-        settlement_list: list[Any] = []
+        territory_list: list[Any] = []
 
-        for uid, (settlement, _) in sim.world.get_components((Settlement, Active)):
-            settlement_list.append({"uid": uid, "name": settlement.gameobject.name})
+        for uid, (territory, _) in sim.world.get_components((Territory, Active)):
+            territory_list.append({"uid": uid, "name": territory.gameobject.name})
 
-        content = template.render(settlements=settlement_list)
+        content = template.render(territories=territory_list)
         content = content.replace("\n", "")
         return content
 
@@ -88,16 +88,16 @@ class CharacterListPageGenerator(WikiPageGenerator):
         return content
 
 
-class SettlementPageGenerator(WikiPageGenerator):
-    """Generate page for a settlement."""
+class TerritoryPageGenerator(WikiPageGenerator):
+    """Generate page for a territory."""
 
     def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
-        template = _jinja_env.get_template("settlement.jinja")
-        settlement: GameObject = kwargs["settlement"]
+        template = _jinja_env.get_template("territory.jinja")
+        territory: GameObject = kwargs["territory"]
 
         content = template.render(
-            settlement=settlement.get_component(Settlement),
-            happiness=settlement.get_component(PopulationHappiness).value,
+            territory=territory.get_component(Territory),
+            happiness=territory.get_component(PopulationHappiness).value,
         )
 
         return content
@@ -137,10 +137,8 @@ class GameObjectPageGenerator(WikiPageGenerator):
         gameobject = sim.world.gameobjects.get_gameobject(uid)
         object_type = gameobject.metadata["object_type"]
 
-        if object_type == "settlement":
-            content = SettlementPageGenerator().generate_page(
-                sim, settlement=gameobject
-            )
+        if object_type == "territory":
+            content = TerritoryPageGenerator().generate_page(sim, territory=gameobject)
         elif object_type == "character":
             content = CharacterPageGenerator().generate_page(sim, character=gameobject)
         elif object_type == "family":
@@ -155,7 +153,7 @@ class GameObjectPageGenerator(WikiPageGenerator):
 _page_generators: dict[str, WikiPageGenerator] = {
     "/index": IndexPageGenerator(),
     "/character_list": CharacterListPageGenerator(),
-    "/settlement_list": SettlementListPageGenerator(),
+    "/territory_list": TerritoryListPageGenerator(),
     "/family_list": FamilyListPageGenerator(),
     "/gameobject": GameObjectPageGenerator(),
 }

@@ -32,9 +32,9 @@ class Config(pydantic.BaseModel):
     # === INITIAL GENERATION ===
 
     world_size: tuple[int, int] = (20, 20)
-    """The number of settlements to generate."""
+    """The size of the world map."""
     n_territories: int = 10
-    """The number of map territories"""
+    """The number of territories to generate."""
     n_initial_families: int = 20
     """The number of initial families to generate."""
     max_households_per_family: int = 3

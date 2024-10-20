@@ -216,7 +216,7 @@ class CartesianGrid(GridBase[_GT]):
 class WorldMap:
     """Singleton that tracks world map information."""
 
-    __slots__ = ("_size", "territory_grid", "borders", "settlements")
+    __slots__ = ("_size", "territory_grid", "borders", "territories")
 
     _size: tuple[int, int]
     """The width (x) and height (y) of the world map."""
@@ -224,14 +224,14 @@ class WorldMap:
     """A grid where each cell contains the ID of the territory it belongs to."""
     borders: CartesianGrid[CompassDir]
     """Border walls."""
-    settlements: list[GameObject]
+    territories: list[GameObject]
     """Information about territories."""
 
     def __init__(self, size: tuple[int, int]) -> None:
         self._size = size
         self.territory_grid = CartesianGrid(size, lambda: -1)
         self.borders = CartesianGrid(size, lambda: CompassDir.NONE)
-        self.settlements: list[GameObject] = []
+        self.territories: list[GameObject] = []
 
     @property
     def size(self) -> tuple[int, int]:
@@ -274,8 +274,8 @@ class CompassDir(enum.IntFlag):
     NORTH = enum.auto()
 
 
-class Settlement(Component):
-    """A settlement where character's live."""
+class Territory(Component):
+    """A territory of the map, controlled by a family."""
 
     __slots__ = (
         "name",
@@ -288,17 +288,17 @@ class Settlement(Component):
     )
 
     name: str
-    """The settlement's name."""
+    """The territory's name."""
     controlling_family: Optional[GameObject]
-    """ID of the family that controls this settlement."""
+    """ID of the family that controls this territory."""
     neighbors: OrderedSet[GameObject]
-    """Neighboring settlements."""
+    """Neighboring territories."""
     castle_position: tuple[int, int]
     """The position of the castle on the screen."""
     political_influence: dict[GameObject, int]
-    """The Political influence held by all families in the settlement."""
+    """The Political influence held by all families in the territory."""
     families: OrderedSet[GameObject]
-    """The families that reside at this settlement."""
+    """The families that reside at this territory."""
 
     def __init__(
         self,
@@ -315,7 +315,7 @@ class Settlement(Component):
 
 
 class PopulationHappiness(StatComponent):
-    """A settlement where character's live."""
+    """Tracks the happiness of general population (small folk) of a territory."""
 
     def __init__(
         self,
@@ -332,7 +332,7 @@ class PopulationHappiness(StatComponent):
 
 
 class InRevolt(Component):
-    """Tags a settlement as being in revolt."""
+    """Tags a territory as being in revolt."""
 
     __slots__ = ("_start_date",)
 

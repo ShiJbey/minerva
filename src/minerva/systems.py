@@ -77,8 +77,8 @@ from minerva.relationships.base_types import Reputation
 from minerva.relationships.helpers import get_relationship
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
-from minerva.world_map.components import InRevolt, PopulationHappiness, Settlement
-from minerva.world_map.helpers import set_settlement_controlling_family
+from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
+from minerva.world_map.helpers import set_territory_controlling_family
 
 _logger = logging.getLogger(__name__)
 
@@ -404,10 +404,10 @@ class FamilyRoleSystem(System):
                         )
 
 
-class SettlementRevoltSystem(System):
-    """Settlements revolt against controlling family.
+class TerritoryRevoltSystem(System):
+    """Territories revolt against controlling family.
 
-    When a settlement's happiness drops below a given threshold, the settlement will
+    When a territory's happiness drops below a given threshold, the territory will
     move into a revolt to remove the controlling family.
 
     """
@@ -418,28 +418,28 @@ class SettlementRevoltSystem(System):
         current_date = world.resources.get_resource(SimDate)
         config = world.resources.get_resource(Config)
 
-        for _, (settlement, happiness, _) in world.get_components(
-            (Settlement, PopulationHappiness, Active)
+        for _, (territory, happiness, _) in world.get_components(
+            (Territory, PopulationHappiness, Active)
         ):
-            # Ignore settlements with happiness over the threshold
+            # Ignore territories with happiness over the threshold
             if happiness.value > config.happiness_revolt_threshold:
                 continue
 
-            # Ignore settlements that are already revolting
-            if settlement.gameobject.has_component(InRevolt):
+            # Ignore territories that are already revolting
+            if territory.gameobject.has_component(InRevolt):
                 continue
 
-            # Ignore settlements that are not controlled by a family
-            if settlement.controlling_family is None:
+            # Ignore territories that are not controlled by a family
+            if territory.controlling_family is None:
                 continue
 
-            settlement.gameobject.add_component(InRevolt(start_date=current_date))
+            territory.gameobject.add_component(InRevolt(start_date=current_date))
 
             # TODO: Fire an event for revolting
             _logger.info(
                 "[%s]: %s is revolting.",
                 current_date.to_iso_str(),
-                settlement.gameobject.name_with_uid,
+                territory.gameobject.name_with_uid,
             )
 
 
@@ -452,46 +452,46 @@ class RevoltUpdateSystem(System):
         current_date = world.resources.get_resource(SimDate)
         config = world.resources.get_resource(Config)
 
-        for _, (settlement, happiness, in_revolt, _) in world.get_components(
-            (Settlement, PopulationHappiness, InRevolt, Active)
+        for _, (territory, happiness, in_revolt, _) in world.get_components(
+            (Territory, PopulationHappiness, InRevolt, Active)
         ):
             elapsed_months = (current_date - in_revolt.start_date).total_months
 
-            # Ignore settlements that have not reached the point of no return
+            # Ignore territories that have not reached the point of no return
             if elapsed_months < config.months_to_quell_revolt:
                 continue
 
-            if settlement.controlling_family is None:
-                settlement.gameobject.remove_component(InRevolt)
+            if territory.controlling_family is None:
+                territory.gameobject.remove_component(InRevolt)
                 happiness.base_value = config.base_territory_happiness
                 continue
 
-            controlling_family_component = settlement.controlling_family.get_component(
+            controlling_family_component = territory.controlling_family.get_component(
                 Family
             )
             if family_head := controlling_family_component.head:
                 character_component = family_head.get_component(Character)
                 character_component.influence_points -= 500
 
-            settlement.gameobject.remove_component(InRevolt)
+            territory.gameobject.remove_component(InRevolt)
             happiness.base_value = config.base_territory_happiness
 
             # TODO: Fire and log an event when a family is removed from power
             _logger.info(
                 "[%s]: %s has removed the %s family from power.",
                 current_date.to_iso_str(),
-                settlement.gameobject.name_with_uid,
-                settlement.controlling_family.name_with_uid,
+                territory.gameobject.name_with_uid,
+                territory.controlling_family.name_with_uid,
             )
 
             # Remove the current family from power
-            set_settlement_controlling_family(settlement.gameobject, None)
+            set_territory_controlling_family(territory.gameobject, None)
 
 
-class SettlementRandomEventSystem(System):
-    """Random events can happen to settlements to change their happiness.
+class TerritoryRandomEventSystem(System):
+    """Random events can happen to territories to change their happiness.
 
-    Outside of the actions of the controlling family, settlements can be subject
+    Outside of the actions of the controlling family, territories can be subject
     to various random events that affect their happiness state. We select from them
     each month like a deck of cards.
 
@@ -504,8 +504,8 @@ class SettlementRandomEventSystem(System):
     def on_update(self, world: World) -> None:
         rng = world.resources.get_resource(random.Random)
 
-        for _, (settlement, _) in world.get_components((Settlement, Active)):
-            if settlement.controlling_family is None:
+        for _, (territory, _) in world.get_components((Territory, Active)):
+            if territory.controlling_family is None:
                 continue
 
             event_name = self.choose_random_event(rng)
@@ -515,7 +515,7 @@ class SettlementRandomEventSystem(System):
 
             event_fn = self._random_events[event_name][1]
 
-            event_fn(settlement.gameobject)
+            event_fn(territory.gameobject)
 
     def choose_random_event(self, rng: random.Random) -> Optional[str]:
         """Choose an event at random"""
@@ -547,54 +547,54 @@ class SettlementRandomEventSystem(System):
         return wrapper
 
 
-@SettlementRandomEventSystem.random_event("nothing", 10)
+@TerritoryRandomEventSystem.random_event("nothing", 10)
 def nothing_event(_: GameObject) -> None:
     """Do Nothing."""
     return
 
 
-@SettlementRandomEventSystem.random_event("poor harvest", 0.5)
-def poor_harvest_event(settlement: GameObject) -> None:
+@TerritoryRandomEventSystem.random_event("poor harvest", 0.5)
+def poor_harvest_event(territory: GameObject) -> None:
     """Poor harvest."""
-    current_date = settlement.world.resources.get_resource(SimDate)
-    happiness_component = settlement.get_component(PopulationHappiness)
+    current_date = territory.world.resources.get_resource(SimDate)
+    happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value -= 10
 
     _logger.info(
         "[%s]: %s has suffered a poor harvest.",
         current_date.to_iso_str(),
-        settlement.name_with_uid,
+        territory.name_with_uid,
     )
 
 
-@SettlementRandomEventSystem.random_event("disease", 0.5)
-def disease_event(settlement: GameObject) -> None:
+@TerritoryRandomEventSystem.random_event("disease", 0.5)
+def disease_event(territory: GameObject) -> None:
     """Do Nothing."""
-    current_date = settlement.world.resources.get_resource(SimDate)
-    happiness_component = settlement.get_component(PopulationHappiness)
+    current_date = territory.world.resources.get_resource(SimDate)
+    happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value -= 10
 
     _logger.info(
         "[%s]: %s has suffered a disease outbreak.",
         current_date.to_iso_str(),
-        settlement.name_with_uid,
+        territory.name_with_uid,
     )
 
 
-@SettlementRandomEventSystem.random_event("bountiful harvest", 0.5)
-def bountiful_harvest_event(settlement: GameObject) -> None:
+@TerritoryRandomEventSystem.random_event("bountiful harvest", 0.5)
+def bountiful_harvest_event(territory: GameObject) -> None:
     """Do Nothing."""
-    current_date = settlement.world.resources.get_resource(SimDate)
-    happiness_component = settlement.get_component(PopulationHappiness)
+    current_date = territory.world.resources.get_resource(SimDate)
+    happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value += 10
 
     _logger.info(
         "[%s]: %s had a bountiful harvest.",
         current_date.to_iso_str(),
-        settlement.name_with_uid,
+        territory.name_with_uid,
     )
 
 
@@ -641,7 +641,7 @@ class ProvinceInfluencePointBoostSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (province, _) in world.get_components((Settlement, Active)):
+        for _, (province, _) in world.get_components((Territory, Active)):
             if province.controlling_family is None:
                 continue
 
@@ -1233,9 +1233,9 @@ class CoupSchemeUpdateSystem(System):
                         family_component = ruler_family.get_component(Family)
 
                         for territory in family_component.territories:
-                            territory_component = territory.get_component(Settlement)
+                            territory_component = territory.get_component(Territory)
                             if territory_component.controlling_family == ruler_family:
-                                set_settlement_controlling_family(territory, None)
+                                set_territory_controlling_family(territory, None)
 
                 scheme.is_valid = False
 
@@ -1293,9 +1293,7 @@ class WarUpdateSystem(System):
                 # Aggressor wins the battle
 
                 # Remove the defender from controlling the territory and instate the
-                set_settlement_controlling_family(
-                    war.contested_territory, war.aggressor
-                )
+                set_territory_controlling_family(war.contested_territory, war.aggressor)
 
                 # TODO: Fire and log events for winning and losing wars
                 _logger.info(

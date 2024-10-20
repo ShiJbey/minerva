@@ -141,7 +141,7 @@ if __name__ == "__main__":
     print(f"Minerva version: {minerva.__version__}")
     print(f"World Seed: {sim.config.seed}")
 
-    print("Generating Map and Settlements ...")
+    print("Generating Map and Territories ...")
     generate_world_map(sim.world)
 
     time.sleep(0.8)

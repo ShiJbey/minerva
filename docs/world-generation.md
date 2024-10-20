@@ -2,9 +2,9 @@
 
 ## Step 1: World Map Generation
 
-Minerva simulates the world as a cartesian grid of cells. Each cell contains a single settlement.
+Minerva simulates the world as a cartesian grid of cells. Each cell contains a single territory.
 
-## Step 2: Generating Settlements
+## Step 2: Generating Territories
 
 TBD
 

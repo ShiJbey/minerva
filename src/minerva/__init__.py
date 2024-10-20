@@ -1,4 +1,4 @@
-"""Minerva Settlement Simulation.
+"""Minerva Territory Simulation.
 
 Minerva is an agent-based simulation for emergent narrative research.
 

@@ -29,7 +29,7 @@ from minerva.relationships.base_types import (
 )
 from minerva.simulation import Simulation
 from minerva.traits.base_types import TraitManager
-from minerva.world_map.components import Settlement
+from minerva.world_map.components import Territory
 
 
 def _sign(num: Union[int, float]) -> str:
@@ -55,35 +55,35 @@ def _title_section(obj: GameObject) -> str:
     return "\n".join(output)
 
 
-def _settlement_section(obj: GameObject) -> str:
-    """Return string output for a section focuses on settlement data."""
-    settlement = obj.try_component(Settlement)
+def _territory_section(obj: GameObject) -> str:
+    """Return string output for a section focuses on territory data."""
+    territory = obj.try_component(Territory)
 
-    if settlement is None:
+    if territory is None:
         return ""
 
     output = [
-        "=== Settlement ===",
+        "=== Territory ===",
         "",
-        f"Name: {settlement.name!r}",
+        f"Name: {territory.name!r}",
     ]
 
     # Add controlling family information
-    if settlement.controlling_family:
+    if territory.controlling_family:
         output.append(
-            f"Controlling Family: {settlement.controlling_family.name_with_uid}"
+            f"Controlling Family: {territory.controlling_family.name_with_uid}"
         )
     else:
         output.append("Controlling Family: N/A")
 
     # Add neighbors
     output.append(
-        f"Neighboring Settlements: {','.join(s.name_with_uid for s in settlement.neighbors)}"
+        f"Neighboring Territories: {','.join(s.name_with_uid for s in territory.neighbors)}"
     )
 
     # Add families
     output.append(
-        f"Resident Families: {','.join(f.name_with_uid for f in settlement.families)}"
+        f"Resident Families: {','.join(f.name_with_uid for f in territory.families)}"
     )
 
     # Add Political Influences:
@@ -95,7 +95,7 @@ def _settlement_section(obj: GameObject) -> str:
                 family.name_with_uid,
                 influence,
             )
-            for family, influence in settlement.political_influence.items()
+            for family, influence in territory.political_influence.items()
         ],
         headers=("Family", "Influence"),
     )
@@ -417,7 +417,7 @@ def _get_relationships_table(obj: GameObject) -> str:
 
 _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("title", _title_section),
-    ("settlement", _settlement_section),
+    ("territory", _territory_section),
     ("relationship", _relationship_section),
     ("character", _character_section),
     ("family", _family_section),
@@ -483,7 +483,7 @@ class SimulationInspector:
         print(output)
 
         self.list_dynasties()
-        self.list_settlements()
+        self.list_territories()
         self.list_families()
 
     def inspect(self, obj: Union[int, GameObject]) -> None:
@@ -575,19 +575,19 @@ class SimulationInspector:
         output.append("")
         print("\n".join(output))
 
-    def list_settlements(self) -> None:
-        """Print the list of settlements in the simulation."""
-        settlements = [
-            (uid, settlement.name)
-            for uid, (settlement, _) in self.sim.world.get_components(
-                (Settlement, Active)
+    def list_territories(self) -> None:
+        """Print the list of territories in the simulation."""
+        territories = [
+            (uid, territory.name)
+            for uid, (territory, _) in self.sim.world.get_components(
+                (Territory, Active)
             )
         ]
 
-        table = tabulate.tabulate(settlements, headers=["UID", "Name"])
+        table = tabulate.tabulate(territories, headers=["UID", "Name"])
 
         # Display as a table the object ID, Display Name, Description
-        output = "=== Settlements ===\n"
+        output = "=== Territories ===\n"
         output += "\n"
         output += table
         output += "\n"

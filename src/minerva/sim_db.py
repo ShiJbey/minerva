@@ -5,7 +5,7 @@ import sqlite3
 DB_CONFIG = """
 DROP TABLE IF EXISTS characters;
 DROP TABLE IF EXISTS character_traits;
-DROP TABLE IF EXISTS settlements;
+DROP TABLE IF EXISTS territories;
 DROP TABLE IF EXISTS families;
 DROP TABLE IF EXISTS family_heads;
 DROP TABLE IF EXISTS siblings;
@@ -66,7 +66,7 @@ CREATE TABLE character_traits (
     FOREIGN KEY (character_id) REFERENCES characters(uid)
 );
 
-CREATE TABLE settlements (
+CREATE TABLE territories (
     uid INT NOT NULL PRIMARY KEY,
     name TEXT,
     controlling_family INT,
@@ -84,7 +84,7 @@ CREATE TABLE families (
     defunct_date TEXT,
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (alliance_id) REFERENCES alliances(uid),
-    FOREIGN KEY (home_base_id) REFERENCES settlements(uid),
+    FOREIGN KEY (home_base_id) REFERENCES territories(uid),
     FOREIGN KEY (parent_id) REFERENCES families(uid)
 );
 

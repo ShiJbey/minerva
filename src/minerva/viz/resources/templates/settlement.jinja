@@ -1,15 +1,15 @@
-<font size="6"><b>{{settlement.gameobject.name}} ({{settlement.gameobject.uid}})</b></font>
+<font size="6"><b>{{territory.gameobject.name}} ({{territory.gameobject.uid}})</b></font>
 <br>
 <font size="4"><b>Controlling Family: </b></font>
-{% if settlement.controlling_family is not none %}
-<a href="/gameobject?uid={{settlement.controlling_family.uid}}">{{settlement.controlling_family.name}} ({{settlement.controlling_family.uid}})</a>
+{% if territory.controlling_family is not none %}
+<a href="/gameobject?uid={{territory.controlling_family.uid}}">{{territory.controlling_family.name}} ({{territory.controlling_family.uid}})</a>
 {% else %}
 N/A
 {% endif %}
 <br>
 <font size="4"><b>Business Types: </b></font><br>
-{% if settlement.business_types %}
-{% for business_type in settlement.business_types %}
+{% if territory.business_types %}
+{% for business_type in territory.business_types %}
 - {{business_type}}<br>
 {% endfor %}
 {% else %}
@@ -20,8 +20,8 @@ N/A<br>
 <br>
 <font size="4"><b>Families:<b></font>
 <br>
-{% if settlement.families %}
-{% for family in settlement.families%}
+{% if territory.families %}
+{% for family in territory.families%}
 - <a href="/gameobject?uid={{family.uid}}">{{family.name}} ({{family.uid}})</a><br>
 {% endfor %}
 {% else %}

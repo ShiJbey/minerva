@@ -280,7 +280,7 @@ def test_remove_family_from_play(test_sim: Simulation):
 
 
 def test_set_family_home_base(test_sim: Simulation):
-    """Test updating what settlement a family uses as their home base."""
+    """Test updating what territory a family uses as their home base."""
     territory_factory = test_sim.world.resources.get_resource(
         PCGFactories
     ).territory_factory

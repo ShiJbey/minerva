@@ -15,7 +15,7 @@ from minerva.viz.constants import (
     TILE_SIZE,
 )
 from minerva.viz.game_events import gameobject_wiki_shown
-from minerva.world_map.components import CompassDir, Settlement
+from minerva.world_map.components import CompassDir, Territory
 
 
 class LabelSprite(Sprite):
@@ -64,9 +64,9 @@ class CrownSprite(Sprite):
 
 
 class CastleSprite(Sprite):
-    """A sprite of a settlement castle."""
+    """A sprite of a territory castle."""
 
-    def __init__(self, settlement: GameObject, *groups: Any) -> None:
+    def __init__(self, territory: GameObject, *groups: Any) -> None:
         super().__init__(*groups)
         self.image = pygame.transform.scale(
             pygame.image.load(
@@ -74,15 +74,15 @@ class CastleSprite(Sprite):
             ).convert_alpha(),
             (TILE_SIZE, TILE_SIZE),
         )
-        self.settlement = settlement
+        self.territory = territory
         self.rect = self.image.get_rect()
-        settlement_component = settlement.get_component(Settlement)
-        pos_x, pos_y = settlement_component.castle_position
+        territory_component = territory.get_component(Territory)
+        pos_x, pos_y = territory_component.castle_position
         self.rect.topleft = (pos_x * TILE_SIZE, pos_y * TILE_SIZE)
 
     def on_click(self) -> None:
         """Function called when this castle is clicked by the player."""
-        gameobject_wiki_shown.emit(self.settlement.uid)
+        gameobject_wiki_shown.emit(self.territory.uid)
 
 
 class BorderSprite(Sprite):

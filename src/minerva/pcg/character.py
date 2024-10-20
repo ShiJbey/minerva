@@ -98,8 +98,8 @@ from minerva.traits.helpers import (
     has_conflicting_trait,
     has_trait,
 )
-from minerva.world_map.components import Settlement
-from minerva.world_map.helpers import set_settlement_controlling_family
+from minerva.world_map.components import Territory
+from minerva.world_map.helpers import set_territory_controlling_family
 
 
 class DefaultCharacterFactory(CharacterFactory):
@@ -673,16 +673,16 @@ def generate_initial_families(world: World) -> None:
         for uid, _ in world.get_components((Family, Active))
     ]
 
-    # Assign families to settlements
-    settlements = [
+    # Assign families to territories
+    territories = [
         world.gameobjects.get_gameobject(uid)
-        for uid, _ in world.get_components((Settlement, Active))
+        for uid, _ in world.get_components((Territory, Active))
     ]
 
     unassigned_families = [*families]
     rng.shuffle(unassigned_families)
 
-    unassigned_settlements = [*settlements]
+    unassigned_territories = [*territories]
 
     # Designate a family as the royal family
     family_heads = [
@@ -698,13 +698,13 @@ def generate_initial_families(world: World) -> None:
     assert emperor_family is not None, "Emperor family cannot be none"
 
     for family in OrderedSet([emperor_family, *families]):
-        if unassigned_settlements:
-            home_base = unassigned_settlements.pop()
-            set_settlement_controlling_family(home_base, family)
+        if unassigned_territories:
+            home_base = unassigned_territories.pop()
+            set_territory_controlling_family(home_base, family)
         else:
-            home_base = rng.choice(settlements)
+            home_base = rng.choice(territories)
 
-        set_family_home_base(family, rng.choice(settlements))
+        set_family_home_base(family, rng.choice(territories))
         family_component = family.get_component(Family)
         family_component.territories.add(home_base)
 
