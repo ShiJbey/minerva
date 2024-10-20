@@ -22,7 +22,6 @@ from datetime import datetime
 import tqdm
 
 import minerva
-import minerva.constants
 from minerva.config import Config
 from minerva.data import ck3_traits, japanese_city_names, japanese_names
 from minerva.datetime import MONTHS_PER_YEAR
@@ -112,12 +111,10 @@ def run_simulation(simulation: Simulation, years: int) -> None:
         simulation.step()
 
 
-def run_visualization(simulation: Simulation, enable_debug: bool = False) -> None:
+def run_visualization(simulation: Simulation) -> None:
     """Runs the simulation within a PyGame game."""
     # Import game below since PyGame requires addition loading time
     from minerva.viz.game import Game  # pylint: disable=C0415
-
-    minerva.constants.SHOW_DEBUG = enable_debug
 
     game = Game(simulation)
     game.run()
@@ -133,6 +130,7 @@ if __name__ == "__main__":
             logging_enabled=bool(args.enable_logging),
             log_to_terminal=False,
             log_level="DEBUG" if args.debug else "INFO",
+            show_debug=args.debug if args.debug else False,
         )
     )
 
@@ -156,7 +154,7 @@ if __name__ == "__main__":
     if bool(args.enable_profiling):
         run_simulation_with_profiling(sim, int(args.years))
     elif bool(args.pygame):
-        run_visualization(sim, enable_debug=bool(args.debug))
+        run_visualization(sim)
     else:
         run_simulation(sim, int(args.years))
 

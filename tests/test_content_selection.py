@@ -1,6 +1,6 @@
 """Test the dynamic tag selection."""
 
-from minerva.content_selection import get_with_tags
+from minerva.pcg.content_selection import get_with_tags
 
 
 def test_get_with_required_tags() -> None:

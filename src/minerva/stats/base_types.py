@@ -14,7 +14,7 @@ from __future__ import annotations
 import enum
 import math
 from abc import ABC, abstractmethod
-from typing import Callable, ClassVar, Optional, Protocol
+from typing import Callable, Optional, Protocol
 
 from minerva.ecs import Component, GameObject
 
@@ -68,8 +68,6 @@ class StatComponent(Component, ABC):
         Should the final calculated stat value be converted to an int.
     """
 
-    __stat_name__: ClassVar[str] = ""
-
     __slots__ = (
         "base_value",
         # "value",
@@ -112,10 +110,6 @@ class StatComponent(Component, ABC):
         is_discrete: bool = False,
     ) -> None:
         super().__init__()
-
-        if not self.__class__.__stat_name__:
-            self.__class__.__stat_name__ = self.__class__.__name__
-
         self.calculation_strategy = calculation_strategy
         self.base_value = base_value
         # self.value = base_value
@@ -125,11 +119,6 @@ class StatComponent(Component, ABC):
         self.min_value, self.max_value = bounds if bounds is not None else (None, None)
         self.is_discrete = is_discrete
         self.listeners = []
-
-    @property
-    def stat_name(self) -> str:
-        """The name associated with this stat."""
-        return self.__stat_name__
 
     @property
     def value(self) -> float:

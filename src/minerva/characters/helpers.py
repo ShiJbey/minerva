@@ -8,7 +8,6 @@ import math
 import random
 from typing import Optional
 
-import minerva.constants
 from minerva.actions.base_types import Scheme, SchemeManager
 from minerva.actions.scheme_helpers import remove_member_from_scheme
 from minerva.characters.components import (
@@ -34,6 +33,7 @@ from minerva.characters.succession_helpers import (
     set_current_ruler,
 )
 from minerva.characters.war_helpers import end_alliance
+from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Event, GameObject
 from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
@@ -460,7 +460,7 @@ def assign_family_member_to_roles(
     family: GameObject, character: GameObject, roles: FamilyRoleFlags
 ) -> None:
     """Assign a character to a given set of roles."""
-
+    config = family.world.resources.get_resource(Config)
     family_component = family.get_component(Family)
     character_component = character.get_component(Character)
 
@@ -474,7 +474,7 @@ def assign_family_member_to_roles(
         FamilyRoleFlags.WARRIOR in roles
         and FamilyRoleFlags.WARRIOR not in character_component.family_roles
     ):
-        if len(family_component.warriors) >= minerva.constants.MAX_WARRIORS_PER_FAMILY:
+        if len(family_component.warriors) >= config.max_warriors_per_family:
             raise RuntimeError(
                 "Error: Cannot assign any additional warriors to the "
                 f"{family.name_with_uid} family. All slots are full."
@@ -491,7 +491,7 @@ def assign_family_member_to_roles(
         FamilyRoleFlags.ADVISOR in roles
         and FamilyRoleFlags.ADVISOR not in character_component.family_roles
     ):
-        if len(family_component.advisors) >= minerva.constants.MAX_ADVISORS_PER_FAMILY:
+        if len(family_component.advisors) >= config.max_advisors_per_family:
             raise RuntimeError(
                 "Error: Cannot assign any additional advisors to the "
                 f"{family.name_with_uid} family. All slots are full."

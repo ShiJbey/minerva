@@ -8,12 +8,12 @@ import pygame
 import pygame.gfxdraw
 from pygame.sprite import Sprite
 
-from minerva.constants import (
-    SETTLEMENT_BORDER_PADDING,
-    SETTLEMENT_BORDER_WIDTH,
+from minerva.ecs import GameObject
+from minerva.viz.constants import (
+    TERRITORY_BORDER_PADDING,
+    TERRITORY_BORDER_THICKNESS,
     TILE_SIZE,
 )
-from minerva.ecs import GameObject
 from minerva.viz.game_events import gameobject_wiki_shown
 from minerva.world_map.components import CompassDir, Settlement
 
@@ -124,10 +124,10 @@ class BorderSprite(Sprite):
         pygame.gfxdraw.box(
             self.image,
             (
-                SETTLEMENT_BORDER_PADDING,
-                SETTLEMENT_BORDER_PADDING,
-                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
-                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
+                TERRITORY_BORDER_PADDING,
+                TERRITORY_BORDER_PADDING,
+                TILE_SIZE - (2 * TERRITORY_BORDER_PADDING),
+                TILE_SIZE - (2 * TERRITORY_BORDER_PADDING),
             ),
             self.primary_color,
         )
@@ -136,9 +136,9 @@ class BorderSprite(Sprite):
         pygame.gfxdraw.box(
             self.image,
             (
-                SETTLEMENT_BORDER_PADDING,
-                SETTLEMENT_BORDER_PADDING + 11,
-                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
+                TERRITORY_BORDER_PADDING,
+                TERRITORY_BORDER_PADDING + 11,
+                TILE_SIZE - (2 * TERRITORY_BORDER_PADDING),
                 TILE_SIZE // 3,
             ),
             self.secondary_color,
@@ -147,22 +147,22 @@ class BorderSprite(Sprite):
         pygame.gfxdraw.box(
             self.image,
             (
-                SETTLEMENT_BORDER_PADDING + 11,
-                SETTLEMENT_BORDER_PADDING,
+                TERRITORY_BORDER_PADDING + 11,
+                TERRITORY_BORDER_PADDING,
                 TILE_SIZE // 3,
-                TILE_SIZE - (2 * SETTLEMENT_BORDER_PADDING),
+                TILE_SIZE - (2 * TERRITORY_BORDER_PADDING),
             ),
             self.secondary_color,
         )
 
         top_offset: int = (
-            SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+            TERRITORY_BORDER_PADDING + TERRITORY_BORDER_THICKNESS
             if CompassDir.NORTH in self.border_flags
             else 0
         )
 
         left_offset: int = (
-            SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+            TERRITORY_BORDER_PADDING + TERRITORY_BORDER_THICKNESS
             if CompassDir.WEST in self.border_flags
             else 0
         )
@@ -171,7 +171,7 @@ class BorderSprite(Sprite):
             TILE_SIZE
             - left_offset
             - (
-                SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+                TERRITORY_BORDER_PADDING + TERRITORY_BORDER_THICKNESS
                 if CompassDir.EAST in self.border_flags
                 else 0
             )
@@ -181,7 +181,7 @@ class BorderSprite(Sprite):
             TILE_SIZE
             - top_offset
             - (
-                SETTLEMENT_BORDER_PADDING + SETTLEMENT_BORDER_WIDTH
+                TERRITORY_BORDER_PADDING + TERRITORY_BORDER_THICKNESS
                 if CompassDir.SOUTH in self.border_flags
                 else 0
             )

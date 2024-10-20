@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import random
 
-from minerva import constants
 from minerva.actions.base_types import (
     AIAction,
     AIActionCollection,
@@ -28,6 +27,7 @@ from minerva.characters.war_helpers import (
     end_alliance,
     join_alliance,
 )
+from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, GameObject
 from minerva.life_events.events import TakeOverProvinceEvent
@@ -132,6 +132,7 @@ class QuellRevoltActionType(AIActionType):
 
     def execute(self, context: AIContext) -> bool:
         current_date = context.world.resources.get_resource(SimDate)
+        config = context.world.resources.get_resource(Config)
 
         family_head: GameObject = context.blackboard["family_head"]
         territory: GameObject = context.blackboard["territory"]
@@ -140,7 +141,7 @@ class QuellRevoltActionType(AIActionType):
 
         population_happiness = territory.get_component(PopulationHappiness)
 
-        population_happiness.base_value = constants.BASE_SETTLEMENT_HAPPINESS
+        population_happiness.base_value = config.base_territory_happiness
 
         # TODO: Fire and log events
         _logger.info(

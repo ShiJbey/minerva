@@ -7,7 +7,6 @@ from typing import Optional
 
 from ordered_set import OrderedSet
 
-from minerva import constants
 from minerva.actions.base_types import AIBrain, AIContext, SchemeManager
 from minerva.actions.behavior_helpers import (
     TerritoriesControlledByOpps,
@@ -497,10 +496,12 @@ def generate_spouse_for(character: GameObject) -> GameObject:
         PCGFactories
     ).character_factory
 
+    config = character.world.resources.get_resource(Config)
+
     return character_factory.generate_character(
         world=character.world,
         sex=spouse_sex,
-        n_max_personality_traits=constants.MAX_PERSONALITY_TRAITS,
+        n_max_personality_traits=config.max_personality_traits,
     )
 
 
@@ -510,6 +511,7 @@ class DefaultBabyFactory(BabyFactory):
     def generate_child(self, mother: GameObject, father: GameObject) -> GameObject:
         """Generate a child from the given parents."""
         rng = mother.world.resources.get_resource(random.Random)
+        config = mother.world.resources.get_resource(Config)
 
         mother_character_component = mother.get_component(Character)
 
@@ -543,7 +545,7 @@ class DefaultBabyFactory(BabyFactory):
             key=lambda t: t.trait_id,
         )
 
-        for _ in range(constants.N_PERSONALITY_TRAITS_FROM_PARENTS):
+        for _ in range(config.n_personality_traits_from_parents):
             potential_traits = [
                 t
                 for t in all_parent_traits
@@ -567,7 +569,7 @@ class DefaultBabyFactory(BabyFactory):
 
         child_personality = get_personality_traits(child)
 
-        n_additional_traits = constants.MAX_PERSONALITY_TRAITS - len(child_personality)
+        n_additional_traits = config.max_personality_traits - len(child_personality)
 
         trait_library = mother.world.resources.get_resource(TraitLibrary)
 
@@ -610,7 +612,7 @@ class DefaultFamilyFactory(FamilyFactory):
     def generate_family(self, world: World, name: str = "") -> GameObject:
         """Create a new family."""
         rng = world.resources.get_resource(random.Random)
-
+        config = world.resources.get_resource(Config)
         current_date = world.resources.get_resource(SimDate)
         db = world.resources.get_resource(SimDB).db
 
@@ -618,10 +620,10 @@ class DefaultFamilyFactory(FamilyFactory):
         family.metadata["object_type"] = "family"
         family_name = name if name else self.name_factory.generate_name(family)
 
-        color_primary = rng.choice(constants.FAMILY_COLORS_PRIMARY)
-        color_secondary = rng.choice(constants.FAMILY_COLORS_SECONDARY)
-        color_tertiary = rng.choice(constants.FAMILY_COLORS_TERTIARY)
-        banner_symbol = rng.choice(constants.FAMILY_BANNER_SYMBOLS)
+        color_primary = rng.choice(config.family_colors_primary)
+        color_secondary = rng.choice(config.family_colors_secondary)
+        color_tertiary = rng.choice(config.family_colors_tertiary)
+        banner_symbol = rng.choice(config.family_banner_symbols)
 
         family.add_component(
             Family(
@@ -737,7 +739,7 @@ def _generate_initial_families(world: World) -> list[GameObject]:
                 life_stage=LifeStage.ADULT,
                 sex=Sex.MALE,
                 sexual_orientation=SexualOrientation.HETEROSEXUAL,
-                n_max_personality_traits=constants.MAX_PERSONALITY_TRAITS,
+                n_max_personality_traits=config.max_personality_traits,
             )
 
             set_character_surname(household_head, family_surname)

@@ -5,7 +5,6 @@
 
 import pytest
 
-import minerva.constants
 from minerva.characters.components import (
     Character,
     Diplomacy,
@@ -427,8 +426,8 @@ def test_set_family_role(test_sim: Simulation):
     )
     set_character_family(c2, test_family)
 
-    minerva.constants.MAX_ADVISORS_PER_FAMILY = 1
-    minerva.constants.MAX_WARRIORS_PER_FAMILY = 1
+    test_sim.config.max_advisors_per_family = 1
+    test_sim.config.max_warriors_per_family = 1
 
     assign_family_member_to_roles(
         test_family, c0, FamilyRoleFlags.ADVISOR | FamilyRoleFlags.WARRIOR

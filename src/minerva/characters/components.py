@@ -9,11 +9,14 @@ from typing import Optional
 
 from ordered_set import OrderedSet
 
-from minerva import constants
-from minerva.constants import CHARACTER_MOTIVE_BASE, CHARACTER_MOTIVE_MAX
 from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject, TagComponent
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
+
+CHARACTER_MOTIVE_MAX = 100
+"""The max score for character motives."""
+CHARACTER_MOTIVE_BASE = 50
+"""The starting score for character motives."""
 
 
 class LifeStage(enum.IntEnum):
@@ -205,6 +208,7 @@ class Character(Component):
         birth_family: Optional[GameObject] = None,
         heir: Optional[GameObject] = None,
         heir_to: Optional[GameObject] = None,
+        influence_points: int = 0,
     ) -> None:
         super().__init__()
         self.first_name = first_name
@@ -232,7 +236,7 @@ class Character(Component):
         self.heir = heir
         self.heir_to = heir_to
         self.family_roles = FamilyRoleFlags.NONE
-        self.influence_points = constants.INFLUENCE_POINTS_BASE
+        self.influence_points = influence_points
 
     @property
     def full_name(self) -> str:
@@ -671,8 +675,6 @@ class DreadMotive(StatComponent):
 class Lifespan(StatComponent):
     """Tracks a GameObject's lifespan."""
 
-    __stat_name__ = "Lifespan"
-
     def __init__(
         self,
         calculation_strategy: IStatCalculationStrategy,
@@ -683,8 +685,6 @@ class Lifespan(StatComponent):
 
 class Fertility(StatComponent):
     """Tracks a GameObject's fertility."""
-
-    __stat_name__ = "Fertility"
 
     MAX_VALUE: int = 100
 
@@ -699,8 +699,6 @@ class Fertility(StatComponent):
 class Stewardship(StatComponent):
     """Tracks a GameObject's stewardship."""
 
-    __stat_name__ = "Stewardship"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -713,8 +711,6 @@ class Stewardship(StatComponent):
 
 class Martial(StatComponent):
     """Tracks a GameObject's martial."""
-
-    __stat_name__ = "Martial"
 
     MAX_VALUE: int = 100
 
@@ -729,8 +725,6 @@ class Martial(StatComponent):
 class Intrigue(StatComponent):
     """Tracks a GameObject's intrigue."""
 
-    __stat_name__ = "Intrigue"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -743,8 +737,6 @@ class Intrigue(StatComponent):
 
 class Learning(StatComponent):
     """Tracks a GameObject's learning."""
-
-    __stat_name__ = "Learning"
 
     MAX_VALUE: int = 100
 
@@ -759,8 +751,6 @@ class Learning(StatComponent):
 class Prowess(StatComponent):
     """Tracks a GameObject's prowess."""
 
-    __stat_name__ = "Prowess"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -773,8 +763,6 @@ class Prowess(StatComponent):
 
 class Sociability(StatComponent):
     """Tracks a GameObject's sociability."""
-
-    __stat_name__ = "Sociability"
 
     MAX_VALUE: int = 100
 
@@ -789,8 +777,6 @@ class Sociability(StatComponent):
 class Honor(StatComponent):
     """Tracks a GameObject's honor."""
 
-    __stat_name__ = "Honor"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -803,8 +789,6 @@ class Honor(StatComponent):
 
 class Boldness(StatComponent):
     """Tracks a GameObject's boldness."""
-
-    __stat_name__ = "Boldness"
 
     MAX_VALUE: int = 100
 
@@ -819,8 +803,6 @@ class Boldness(StatComponent):
 class Compassion(StatComponent):
     """Tracks a GameObject's compassion."""
 
-    __stat_name__ = "Compassion"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -833,8 +815,6 @@ class Compassion(StatComponent):
 
 class Diplomacy(StatComponent):
     """Tracks a GameObject's diplomacy."""
-
-    __stat_name__ = "Diplomacy"
 
     MAX_VALUE: int = 100
 
@@ -849,8 +829,6 @@ class Diplomacy(StatComponent):
 class Greed(StatComponent):
     """Tracks a GameObject's greed."""
 
-    __stat_name__ = "Greed"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -863,8 +841,6 @@ class Greed(StatComponent):
 
 class Rationality(StatComponent):
     """Tracks a GameObject's rationality."""
-
-    __stat_name__ = "Rationality"
 
     MAX_VALUE: int = 100
 
@@ -879,8 +855,6 @@ class Rationality(StatComponent):
 class Vengefulness(StatComponent):
     """Tracks a GameObject's vengefulness."""
 
-    __stat_name__ = "Vengefulness"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -893,8 +867,6 @@ class Vengefulness(StatComponent):
 
 class Zeal(StatComponent):
     """Tracks a GameObject's zeal."""
-
-    __stat_name__ = "Zeal"
 
     MAX_VALUE: int = 100
 
@@ -909,8 +881,6 @@ class Zeal(StatComponent):
 class RomancePropensity(StatComponent):
     """Tracks a GameObject's propensity for romantic actions."""
 
-    __stat_name__ = "RomancePropensity"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -923,8 +893,6 @@ class RomancePropensity(StatComponent):
 
 class ViolencePropensity(StatComponent):
     """Tracks a GameObject's propensity for violent actions."""
-
-    __stat_name__ = "ViolencePropensity"
 
     MAX_VALUE: int = 100
 
@@ -939,8 +907,6 @@ class ViolencePropensity(StatComponent):
 class WantForPower(StatComponent):
     """Tracks a GameObject's propensity to take actions that increase social power."""
 
-    __stat_name__ = "WantForPower"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -953,8 +919,6 @@ class WantForPower(StatComponent):
 
 class WantForChildren(StatComponent):
     """Tracks a GameObject's propensity to have children."""
-
-    __stat_name__ = "WantForChildren"
 
     MAX_VALUE: int = 100
 
@@ -969,8 +933,6 @@ class WantForChildren(StatComponent):
 class Luck(StatComponent):
     """Tracks a GameObject's propensity to be successful."""
 
-    __stat_name__ = "Luck"
-
     MAX_VALUE: int = 100
 
     def __init__(
@@ -983,8 +945,6 @@ class Luck(StatComponent):
 
 class WantForMarriage(StatComponent):
     """Tracks a GameObject's propensity to be married."""
-
-    __stat_name__ = "WantForMarriage"
 
     MAX_VALUE: int = 100
 

@@ -9,11 +9,6 @@ from typing import Any, Callable, Generic, Iterator, Optional, TypeVar
 
 from ordered_set import OrderedSet
 
-from minerva.constants import (
-    BASE_SETTLEMENT_HAPPINESS,
-    MAX_SETTLEMENT_HAPPINESS,
-    MIN_SETTLEMENT_HAPPINESS,
-)
 from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
@@ -309,7 +304,6 @@ class Settlement(Component):
         self,
         name: str,
         controlling_family: Optional[GameObject] = None,
-        business_types: Optional[list[str]] = None,
     ) -> None:
         super().__init__()
         self.name = name
@@ -323,13 +317,16 @@ class Settlement(Component):
 class PopulationHappiness(StatComponent):
     """A settlement where character's live."""
 
-    __stat_name__ = "PopulationHappiness"
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
+    def __init__(
+        self,
+        base_value: float,
+        max_value: float,
+        calculation_strategy: IStatCalculationStrategy,
+    ) -> None:
         super().__init__(
             calculation_strategy,
-            base_value=BASE_SETTLEMENT_HAPPINESS,
-            bounds=(MIN_SETTLEMENT_HAPPINESS, MAX_SETTLEMENT_HAPPINESS),
+            base_value=base_value,
+            bounds=(0, max_value),
             is_discrete=True,
         )
 

@@ -34,21 +34,6 @@ def _recalculate_stat(stat: StatComponent) -> float:
 
     final_value = final_value + (final_value * sum_percent_add)
 
-    # if stat.max_value:
-    #     final_value = min(final_value, stat.max_value)
-
-    # if stat.min_value:
-    #     final_value = max(final_value, stat.min_value)
-
-    # if stat.is_discrete:
-    #     final_value = math.trunc(final_value)
-
-    # # stat.value = final_value
-
-    # if stat.cached_value != final_value:
-    #     stat.cached_value = final_value
-    #     stat.on_value_changed()
-
     return final_value
 
 

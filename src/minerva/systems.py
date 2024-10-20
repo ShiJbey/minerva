@@ -7,7 +7,6 @@ from typing import Callable, ClassVar, Optional
 
 from ordered_set import OrderedSet
 
-from minerva import constants
 from minerva.actions.actions import DieAction
 from minerva.actions.base_types import AIBehavior, AIBehaviorLibrary, AIBrain, Scheme
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
@@ -62,11 +61,7 @@ from minerva.characters.war_helpers import (
     start_alliance,
     start_war,
 )
-from minerva.constants import (
-    BEHAVIOR_UTILITY_THRESHOLD,
-    MAX_ADVISORS_PER_FAMILY,
-    MAX_WARRIORS_PER_FAMILY,
-)
+from minerva.config import Config
 from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, GameObject, System, SystemGroup, World
 from minerva.life_events.aging import LifeStageChangeEvent
@@ -308,6 +303,7 @@ class CharacterBehaviorSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.resources.get_resource(random.Random)
+        config = world.resources.get_resource(Config)
         behavior_library = world.resources.get_resource(AIBehaviorLibrary)
 
         family_heads = [
@@ -340,7 +336,7 @@ class CharacterBehaviorSystem(System):
 
                     if behavior.passes_preconditions(character):
                         utility = behavior.calculate_utility(character)
-                        if utility >= BEHAVIOR_UTILITY_THRESHOLD and utility > 0:
+                        if utility >= config.behavior_utility_threshold and utility > 0:
                             behaviors.append(behavior)
 
                 if len(behaviors) > 0:
@@ -369,13 +365,14 @@ class FamilyRoleSystem(System):
     __system_group__ = "LateUpdateSystems"
 
     def on_update(self, world: World) -> None:
+        config = world.resources.get_resource(Config)
         for _, (family_component, _) in world.get_components((Family, Active)):
             # Fill advisor positions
-            if len(family_component.advisors) < MAX_ADVISORS_PER_FAMILY:
+            if len(family_component.advisors) < config.max_advisors_per_family:
                 candidates = get_advisor_candidates(family_component.gameobject)
                 if candidates:
                     seats_to_assign = min(
-                        MAX_ADVISORS_PER_FAMILY - len(family_component.advisors),
+                        config.max_advisors_per_family - len(family_component.advisors),
                         len(candidates),
                     )
 
@@ -389,11 +386,11 @@ class FamilyRoleSystem(System):
                         )
 
             # Fill warrior positions
-            if len(family_component.warriors) < MAX_WARRIORS_PER_FAMILY:
+            if len(family_component.warriors) < config.max_warriors_per_family:
                 candidates = get_warrior_candidates(family_component.gameobject)
                 if candidates:
                     seats_to_assign = min(
-                        MAX_WARRIORS_PER_FAMILY - len(family_component.warriors),
+                        config.max_warriors_per_family - len(family_component.warriors),
                         len(candidates),
                     )
 
@@ -419,12 +416,13 @@ class SettlementRevoltSystem(System):
 
     def on_update(self, world: World) -> None:
         current_date = world.resources.get_resource(SimDate)
+        config = world.resources.get_resource(Config)
 
         for _, (settlement, happiness, _) in world.get_components(
             (Settlement, PopulationHappiness, Active)
         ):
             # Ignore settlements with happiness over the threshold
-            if happiness.value > constants.REVOLT_THRESHOLD:
+            if happiness.value > config.happiness_revolt_threshold:
                 continue
 
             # Ignore settlements that are already revolting
@@ -452,6 +450,7 @@ class RevoltUpdateSystem(System):
 
     def on_update(self, world: World) -> None:
         current_date = world.resources.get_resource(SimDate)
+        config = world.resources.get_resource(Config)
 
         for _, (settlement, happiness, in_revolt, _) in world.get_components(
             (Settlement, PopulationHappiness, InRevolt, Active)
@@ -459,12 +458,12 @@ class RevoltUpdateSystem(System):
             elapsed_months = (current_date - in_revolt.start_date).total_months
 
             # Ignore settlements that have not reached the point of no return
-            if elapsed_months < constants.MONTHS_TO_QUELL_REBELLION:
+            if elapsed_months < config.months_to_quell_revolt:
                 continue
 
             if settlement.controlling_family is None:
                 settlement.gameobject.remove_component(InRevolt)
-                happiness.base_value = constants.BASE_SETTLEMENT_HAPPINESS
+                happiness.base_value = config.base_territory_happiness
                 continue
 
             controlling_family_component = settlement.controlling_family.get_component(
@@ -475,7 +474,7 @@ class RevoltUpdateSystem(System):
                 character_component.influence_points -= 500
 
             settlement.gameobject.remove_component(InRevolt)
-            happiness.base_value = constants.BASE_SETTLEMENT_HAPPINESS
+            happiness.base_value = config.base_territory_happiness
 
             # TODO: Fire and log an event when a family is removed from power
             _logger.info(
@@ -605,6 +604,8 @@ class InfluencePointGainSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
+        config = world.resources.get_resource(Config)
+
         for _, (character, _) in world.get_components((Character, Active)):
             influence_gain: int = 1
 
@@ -621,7 +622,7 @@ class InfluencePointGainSystem(System):
 
             character.influence_points = min(
                 character.influence_points + influence_gain,
-                constants.INFLUENCE_POINTS_MAX,
+                config.influence_points_max,
             )
 
             character.influence_points = max(0, character.influence_points)

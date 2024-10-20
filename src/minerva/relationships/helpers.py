@@ -206,45 +206,19 @@ def _remove_incoming_relationship(
 
 def reputation_calc_strategy(stat_component: StatComponent) -> float:
     """Calculation strategy for reputation stats."""
+
     relationship = stat_component.gameobject
     relationship_component = relationship.get_component(Relationship)
+    owner = relationship_component.owner
+    target = relationship_component.target
 
-    return _recalculate_reputation(
-        relationship_component.owner,
-        relationship_component.target,
-        relationship,
-        stat_component,
-    )
-
-
-def romance_calc_strategy(stat_component: StatComponent) -> float:
-    """Calculation strategy for romance stats"""
-    relationship = stat_component.gameobject
-    relationship_component = relationship.get_component(Relationship)
-
-    return _recalculate_romance(
-        relationship_component.owner,
-        relationship_component.target,
-        relationship,
-        stat_component,
-    )
-
-
-def _recalculate_reputation(
-    owner: GameObject,
-    target: GameObject,
-    relationship: GameObject,
-    stat: StatComponent,
-) -> float:
-    """Recalculate the given stat for the given relationship."""
-
-    final_value: float = stat.base_value
+    final_value: float = stat_component.base_value
     sum_percent_add: float = 0.0
 
-    stat.active_modifiers.clear()
+    stat_component.active_modifiers.clear()
 
     # Get all the stat modifiers
-    for modifier in stat.modifiers:
+    for modifier in stat_component.modifiers:
         if modifier.modifier_type == StatModifierType.FLAT:
             final_value += modifier.value
 
@@ -299,39 +273,23 @@ def _recalculate_reputation(
 
     final_value = final_value + (final_value * sum_percent_add)
 
-    # if stat.max_value:
-    #     final_value = min(final_value, stat.max_value)
-
-    # if stat.min_value:
-    #     final_value = max(final_value, stat.min_value)
-
-    # if stat.is_discrete:
-    #     final_value = math.trunc(final_value)
-
-    # # stat.value = final_value
-
-    # if stat.cached_value != final_value:
-    #     stat.cached_value = final_value
-    #     stat.on_value_changed()
-
     return final_value
 
 
-def _recalculate_romance(
-    owner: GameObject,
-    target: GameObject,
-    relationship: GameObject,
-    stat: StatComponent,
-) -> float:
-    """Recalculate the romance stat."""
+def romance_calc_strategy(stat_component: StatComponent) -> float:
+    """Calculation strategy for romance stats"""
+    relationship = stat_component.gameobject
+    relationship_component = relationship.get_component(Relationship)
+    owner = relationship_component.owner
+    target = relationship_component.target
 
-    final_value: float = stat.base_value
+    final_value: float = stat_component.base_value
     sum_percent_add: float = 0.0
 
-    stat.active_modifiers.clear()
+    stat_component.active_modifiers.clear()
 
     # Get all the stat modifiers
-    for modifier in stat.modifiers:
+    for modifier in stat_component.modifiers:
         if modifier.modifier_type == StatModifierType.FLAT:
             final_value += modifier.value
 
@@ -385,20 +343,5 @@ def _recalculate_romance(
                 sum_percent_add += modifier.value
 
     final_value = final_value + (final_value * sum_percent_add)
-
-    # if stat.max_value:
-    #     final_value = min(final_value, stat.max_value)
-
-    # if stat.min_value:
-    #     final_value = max(final_value, stat.min_value)
-
-    # if stat.is_discrete:
-    #     final_value = math.trunc(final_value)
-
-    # # stat.value = final_value
-
-    # if stat.cached_value != final_value:
-    #     stat.cached_value = final_value
-    #     stat.on_value_changed()
 
     return final_value

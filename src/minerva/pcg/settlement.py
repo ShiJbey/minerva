@@ -1,5 +1,6 @@
 """Settlement Generation Functions and Classes."""
 
+from minerva.config import Config
 from minerva.ecs import Event, GameObject, World
 from minerva.pcg.base_types import NameFactory, TerritoryFactory
 from minerva.sim_db import SimDB
@@ -20,11 +21,19 @@ class DefaultTerritoryFactory(TerritoryFactory):
 
     def generate_territory(self, world: World, name: str = "") -> GameObject:
         """Construct a new settlement."""
+        config = world.resources.get_resource(Config)
+
         settlement = world.gameobjects.spawn_gameobject()
         name = name if name else self.name_factory.generate_name(settlement)
         settlement.metadata["object_type"] = "settlement"
         settlement.add_component(Settlement(name=name))
-        settlement.add_component(PopulationHappiness(default_stat_calc_strategy))
+        settlement.add_component(
+            PopulationHappiness(
+                config.base_territory_happiness,
+                config.max_territory_happiness,
+                default_stat_calc_strategy,
+            )
+        )
         settlement.name = name
 
         db = world.resources.get_resource(SimDB).db

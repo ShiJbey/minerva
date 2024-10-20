@@ -9,8 +9,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from minerva.content_selection import get_with_tags
 from minerva.ecs import Component, GameObject
+from minerva.pcg.content_selection import get_with_tags
 
 
 class TraitEffect(ABC):

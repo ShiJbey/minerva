@@ -7,7 +7,6 @@ from itertools import product
 from typing import Any, Generator
 
 from minerva.config import Config
-from minerva.constants import TERRITORY_GENERATION_DEBUG_COLORS
 from minerva.ecs import GameObject, World
 from minerva.pcg.base_types import PCGFactories
 from minerva.world_map.components import (
@@ -17,6 +16,33 @@ from minerva.world_map.components import (
     TerritoryInfo,
     WorldMap,
 )
+
+TERRITORY_GENERATION_DEBUG_COLORS = [
+    "#e90000",  # red
+    "#31d5c8",  # light blue
+    "#a538c6",  # violet
+    "#cccccc",  # grey
+    "#33a7c8",  # darker blue
+    "#FF5733",  # (Bright Orange)
+    "#33FF57",  # (Lime Green)
+    "#FF338C",  # (Crimson)
+    "#FFD733",  # (Bright Yellow)
+    "#33FFF3",  # (Cyan)
+    "#8C33FF",  # (Purple)
+    "#FFB833",  # (Amber)
+    "#05fb00",  # green
+    "#001eba",  # royal blue
+    "#fff500",  # yellow
+    "#33FF8C",  # (Mint Green)
+    "#FF3333",  # (Bright Red)
+    "#33A6FF",  # (Sky Blue)
+    "#FF3380",  # (Magenta)
+    "#FFC733",  # (Gold)
+    "#3380FF",  # (Royal Blue)
+    "#FF8333",  # (Coral)
+    "#33FF33",  # (Neon Green)
+    "#33FFB8",  # (Light Green)
+]
 
 
 class TerritoryGenerator:
