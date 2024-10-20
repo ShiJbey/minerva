@@ -12,7 +12,7 @@ from typing import Any, Union
 import yaml
 from pydantic import ValidationError
 
-from minerva.characters.components import Sex, SpeciesLibrary, SpeciesType
+from minerva.characters.components import Sex
 from minerva.pcg.character import CharacterNameFactory
 from minerva.pcg.settlement import SettlementNameFactory
 from minerva.simulation import Simulation
@@ -53,40 +53,6 @@ def load_settlement_names(
     """Load settlement names from a file."""
     settlement_name_factory = sim.world.resources.get_resource(SettlementNameFactory)
     settlement_name_factory.load_names(filepath)
-
-
-def load_species_types(
-    sim: Simulation, filepath: Union[os.PathLike[str], str, bytes]
-) -> None:
-    """Load species definition data from a data file.
-
-    Parameters
-    ----------
-    sim
-        The simulation instance to load the data into
-    filepath
-        The path to the data file.
-    """
-
-    with open(filepath, "r", encoding="utf8") as file:
-        data: dict[str, dict[str, Any]] = yaml.safe_load(file)
-
-    library = sim.world.resources.get_resource(SpeciesLibrary)
-
-    for definition_id, params in data.items():
-        try:
-            library.add_species(
-                SpeciesType.model_validate({"definition_id": definition_id, **params})
-            )
-        except ValidationError as exc:
-            error_dict = exc.errors()[0]
-            if error_dict["type"] == "missing":
-                print(
-                    f"ERROR: Missing required field '{error_dict['loc'][0]}' "
-                    f"for species type '{definition_id}' "
-                    f"in '{filepath}'."
-                )
-                sys.exit(1)
 
 
 def load_traits(sim: Simulation, filepath: Union[os.PathLike[str], str, bytes]) -> None:

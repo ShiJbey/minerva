@@ -51,8 +51,8 @@ from minerva.characters.components import (
     SexMotive,
     SexualOrientation,
     Sociability,
+    Species,
     SpeciesLibrary,
-    SpeciesType,
     Stewardship,
     Vengefulness,
     ViolencePropensity,
@@ -186,7 +186,7 @@ class CharacterNameFactory:
 
 def generate_random_character_age(
     world: World,
-    species: SpeciesType,
+    species: Species,
     life_stage: LifeStage,
 ) -> float:
     """Set's the character to the given life stage and generates a valid age."""
@@ -245,7 +245,7 @@ def generate_character(
         if len(species_choices) == 0:
             raise RuntimeError("No eligible species found for character generation.")
 
-        chosen_species: SpeciesType = rng.choices(
+        chosen_species: Species = rng.choices(
             population=species_choices, weights=weights
         )[0]
 

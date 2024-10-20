@@ -4,11 +4,11 @@
 from __future__ import annotations
 
 from minerva.ecs import Component, GameObject, World
-from minerva.preconditions.base_types import Precondition
 from minerva.relationships.base_types import (
     Relationship,
     RelationshipManager,
     RelationshipModifier,
+    RelationshipPrecondition,
     Reputation,
     Romance,
     SocialRule,
@@ -80,15 +80,11 @@ class HighMetabolismStatusEffect(StatusEffect):
         remove_stat_modifier(target, "Hunger", self.modifier)
 
 
-class RivalClansPrecondition(Precondition):
+class RivalClansPrecondition(RelationshipPrecondition):
     """Checks if two characters belong to the same clan."""
 
-    @property
-    def description(self) -> str:
-        return "Target belongs to a rival clan."
-
-    def check(self, gameobject: GameObject) -> bool:
-        relationship_component = gameobject.get_component(Relationship)
+    def evaluate(self, relationship: GameObject) -> bool:
+        relationship_component = relationship.get_component(Relationship)
         owner_rival_clans = relationship_component.owner.metadata["clan_rivals"]
         target_clan = relationship_component.target.metadata["clan"]
 
@@ -435,10 +431,10 @@ def test_social_rules() -> None:
     world.systems.add_system(TickStatusEffectSystem())
     social_rule_library = SocialRuleLibrary()
     world.resources.add_resource(social_rule_library)
-    social_rule_library.rules.append(
+    social_rule_library.add_rule(
         SocialRule(
-            label="RivalClans",
-            preconditions=[RivalClansPrecondition()],
+            rule_id="RivalClans",
+            precondition=RivalClansPrecondition(),
             modifiers={
                 "Reputation": StatModifierData(
                     modifier_type=StatModifierType.FLAT, value=-10

@@ -55,6 +55,7 @@ from minerva.characters.components import (
     LifeStage,
     Sex,
     SexualOrientation,
+    Species,
     SpeciesLibrary,
 )
 from minerva.characters.succession_helpers import SuccessionChartCache
@@ -126,6 +127,7 @@ class Simulation:
         self.initialize_actions()
         self.initialize_behaviors()
         self.initialize_social_rules()
+        self.initialize_species_types()
 
     def initialize_resources(self) -> None:
         """Initialize built-in resources."""
@@ -619,6 +621,33 @@ class Simulation:
         social_rule_library.add_rule(social_rules.reputation_boost_for_siblings)
         social_rule_library.add_rule(social_rules.reputation_boost_for_spouse)
         social_rule_library.add_rule(social_rules.romance_boost_for_spouse)
+
+    def initialize_species_types(self) -> None:
+        """Initialize species types."""
+        species_library = self.world.resources.get_resource(SpeciesLibrary)
+
+        species_library.add_species(
+            Species(
+                definition_id="human",
+                name="Human",
+                description="A plain ol' human being.",
+                adolescent_age=13,
+                young_adult_age=20,
+                adult_age=30,
+                senior_age=65,
+                adolescent_male_fertility=100,
+                young_adult_male_fertility=100,
+                adult_male_fertility=100,
+                senior_male_fertility=80,
+                adolescent_female_fertility=100,
+                young_adult_female_fertility=100,
+                adult_female_fertility=50,
+                senior_female_fertility=0,
+                fertility_cost_per_child=20,
+                lifespan=(70, 80),
+                can_physically_age=True,
+            )
+        )
 
     def initialize_logging(self) -> None:
         """Initialize simulation logging."""

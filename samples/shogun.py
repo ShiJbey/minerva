@@ -30,7 +30,6 @@ from minerva.loaders import (
     load_female_first_names,
     load_male_first_names,
     load_settlement_names,
-    load_species_types,
     load_surnames,
     load_traits,
 )
@@ -147,7 +146,6 @@ if __name__ == "__main__":
     load_female_first_names(sim, DATA_DIR / "feminine_japanese_names.txt")
     load_surnames(sim, DATA_DIR / "japanese_surnames.txt")
     load_settlement_names(sim, DATA_DIR / "japanese_city_names.txt")
-    load_species_types(sim, DATA_DIR / "species_types.yaml")
     load_traits(sim, DATA_DIR / "ck3_traits.yaml")
 
     print(f"Minerva version: {minerva.__version__}")

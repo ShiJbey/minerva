@@ -42,7 +42,7 @@ class SexualOrientation(enum.IntEnum):
     ASEXUAL = 3
 
 
-class SpeciesType(pydantic.BaseModel):
+class Species(pydantic.BaseModel):
     """Configuration information about a character's species."""
 
     definition_id: str
@@ -106,18 +106,18 @@ class SpeciesLibrary:
 
     _slots__ = ("species",)
 
-    species: dict[str, SpeciesType]
+    species: dict[str, Species]
     """Species instances."""
 
     def __init__(self) -> None:
         super().__init__()
         self.species = {}
 
-    def add_species(self, species: SpeciesType) -> None:
+    def add_species(self, species: Species) -> None:
         """Add species to the library."""
         self.species[species.definition_id] = species
 
-    def get_species(self, definition_id: str) -> SpeciesType:
+    def get_species(self, definition_id: str) -> Species:
         """Get a species instance."""
         return self.species[definition_id]
 
@@ -159,7 +159,7 @@ class Character(Component):
     birth_surname: str
     sex: Sex
     sexual_orientation: SexualOrientation
-    species: SpeciesType
+    species: Species
     life_stage: LifeStage
     age: float
     birth_date: Optional[SimDate]
@@ -186,7 +186,7 @@ class Character(Component):
         first_name: str,
         surname: str,
         sex: Sex,
-        species: SpeciesType,
+        species: Species,
         birth_surname: str = "",
         sexual_orientation: SexualOrientation = SexualOrientation.HETEROSEXUAL,
         life_stage: LifeStage = LifeStage.CHILD,
