@@ -141,6 +141,8 @@ class Character(Component):
         "biological_father",
         "siblings",
         "children",
+        "grandparents",
+        "grandchildren",
         "spouse",
         "lover",
         "is_alive",
@@ -167,6 +169,8 @@ class Character(Component):
     biological_father: Optional[GameObject]
     siblings: list[GameObject]
     children: list[GameObject]
+    grandparents: OrderedSet[GameObject]
+    grandchildren: OrderedSet[GameObject]
     spouse: Optional[GameObject]
     lover: Optional[GameObject]
     is_alive: bool
@@ -217,6 +221,8 @@ class Character(Component):
         self.biological_father = biological_father
         self.siblings = siblings if siblings is not None else []
         self.children = []
+        self.grandparents = OrderedSet([])
+        self.grandchildren = OrderedSet([])
         self.spouse = spouse
         self.lover = lover
         self.is_alive = is_alive

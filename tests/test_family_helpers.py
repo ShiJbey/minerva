@@ -59,7 +59,6 @@ def test_sim() -> Simulation:
     load_settlement_names(sim, data_dir / "japanese_city_names.txt")
     load_species_types(sim, data_dir / "species_types.yaml")
     load_traits(sim, data_dir / "ck3_traits.yaml")
-    load_traits(sim, data_dir / "relationship_traits.yaml")
 
     return sim
 

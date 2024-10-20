@@ -739,9 +739,6 @@ def set_character_mother(character: GameObject, mother: Optional[GameObject]) ->
 
     db.commit()
 
-    if mother:
-        add_trait(get_relationship(character, mother), "parent")
-
 
 def set_character_heir(character: GameObject, heir: Optional[GameObject]) -> None:
     """Set the heir of a character."""
@@ -789,9 +786,6 @@ def set_character_father(character: GameObject, father: Optional[GameObject]) ->
     )
 
     db.commit()
-
-    if father:
-        add_trait(get_relationship(character, father), "parent")
 
 
 def set_character_biological_father(
@@ -873,9 +867,6 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
 
     db.commit()
 
-    add_trait(get_relationship(character_a, character_b), "spouse")
-    add_trait(get_relationship(character_b, character_a), "spouse")
-
 
 def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
     """Unset the current spouse of a character and end the marriage."""
@@ -949,9 +940,6 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
     character_b_marriages.current_marriage = None
 
     db.commit()
-
-    add_trait(get_relationship(character_a, character_b), "ex_spouse")
-    add_trait(get_relationship(character_b, character_a), "ex_spouse")
 
 
 def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
@@ -1131,8 +1119,6 @@ def set_relation_sibling(character: GameObject, sibling: GameObject) -> None:
 
     db.commit()
 
-    add_trait(get_relationship(character, sibling), "sibling")
-
 
 def set_relation_child(character: GameObject, child: GameObject) -> None:
     """Set a character as being a child to the first."""
@@ -1149,5 +1135,3 @@ def set_relation_child(character: GameObject, child: GameObject) -> None:
     )
 
     db.commit()
-
-    add_trait(get_relationship(character, child), "child")

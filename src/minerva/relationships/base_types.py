@@ -8,10 +8,8 @@ graph.
 
 from __future__ import annotations
 
-from typing import Any, Optional
-
-import attrs
-import pydantic
+from abc import ABC, abstractmethod
+from typing import Iterable, Optional
 
 from minerva.ecs import Component, GameObject
 from minerva.preconditions.base_types import Precondition
@@ -239,35 +237,117 @@ class RelationshipModifier:
         return all(p.check(relationship) for p in self.preconditions)
 
 
-class SocialRuleDef(pydantic.BaseModel):
-    """A rule that modifies a relationship."""
+class RelationshipPrecondition(ABC):
+    """A precondition evaluated against a relationship."""
 
-    label: str = ""
-    preconditions: list[dict[str, Any]] = pydantic.Field(default_factory=list)
-    modifiers: dict[str, StatModifierData] = pydantic.Field(default_factory=dict)
+    @staticmethod
+    def not_(precondition: RelationshipPrecondition) -> RelationshipPrecondition:
+        """Performs NOT on a precondition."""
+        return _PreconditionNOT(precondition)
+
+    @staticmethod
+    def or_(*preconditions: RelationshipPrecondition) -> RelationshipPrecondition:
+        """Evaluate to true if any precondition holds."""
+        return _PreconditionOR(*preconditions)
+
+    @staticmethod
+    def and_(*preconditions: RelationshipPrecondition) -> RelationshipPrecondition:
+        """Evaluate to true if any precondition holds."""
+        return _PreconditionAND(*preconditions)
+
+    @abstractmethod
+    def evaluate(self, relationship: GameObject) -> bool:
+        """Check if the relationship passes the precondition."""
+        raise NotImplementedError()
 
 
-@attrs.define
+class _PreconditionAND(RelationshipPrecondition):
+    """Logical AND for social rule preconditions."""
+
+    __slots__ = ("preconditions",)
+
+    preconditions: list[RelationshipPrecondition]
+
+    def __init__(self, *preconditions: RelationshipPrecondition) -> None:
+        super().__init__()
+        self.preconditions = list(preconditions)
+
+    def evaluate(self, relationship: GameObject) -> bool:
+        return all(p.evaluate(relationship) for p in self.preconditions)
+
+
+class _PreconditionOR(RelationshipPrecondition):
+    """Logical AND for social rule preconditions."""
+
+    __slots__ = ("preconditions",)
+
+    preconditions: list[RelationshipPrecondition]
+
+    def __init__(self, *preconditions: RelationshipPrecondition) -> None:
+        super().__init__()
+        self.preconditions = list(preconditions)
+
+    def evaluate(self, relationship: GameObject) -> bool:
+        return any(p.evaluate(relationship) for p in self.preconditions)
+
+
+class _PreconditionNOT(RelationshipPrecondition):
+    """Logical AND for social rule preconditions."""
+
+    __slots__ = ("precondition",)
+
+    precondition: RelationshipPrecondition
+
+    def __init__(self, precondition: RelationshipPrecondition) -> None:
+        super().__init__()
+        self.precondition = precondition
+
+    def evaluate(self, relationship: GameObject) -> bool:
+        return not self.precondition.evaluate(relationship)
+
+
 class SocialRule:
     """A rule that modifies a relationship."""
 
-    label: str = ""
-    preconditions: list[Precondition] = attrs.field(factory=list)
-    modifiers: dict[str, StatModifierData] = attrs.field(factory=dict)
+    __slots__ = ("rule_id", "precondition", "modifiers")
 
-    def check_preconditions_for(self, relationship: GameObject) -> bool:
+    rule_id: str
+    precondition: RelationshipPrecondition
+    modifiers: dict[str, StatModifierData]
+
+    def __init__(
+        self,
+        rule_id: str,
+        precondition: RelationshipPrecondition,
+        modifiers: dict[str, StatModifierData],
+    ) -> None:
+        self.rule_id = rule_id
+        self.precondition = precondition
+        self.modifiers = modifiers
+
+    def evaluate_precondition(self, relationship: GameObject) -> bool:
         """Check if a relationship passes the preconditions for this rule."""
-        return all(p.check(relationship) for p in self.preconditions)
+        return self.precondition.evaluate(relationship)
 
 
 class SocialRuleLibrary:
     """Collection of all social rules that modify relationships."""
 
-    __slots__ = ("definitions", "rules")
+    __slots__ = ("_rules",)
 
-    definitions: list[SocialRuleDef]
-    rules: list[SocialRule]
+    _rules: dict[str, SocialRule]
 
     def __init__(self) -> None:
-        self.definitions = []
-        self.rules = []
+        self._rules = {}
+
+    def add_rule(self, rule: SocialRule) -> None:
+        """Add a social rule to the library."""
+        self._rules[rule.rule_id] = rule
+
+    def get_rule_by_id(self, rule_id: str) -> SocialRule:
+        """Get a social rule using its ID."""
+        return self._rules[rule_id]
+
+    def iter_rules(self) -> Iterable[SocialRule]:
+        """Get an iterator to the collection of rules."""
+        return iter(self._rules.values())

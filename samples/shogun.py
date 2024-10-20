@@ -27,10 +27,8 @@ from minerva.config import Config
 from minerva.datetime import MONTHS_PER_YEAR
 from minerva.inspection import SimulationInspector
 from minerva.loaders import (
-    load_businesses_types,
     load_female_first_names,
     load_male_first_names,
-    load_occupation_types,
     load_settlement_names,
     load_species_types,
     load_surnames,
@@ -151,9 +149,6 @@ if __name__ == "__main__":
     load_settlement_names(sim, DATA_DIR / "japanese_city_names.txt")
     load_species_types(sim, DATA_DIR / "species_types.yaml")
     load_traits(sim, DATA_DIR / "ck3_traits.yaml")
-    load_traits(sim, DATA_DIR / "relationship_traits.yaml")
-    load_businesses_types(sim, DATA_DIR / "ds_business_types.yaml")
-    load_occupation_types(sim, DATA_DIR / "ds_occupation_types.yaml")
 
     print(f"Minerva version: {minerva.__version__}")
     print(f"World Seed: {sim.config.seed}")

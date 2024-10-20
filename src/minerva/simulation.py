@@ -50,7 +50,6 @@ from minerva.actions.behavior_helpers import (
     StewardshipConsideration,
     WantForPowerConsideration,
 )
-from minerva.businesses.data import BusinessLibrary, OccupationLibrary
 from minerva.characters.components import (
     DynastyTracker,
     LifeStage,
@@ -86,6 +85,7 @@ from minerva.preconditions.preconditions import (
     TargetLifeStageRequirementFactory,
     TargetStatRequirementFactory,
 )
+from minerva.relationships import social_rules
 from minerva.relationships.base_types import SocialRuleLibrary
 from minerva.sim_db import SimDB
 from minerva.traits.base_types import Trait, TraitLibrary
@@ -125,6 +125,7 @@ class Simulation:
         self.initialize_database()
         self.initialize_actions()
         self.initialize_behaviors()
+        self.initialize_social_rules()
 
     def initialize_resources(self) -> None:
         """Initialize built-in resources."""
@@ -136,8 +137,6 @@ class Simulation:
         self._world.resources.add_resource(SettlementNameFactory(seed=self.config.seed))
         self._world.resources.add_resource(SpeciesLibrary())
         self._world.resources.add_resource(TraitLibrary())
-        self._world.resources.add_resource(OccupationLibrary())
-        self._world.resources.add_resource(BusinessLibrary())
         self._world.resources.add_resource(SocialRuleLibrary())
         self._world.resources.add_resource(SuccessionChartCache())
         self._world.resources.add_resource(AIBehaviorLibrary())
@@ -605,6 +604,21 @@ class Simulation:
                 ),
             )
         )
+
+    def initialize_social_rules(self) -> None:
+        """Initialize social rules"""
+        social_rule_library = self.world.resources.get_resource(SocialRuleLibrary)
+
+        social_rule_library.add_rule(social_rules.reputation_boost_for_family)
+        social_rule_library.add_rule(social_rules.reputation_boost_for_birth_family)
+        social_rule_library.add_rule(social_rules.not_attracted_to_parents)
+        social_rule_library.add_rule(social_rules.reputation_boost_for_parents)
+        social_rule_library.add_rule(social_rules.romance_drop_for_children)
+        social_rule_library.add_rule(social_rules.reputation_boost_for_children)
+        social_rule_library.add_rule(social_rules.romance_drop_for_siblings)
+        social_rule_library.add_rule(social_rules.reputation_boost_for_siblings)
+        social_rule_library.add_rule(social_rules.reputation_boost_for_spouse)
+        social_rule_library.add_rule(social_rules.romance_boost_for_spouse)
 
     def initialize_logging(self) -> None:
         """Initialize simulation logging."""

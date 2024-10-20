@@ -5,7 +5,6 @@ import random
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from minerva.businesses.data import BusinessLibrary
 from minerva.ecs import Event, GameObject, World
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatManager
@@ -74,33 +73,17 @@ class SettlementNameFactory:
         self.register_names(names)
 
 
-def generate_settlement(
-    world: World,
-    name: str = "",
-    n_business_types: int = 5,
-) -> GameObject:
+def generate_settlement(world: World, name: str = "") -> GameObject:
     """Construct a new settlement."""
 
     settlement = world.gameobjects.spawn_gameobject()
     settlement_name_factory = world.resources.get_resource(SettlementNameFactory)
     name = name if name else settlement_name_factory.generate_name()
     settlement.metadata["object_type"] = "settlement"
-    settlement_component = settlement.add_component(Settlement(name=name))
+    settlement.add_component(Settlement(name=name))
     settlement.add_component(StatManager())
     settlement.add_component(PopulationHappiness(default_stat_calc_strategy))
     settlement.name = name
-
-    rng = world.resources.get_resource(random.Random)
-    business_library = world.resources.get_resource(BusinessLibrary)
-    business_types: list[str] = []
-
-    if len(business_library.business_types):
-        business_types = rng.sample(
-            list(business_library.business_types.keys()),
-            min(len(business_library.business_types), n_business_types),
-        )
-
-    settlement_component.business_types = business_types
 
     db = world.resources.get_resource(SimDB).db
 

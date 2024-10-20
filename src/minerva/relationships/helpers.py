@@ -233,11 +233,11 @@ def _recalculate_relationship_stat(
 
     # Get modifiers from social rules
     social_rule_library = relationship.world.resources.get_resource(SocialRuleLibrary)
-    for rule in social_rule_library.rules:
+    for rule in social_rule_library.iter_rules():
         if stat.stat_name not in rule.modifiers:
             continue
 
-        if rule.check_preconditions_for(relationship):
+        if rule.evaluate_precondition(relationship):
             modifier = rule.modifiers[stat.stat_name]
             if modifier.modifier_type == StatModifierType.FLAT:
                 final_value += modifier.value

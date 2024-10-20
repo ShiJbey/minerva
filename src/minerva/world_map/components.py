@@ -261,7 +261,6 @@ class Settlement(Component):
     __slots__ = (
         "name",
         "controlling_family",
-        "business_types",
         "territory_id",
         "neighbors",
         "castle_position",
@@ -273,8 +272,6 @@ class Settlement(Component):
     """The settlement's name."""
     controlling_family: Optional[GameObject]
     """ID of the family that controls this settlement."""
-    business_types: list[str]
-    """Types of businesses that exist in this settlement."""
     neighbors: OrderedSet[GameObject]
     """Neighboring settlements."""
     castle_position: tuple[int, int]
@@ -293,7 +290,6 @@ class Settlement(Component):
         super().__init__()
         self.name = name
         self.controlling_family = controlling_family
-        self.business_types = business_types if business_types else []
         self.neighbors = OrderedSet([])
         self.castle_position: tuple[int, int] = (0, 0)
         self.political_influence = {}

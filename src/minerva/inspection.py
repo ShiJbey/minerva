@@ -73,9 +73,6 @@ def _settlement_section(obj: GameObject) -> str:
     else:
         output.append("Controlling Family: N/A")
 
-    # Add business types
-    output.append(f"Business Types: {', '.join(settlement.business_types)}")
-
     # Add neighbors
     output.append(
         f"Neighboring Settlements: {','.join(s.name_with_uid for s in settlement.neighbors)}"
@@ -352,7 +349,8 @@ def _get_personal_history_table(obj: GameObject) -> str:
         return ""
 
     event_data: list[tuple[str, str]] = [
-        (str(event.timestamp), event.get_description()) for event in life_event_history.history
+        (str(event.timestamp), event.get_description())
+        for event in life_event_history.history
     ]
 
     output = "=== Event History ===\n\n"
