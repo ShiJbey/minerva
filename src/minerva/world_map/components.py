@@ -7,7 +7,6 @@ import itertools
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Generic, Iterator, Optional, TypeVar
 
-import attrs
 from ordered_set import OrderedSet
 
 from minerva.constants import (
@@ -71,13 +70,24 @@ class GridBase(ABC, Generic[_GT]):
         raise NotImplementedError()
 
 
-@attrs.define(slots=True)
 class CartesianNeighborhoodCache:
     """A cache entry for a cartesian grid."""
+
+    __slots__ = ("coord", "neighbors", "includes_diagonals")
 
     coord: tuple[int, int]
     neighbors: list[tuple[int, int]]
     includes_diagonals: bool
+
+    def __init__(
+        self,
+        coord: tuple[int, int],
+        neighbors: list[tuple[int, int]],
+        includes_diagonals: bool,
+    ) -> None:
+        self.coord = coord
+        self.neighbors = neighbors
+        self.includes_diagonals = includes_diagonals
 
 
 class CartesianGrid(GridBase[_GT]):
@@ -234,15 +244,29 @@ class WorldMap:
         return self._size
 
 
-@attrs.define
 class TerritoryInfo:
     """Information about a territory."""
+
+    __slots__ = ("uid", "castle_pos", "color_primary", "color_secondary", "neighbors")
 
     uid: int
     castle_pos: tuple[int, int]
     color_primary: str
     color_secondary: str
-    neighbors: OrderedSet[int] = attrs.field(factory=lambda: OrderedSet([]))
+    neighbors: OrderedSet[int]
+
+    def __init__(
+        self,
+        uid: int,
+        castle_pos: tuple[int, int],
+        color_primary: str,
+        color_secondary: str,
+    ) -> None:
+        self.uid = uid
+        self.castle_pos = castle_pos
+        self.color_primary = color_primary
+        self.color_secondary = color_secondary
+        self.neighbors = OrderedSet([])
 
 
 class CompassDir(enum.IntFlag):

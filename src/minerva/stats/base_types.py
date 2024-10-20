@@ -16,9 +16,6 @@ import math
 from abc import ABC, abstractmethod
 from typing import Callable, ClassVar, Optional, Protocol
 
-import attrs
-import pydantic
-
 from minerva.ecs import Component, GameObject
 
 
@@ -32,21 +29,21 @@ class StatModifierType(enum.IntEnum):
     """Additively stacks percentage increases on a modified stat."""
 
 
-class StatModifierData(pydantic.BaseModel):
-    """Data used to instantiate a stat modifier."""
-
-    modifier_type: StatModifierType
-    value: float
-
-
-@attrs.define
 class StatModifier:
     """Stat modifiers provide buffs and de-buffs to the value of stats."""
 
-    label: str
+    __slots__ = ("value", "modifier_type")
+
     value: float
     modifier_type: StatModifierType
-    source: Optional[GameObject] = None
+
+    def __init__(
+        self,
+        value: float,
+        modifier_type: StatModifierType = StatModifierType.FLAT,
+    ) -> None:
+        self.value = value
+        self.modifier_type = modifier_type
 
 
 class IStatCalculationStrategy(Protocol):
@@ -154,9 +151,6 @@ class StatComponent(Component, ABC):
 
         return final_value
 
-    def on_add(self) -> None:
-        self.gameobject.get_component(StatManager).stats[self.__stat_name__] = self
-
     def add_modifier(self, modifier: StatModifier) -> None:
         """Add a modifier to the stat."""
         self.modifiers.append(modifier)
@@ -180,28 +174,6 @@ class StatComponent(Component, ABC):
         except ValueError:
             return False
 
-    def remove_modifiers_from_source(self, source: object) -> bool:
-        """Remove all modifiers applied from the given source.
-
-        Parameters
-        ----------
-        source
-            A source to check for.
-
-        Returns
-        -------
-        bool
-            True if any modifiers were removed, False otherwise.
-        """
-        did_remove: bool = False
-
-        for modifier in [*self.modifiers]:
-            if modifier.source == source:
-                did_remove = True
-                self.modifiers.remove(modifier)
-
-        return did_remove
-
     @property
     def normalized(self) -> float:
         """Get the normalized value from 0.0 to 1.0."""
@@ -215,21 +187,6 @@ class StatComponent(Component, ABC):
 
         for listener in self.listeners:
             listener(self.gameobject, self)
-
-
-class StatManager(Component):
-    """Tracks all the various stats for a GameObject."""
-
-    __slots__ = ("stats",)
-
-    stats: dict[str, StatComponent]
-    """Map of Stat IDs to Stat components."""
-
-    def __init__(
-        self,
-    ) -> None:
-        super().__init__()
-        self.stats = {}
 
 
 class StatusEffect(ABC):

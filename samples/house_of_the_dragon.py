@@ -33,8 +33,6 @@ if __name__ == "__main__":
     load_surnames(sim, DATA_DIR / "japanese_surnames.txt")
     load_settlement_names(sim, DATA_DIR / "japanese_city_names.txt")
 
-    sim.initialize_content()
-
     rhaenyra = generate_character(
         sim.world,
         first_name="Rhaenyra",

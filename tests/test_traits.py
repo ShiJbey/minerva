@@ -6,11 +6,6 @@ import pytest
 from minerva.characters.components import Sociability
 from minerva.ecs import GameObject, World
 from minerva.effects.base_types import EffectLibrary
-from minerva.effects.effects import (
-    AddRelationshipModifier,
-    AddStatModifier,
-    RelationshipModifierDir,
-)
 from minerva.preconditions.base_types import PreconditionLibrary
 from minerva.relationships.base_types import (
     RelationshipManager,
@@ -27,6 +22,11 @@ from minerva.stats.base_types import (
 )
 from minerva.stats.helpers import default_stat_calc_strategy
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
+from minerva.traits.effects import (
+    AddRelationshipModifier,
+    AddStatModifier,
+    RelationshipModifierDir,
+)
 from minerva.traits.helpers import add_trait, has_trait, remove_trait
 
 

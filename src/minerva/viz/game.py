@@ -137,7 +137,6 @@ class Game:
     def run(self) -> None:
         """Run the game."""
         self.is_running = True
-        self.simulation.initialize_content()
         while self.is_running:
             time_delta = self.clock.tick(FPS) / 1000.0
             self.handle_events()

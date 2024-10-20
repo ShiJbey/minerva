@@ -179,13 +179,11 @@ def test_add_stat_modifier() -> None:
 
     hunger.base_value = 10
 
-    hunger.add_modifier(StatModifier("extra-hungry", 50, StatModifierType.FLAT))
+    hunger.add_modifier(StatModifier(50, StatModifierType.FLAT))
 
     assert hunger.value == 60
 
-    hunger.add_modifier(
-        StatModifier("extra-extra-hungry", 0.5, StatModifierType.PERCENT)
-    )
+    hunger.add_modifier(StatModifier(0.5, StatModifierType.PERCENT))
 
     assert hunger.value == 90
 
@@ -203,7 +201,7 @@ def test_remove_stat_modifier() -> None:
 
     hunger.base_value = 10
 
-    modifier = StatModifier("extra-hungry", 50, StatModifierType.FLAT)
+    modifier = StatModifier(50, StatModifierType.FLAT)
 
     hunger.add_modifier(modifier)
 

@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
+import dataclasses
 import enum
 from typing import Optional
 
-import pydantic
 from ordered_set import OrderedSet
 
 from minerva import constants
@@ -42,7 +42,8 @@ class SexualOrientation(enum.IntEnum):
     ASEXUAL = 3
 
 
-class Species(pydantic.BaseModel):
+@dataclasses.dataclass
+class Species:
     """Configuration information about a character's species."""
 
     definition_id: str
@@ -63,8 +64,6 @@ class Species(pydantic.BaseModel):
     """A lifespan interval for characters of this species."""
     can_physically_age: bool
     """Can characters of this species age."""
-    traits: list[str] = pydantic.Field(default_factory=list)
-    """IDs of traits characters of this species get at creation."""
     adolescent_male_fertility: int
     """Max fertility for adolescent males."""
     young_adult_male_fertility: int
@@ -83,6 +82,8 @@ class Species(pydantic.BaseModel):
     """Max fertility for senior females."""
     fertility_cost_per_child: int
     """Fertility reduction each time a character births a child."""
+    traits: list[str] = dataclasses.field(default_factory=list)
+    """IDs of traits characters of this species get at creation."""
     spawn_frequency: int = 1
     """How likely a character will spawn of this species."""
 
@@ -954,21 +955,6 @@ class WantForChildren(StatComponent):
     """Tracks a GameObject's propensity to have children."""
 
     __stat_name__ = "WantForChildren"
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class WantToWork(StatComponent):
-    """Tracks a GameObject's propensity to find and stay at a job."""
-
-    __stat_name__ = "WantToWork"
 
     MAX_VALUE: int = 100
 

@@ -22,8 +22,6 @@ from __future__ import annotations
 
 from typing import Iterator, Optional
 
-import attrs
-
 from minerva.characters.components import (
     Character,
     Dynasty,
@@ -37,13 +35,19 @@ from minerva.life_events.succession import BecameEmperorEvent
 from minerva.sim_db import SimDB
 
 
-@attrs.define
 class DepthChartRow:
     """A row entry in a succession depth chart."""
+
+    __slots__ = ("depth", "character_id", "is_eligible")
 
     depth: int
     character_id: int
     is_eligible: bool
+
+    def __init__(self, depth: int, character_id: int, is_eligible: bool) -> None:
+        self.depth = depth
+        self.character_id = character_id
+        self.is_eligible = is_eligible
 
 
 class SuccessionDepthChart:

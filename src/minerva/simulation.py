@@ -62,34 +62,12 @@ from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject, World
-from minerva.effects.base_types import EffectLibrary
-from minerva.effects.effects import (
-    AddRelationshipModifierFactory,
-    AddStatModifierFactory,
-)
 from minerva.pcg.character import CharacterNameFactory
 from minerva.pcg.settlement import SettlementNameFactory
-from minerva.preconditions.base_types import PreconditionLibrary
-from minerva.preconditions.preconditions import (
-    AreOppositeSexPreconditionFactory,
-    AreSameSexPreconditionFactory,
-    HasTraitPreconditionFactory,
-    IsSexPreconditionFactory,
-    LifeStageRequirementFactory,
-    OwnerHasTraitPreconditionFactory,
-    OwnerIsSexPreconditionFactory,
-    OwnerLifeStageRequirementFactory,
-    OwnerStatRequirementFactory,
-    StatRequirementPreconditionFactory,
-    TargetHasTraitPreconditionFactory,
-    TargetIsSexPreconditionFactory,
-    TargetLifeStageRequirementFactory,
-    TargetStatRequirementFactory,
-)
 from minerva.relationships import social_rules
 from minerva.relationships.base_types import SocialRuleLibrary
 from minerva.sim_db import SimDB
-from minerva.traits.base_types import Trait, TraitLibrary
+from minerva.traits.base_types import TraitLibrary
 
 
 class Simulation:
@@ -144,28 +122,6 @@ class Simulation:
         self._world.resources.add_resource(AIBehaviorLibrary())
         self._world.resources.add_resource(DynastyTracker())
         self._world.resources.add_resource(AIActionLibrary())
-
-        effect_lib = EffectLibrary()
-        self._world.resources.add_resource(effect_lib)
-        effect_lib.add_factory(AddStatModifierFactory())
-        effect_lib.add_factory(AddRelationshipModifierFactory())
-
-        precondition_lib = PreconditionLibrary()
-        self._world.resources.add_resource(precondition_lib)
-        precondition_lib.add_factory(HasTraitPreconditionFactory())
-        precondition_lib.add_factory(OwnerHasTraitPreconditionFactory())
-        precondition_lib.add_factory(TargetHasTraitPreconditionFactory())
-        precondition_lib.add_factory(AreSameSexPreconditionFactory())
-        precondition_lib.add_factory(AreOppositeSexPreconditionFactory())
-        precondition_lib.add_factory(StatRequirementPreconditionFactory())
-        precondition_lib.add_factory(OwnerStatRequirementFactory())
-        precondition_lib.add_factory(TargetStatRequirementFactory())
-        precondition_lib.add_factory(LifeStageRequirementFactory())
-        precondition_lib.add_factory(OwnerLifeStageRequirementFactory())
-        precondition_lib.add_factory(TargetLifeStageRequirementFactory())
-        precondition_lib.add_factory(IsSexPreconditionFactory())
-        precondition_lib.add_factory(OwnerIsSexPreconditionFactory())
-        precondition_lib.add_factory(TargetIsSexPreconditionFactory())
 
     def initialize_systems(self) -> None:
         """Initialize built-in systems."""
@@ -715,11 +671,6 @@ class Simulation:
         sqlite3.register_adapter(SexualOrientation, adapt_sexual_orientation)
         sqlite3.register_converter("SexualOrientation", convert_sexual_orientation)
 
-    def initialize_content(self) -> None:
-        """Initialize game content from serialized data."""
-        self._initialize_trait_data()
-        self._world.initialize()
-
     @property
     def date(self) -> SimDate:
         """The current date in the simulation."""
@@ -743,31 +694,3 @@ class Simulation:
         """Export db to file on disk."""
         out = sqlite3.Connection(export_path)
         self.world.resources.get_resource(SimDB).db.backup(out)
-
-    def _initialize_trait_data(self) -> None:
-        trait_library = self.world.resources.get_resource(TraitLibrary)
-        effect_library = self.world.resources.get_resource(EffectLibrary)
-
-        # Add the new definitions and instances to the library.
-        for trait_def in trait_library.definitions.values():
-            trait = Trait(
-                trait_id=trait_def.trait_id,
-                name=trait_def.name,
-                inheritance_chance_both=trait_def.inheritance_chance_both,
-                inheritance_chance_single=trait_def.inheritance_chance_single,
-                is_inheritable=(
-                    trait_def.inheritance_chance_single > 0
-                    or trait_def.inheritance_chance_both > 0
-                ),
-                description=trait_def.description,
-                effects=[
-                    effect_library.create_from_obj(
-                        self.world, {"reason": f"Has {trait_def.name} trait", **entry}
-                    )
-                    for entry in trait_def.effects
-                ],
-                tags=trait_def.tags.copy(),
-                conflicting_traits=trait_def.conflicts_with,
-            )
-
-            trait_library.add_trait(trait)

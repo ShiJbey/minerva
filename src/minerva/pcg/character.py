@@ -84,7 +84,7 @@ from minerva.ecs import Active, Event, GameObject, World
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
-from minerva.stats.base_types import StatManager, StatusEffectManager
+from minerva.stats.base_types import StatusEffectManager
 from minerva.stats.helpers import default_stat_calc_strategy
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
 from minerva.traits.helpers import (
@@ -309,7 +309,6 @@ def generate_character(
     obj.add_component(StatusEffectManager())
     obj.add_component(RelationshipManager())
     obj.add_component(LifeEventHistory())
-    obj.add_component(StatManager())
     obj.add_component(MarriageTracker())
     obj.add_component(RomanticAffairTracker())
     obj.add_component(BetrothalTracker())
@@ -428,7 +427,7 @@ def generate_character(
     # Sample personality traits
     trait_library = world.resources.get_resource(TraitLibrary)
 
-    personality_traits = trait_library.get_instances_with_tags(["personality"])
+    personality_traits = trait_library.get_traits_with_tags(["personality"])
 
     for _ in range(n_max_personality_traits):
 
@@ -540,7 +539,7 @@ def generate_child_from(mother: GameObject, father: GameObject) -> GameObject:
 
     trait_library = mother.world.resources.get_resource(TraitLibrary)
 
-    personality_traits = trait_library.get_instances_with_tags(["personality"])
+    personality_traits = trait_library.get_traits_with_tags(["personality"])
 
     for _ in range(n_additional_traits):
         potential_traits = [

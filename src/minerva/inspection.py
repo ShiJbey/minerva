@@ -21,10 +21,13 @@ from minerva.characters.components import (
 )
 from minerva.ecs import Active, GameObject, GameObjectNotFoundError
 from minerva.life_events.base_types import LifeEventHistory
-from minerva.relationships.base_types import Relationship, RelationshipManager
+from minerva.relationships.base_types import (
+    Relationship,
+    RelationshipManager,
+    Reputation,
+    Romance,
+)
 from minerva.simulation import Simulation
-from minerva.stats.base_types import StatManager
-from minerva.stats.helpers import get_stat
 from minerva.traits.base_types import TraitManager
 from minerva.world_map.components import Settlement
 
@@ -373,9 +376,9 @@ def _get_relationships_table(obj: GameObject) -> str:
 
     relationship_data: list[tuple[bool, int, str, str, str, str]] = []
 
-    for target, relationship in relationships.outgoing.items():
-        reputation = get_stat(relationship, "Reputation")
-        romance = get_stat(relationship, "Romance")
+    for target, relationship in relationships.outgoing_relationships.items():
+        reputation = relationship.get_component(Reputation)
+        romance = relationship.get_component(Romance)
         traits = ", ".join(
             t.name for t in relationship.get_component(TraitManager).traits.values()
         )
@@ -412,44 +415,6 @@ def _get_relationships_table(obj: GameObject) -> str:
     return output
 
 
-def _get_stats_table(obj: GameObject) -> str:
-    """Generate a table for stats."""
-    stats = obj.try_component(StatManager)
-
-    if stats is None:
-        return ""
-
-    stats_table_data: list[tuple[str, str, str, str]] = []
-
-    for stat_component in stats.stats.values():
-        if stat_component.max_value is not None or stat_component.min_value is not None:
-            min_val, max_val = stat_component.min_value, stat_component.max_value
-        else:
-            min_val, max_val = "N/A", "N/A"
-
-        stat = stat_component
-        boost = int(stat.value - stat.base_value)
-
-        if stat.is_discrete:
-            value_label = f"{int(stat.base_value)}[{_sign(boost)}{abs(boost)}]"
-        else:
-            value_label = f"{stat.base_value:.3f}[{_sign(boost)}{abs(boost)}]"
-
-        stats_table_data.append(
-            (stat_component.stat_name, value_label, str(min_val), str(max_val))
-        )
-
-    output = "=== Stats ===\n\n"
-
-    output += tabulate.tabulate(
-        stats_table_data,
-        headers=("Stat", "Base Value[boost]", "Min", "Max"),
-        numalign="left",
-    )
-
-    return output
-
-
 _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("title", _title_section),
     ("settlement", _settlement_section),
@@ -457,7 +422,6 @@ _obj_inspector_sections: list[tuple[str, Callable[[GameObject], str]]] = [
     ("character", _character_section),
     ("family", _family_section),
     ("dynasty", _dynasty_section),
-    ("stats", _get_stats_table),
     ("traits", _get_traits_table),
     ("pregnancy", _pregnancy_section),
     ("relationships", _get_relationships_table),

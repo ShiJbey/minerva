@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Union
+from typing import Union
 
 import pydantic
 
@@ -45,8 +45,3 @@ class Config(pydantic.BaseModel):
     """Chance that the head of an initial household will spawn with children."""
     chance_spawn_with_spouse: float = 0.9
     """Chance that the head of an initial household will spawn with a spouse."""
-
-    # === MISC ===
-
-    settings: dict[str, Any] = pydantic.Field(default_factory=dict)
-    """Various key-value pair configuration settings."""

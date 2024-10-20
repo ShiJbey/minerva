@@ -24,6 +24,7 @@ import tqdm
 import minerva
 import minerva.constants
 from minerva.config import Config
+from minerva.data import ck3_traits
 from minerva.datetime import MONTHS_PER_YEAR
 from minerva.inspection import SimulationInspector
 from minerva.loaders import (
@@ -31,7 +32,6 @@ from minerva.loaders import (
     load_male_first_names,
     load_settlement_names,
     load_surnames,
-    load_traits,
 )
 from minerva.pcg.character import generate_initial_families
 from minerva.pcg.world_map import generate_world_map
@@ -146,15 +146,10 @@ if __name__ == "__main__":
     load_female_first_names(sim, DATA_DIR / "feminine_japanese_names.txt")
     load_surnames(sim, DATA_DIR / "japanese_surnames.txt")
     load_settlement_names(sim, DATA_DIR / "japanese_city_names.txt")
-    load_traits(sim, DATA_DIR / "ck3_traits.yaml")
+    ck3_traits.load_traits(sim.world)
 
     print(f"Minerva version: {minerva.__version__}")
     print(f"World Seed: {sim.config.seed}")
-
-    print("Initializing Data ...")
-    sim.initialize_content()
-
-    time.sleep(0.1)
 
     print("Generating Map and Settlements ...")
     generate_world_map(sim.world)
