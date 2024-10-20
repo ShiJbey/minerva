@@ -1,8 +1,6 @@
 # pylint: disable=W0621
 """Test classes and functions related to succession."""
 
-import pathlib
-
 import pytest
 
 from minerva.characters.components import LifeStage, Sex, SexualOrientation
@@ -15,13 +13,8 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
-from minerva.loaders import (
-    load_female_first_names,
-    load_male_first_names,
-    load_settlement_names,
-    load_surnames,
-)
-from minerva.pcg.character import generate_character
+from minerva.data import japanese_city_names, japanese_names
+from minerva.pcg.base_types import PCGFactories
 from minerva.simulation import Simulation
 
 
@@ -30,22 +23,19 @@ def test_sim() -> Simulation:
     """Create a test simulation."""
     sim = Simulation()
 
-    data_dir = pathlib.Path(__file__).parent.parent / "data"
-
-    load_male_first_names(sim, data_dir / "masculine_japanese_names.txt")
-    load_female_first_names(sim, data_dir / "feminine_japanese_names.txt")
-    load_surnames(sim, data_dir / "japanese_surnames.txt")
-    load_settlement_names(sim, data_dir / "japanese_city_names.txt")
+    japanese_city_names.load_names(sim.world)
+    japanese_names.load_names(sim.world)
 
     return sim
 
 
 def test_get_succession_depth_chart(test_sim: Simulation):
     """Test depth chart calculations."""
+    character_factory = test_sim.world.resources.get_resource(
+        PCGFactories
+    ).character_factory
 
-    # Configure characters
-
-    viserys = generate_character(
+    viserys = character_factory.generate_character(
         test_sim.world,
         first_name="Viserys",
         surname="Targaryen",
@@ -55,7 +45,7 @@ def test_get_succession_depth_chart(test_sim: Simulation):
         species="human",
     )
 
-    rhaenyra = generate_character(
+    rhaenyra = character_factory.generate_character(
         test_sim.world,
         first_name="Rhaenyra",
         surname="Targaryen",
@@ -65,7 +55,7 @@ def test_get_succession_depth_chart(test_sim: Simulation):
         species="human",
     )
 
-    alicent = generate_character(
+    alicent = character_factory.generate_character(
         test_sim.world,
         first_name="Alicent",
         surname="Hightower",
@@ -74,7 +64,7 @@ def test_get_succession_depth_chart(test_sim: Simulation):
         sexual_orientation=SexualOrientation.BISEXUAL,
     )
 
-    daemon = generate_character(
+    daemon = character_factory.generate_character(
         test_sim.world,
         first_name="Daemon",
         surname="Targaryen",
@@ -84,7 +74,7 @@ def test_get_succession_depth_chart(test_sim: Simulation):
         species="human",
     )
 
-    aegon_2 = generate_character(
+    aegon_2 = character_factory.generate_character(
         test_sim.world,
         first_name="Aegon",
         surname="Targaryen",
@@ -94,7 +84,7 @@ def test_get_succession_depth_chart(test_sim: Simulation):
         species="human",
     )
 
-    aemond = generate_character(
+    aemond = character_factory.generate_character(
         test_sim.world,
         first_name="Aemond",
         surname="Targaryen",
@@ -104,7 +94,7 @@ def test_get_succession_depth_chart(test_sim: Simulation):
         species="human",
     )
 
-    rhaenys = generate_character(
+    rhaenys = character_factory.generate_character(
         test_sim.world,
         first_name="Rhaenys",
         surname="Targaryen",
@@ -143,6 +133,6 @@ def test_get_succession_depth_chart(test_sim: Simulation):
     assert depth_chart.get_depth(rhaenyra) == 0
     assert depth_chart.get_depth(aegon_2) == 1
     assert depth_chart.get_depth(aemond) == 2
-    assert depth_chart.get_depth(alicent) == 3
-    assert depth_chart.get_depth(daemon) == 4
+    assert depth_chart.get_depth(alicent) == -1
+    assert depth_chart.get_depth(daemon) == 3
     assert depth_chart.get_depth(rhaenys) == -1

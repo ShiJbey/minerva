@@ -77,7 +77,7 @@ from minerva.life_events.events import (
     PregnancyEvent,
 )
 from minerva.life_events.succession import BecameFamilyHeadEvent
-from minerva.pcg.character import generate_child_from
+from minerva.pcg.base_types import PCGFactories
 from minerva.relationships.base_types import Reputation
 from minerva.relationships.helpers import get_relationship
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
@@ -929,6 +929,8 @@ class ChildBirthSystem(System):
     def on_update(self, world: World) -> None:
         current_date = world.resources.get_resource(SimDate)
 
+        baby_factory = world.resources.get_resource(PCGFactories).baby_factory
+
         for _, (character, pregnancy, fertility, _) in world.get_components(
             (Character, Pregnancy, Fertility, Active)
         ):
@@ -937,7 +939,7 @@ class ChildBirthSystem(System):
 
             father = pregnancy.actual_father
 
-            baby = generate_child_from(
+            baby = baby_factory.generate_child(
                 mother=character.gameobject,
                 father=father,
             )

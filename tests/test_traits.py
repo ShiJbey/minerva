@@ -5,27 +5,26 @@ import pytest
 
 from minerva.characters.components import Sociability
 from minerva.ecs import GameObject, World
-from minerva.effects.base_types import EffectLibrary
-from minerva.preconditions.base_types import PreconditionLibrary
 from minerva.relationships.base_types import (
     RelationshipManager,
+    RelationshipModifier,
     Romance,
     SocialRuleLibrary,
 )
 from minerva.relationships.helpers import add_relationship
+from minerva.relationships.preconditions import ConstantPrecondition
 from minerva.stats.base_types import (
     StatComponent,
-    StatManager,
-    StatModifierData,
+    StatModifier,
     StatModifierType,
     StatusEffectManager,
 )
 from minerva.stats.helpers import default_stat_calc_strategy
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
 from minerva.traits.effects import (
-    AddRelationshipModifier,
-    AddStatModifier,
-    RelationshipModifierDir,
+    AddIncomingRelationshipModifier,
+    AddOutgoingRelationshipModifier,
+    AddSociabilityModifier,
 )
 from minerva.traits.helpers import add_trait, has_trait, remove_trait
 
@@ -50,23 +49,19 @@ def world() -> World:
 
     w = World()
     w.resources.add_resource(SocialRuleLibrary())
-    w.resources.add_resource(PreconditionLibrary())
-    w.resources.add_resource(EffectLibrary())
     w.resources.add_resource(TraitLibrary())
     w.resources.get_resource(TraitLibrary).add_trait(
         Trait(
             trait_id="flirtatious",
             name="Flirtatious",
             effects=[
-                AddRelationshipModifier(
-                    direction=RelationshipModifierDir.OUTGOING,
-                    preconditions=[],
-                    description="",
-                    modifiers={
-                        "Romance": StatModifierData(
+                AddOutgoingRelationshipModifier(
+                    RelationshipModifier(
+                        precondition=ConstantPrecondition(True),
+                        romance_modifier=StatModifier(
                             modifier_type=StatModifierType.FLAT, value=10
-                        )
-                    },
+                        ),
+                    )
                 )
             ],
         )
@@ -76,15 +71,11 @@ def world() -> World:
             trait_id="charming",
             name="Charming",
             effects=[
-                AddRelationshipModifier(
-                    direction=RelationshipModifierDir.INCOMING,
-                    preconditions=[],
-                    description="",
-                    modifiers={
-                        "Romance": StatModifierData(
-                            modifier_type=StatModifierType.FLAT, value=12
-                        )
-                    },
+                AddIncomingRelationshipModifier(
+                    RelationshipModifier(
+                        precondition=ConstantPrecondition(True),
+                        romance_modifier=StatModifier(12),
+                    )
                 )
             ],
         )
@@ -94,14 +85,9 @@ def world() -> World:
             trait_id="gullible",
             name="Gullible",
             effects=[
-                AddStatModifier(
-                    stat="Sociability",
-                    label="",
-                    modifier_type=StatModifierType.FLAT,
-                    value=10,
-                )
+                AddSociabilityModifier(StatModifier(10)),
             ],
-            conflicting_traits={"skeptical"},
+            conflicting_traits=["skeptical"],
         )
     )
     w.resources.get_resource(TraitLibrary).add_trait(
@@ -109,14 +95,9 @@ def world() -> World:
             trait_id="skeptical",
             name="Skeptical",
             effects=[
-                AddStatModifier(
-                    stat="Sociability",
-                    label="",
-                    modifier_type=StatModifierType.FLAT,
-                    value=-10,
-                )
+                AddSociabilityModifier(StatModifier(-10)),
             ],
-            conflicting_traits={"gullible"},
+            conflicting_traits=["gullible"],
         )
     )
 
@@ -128,7 +109,6 @@ def create_test_character(world: World) -> GameObject:
 
     return world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             RelationshipManager(),
             StatusEffectManager(),
             TraitManager(),

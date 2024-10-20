@@ -9,7 +9,7 @@ from typing import Any, Generator
 from minerva.config import Config
 from minerva.constants import TERRITORY_GENERATION_DEBUG_COLORS
 from minerva.ecs import GameObject, World
-from minerva.pcg.settlement import generate_settlement
+from minerva.pcg.base_types import PCGFactories
 from minerva.world_map.components import (
     CartesianGrid,
     CompassDir,
@@ -226,8 +226,10 @@ def generate_world_map(world: World) -> None:
     territory_id_to_settlement: dict[int, GameObject] = {}
     settlements: dict[int, GameObject] = {}
 
+    pcg_factories = world.resources.get_resource(PCGFactories)
+
     for territory in territory_generator.territories:
-        settlement = generate_settlement(world)
+        settlement = pcg_factories.territory_factory.generate_territory(world)
         territory_id_to_settlement[territory.uid] = settlement
         settlements[settlement.uid] = settlement
         world_map.settlements.append(settlement)

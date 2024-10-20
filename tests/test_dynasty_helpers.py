@@ -1,8 +1,6 @@
 # pylint: disable=W0621
 """Test Dynasty functionality."""
 
-import pathlib
-
 import pytest
 
 from minerva.characters.components import (
@@ -14,14 +12,9 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import set_character_family
 from minerva.characters.succession_helpers import set_current_ruler
+from minerva.data import japanese_city_names, japanese_names
 from minerva.ecs import GameObject
-from minerva.loaders import (
-    load_female_first_names,
-    load_male_first_names,
-    load_settlement_names,
-    load_surnames,
-)
-from minerva.pcg.character import generate_character, generate_family
+from minerva.pcg.base_types import PCGFactories
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
@@ -31,20 +24,21 @@ def test_sim() -> Simulation:
     """Create a test simulation."""
     sim = Simulation()
 
-    data_dir = pathlib.Path(__file__).parent.parent / "data"
-
-    load_male_first_names(sim, data_dir / "masculine_japanese_names.txt")
-    load_female_first_names(sim, data_dir / "feminine_japanese_names.txt")
-    load_surnames(sim, data_dir / "japanese_surnames.txt")
-    load_settlement_names(sim, data_dir / "japanese_city_names.txt")
+    japanese_city_names.load_names(sim.world)
+    japanese_names.load_names(sim.world)
 
     return sim
 
 
 def test_set_current_ruler(test_sim: Simulation):
     """Test setting the current ruler."""
+    character_factory = test_sim.world.resources.get_resource(
+        PCGFactories
+    ).character_factory
 
-    viserys = generate_character(
+    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+
+    viserys = character_factory.generate_character(
         test_sim.world,
         first_name="Viserys",
         surname="Targaryen",
@@ -54,7 +48,7 @@ def test_set_current_ruler(test_sim: Simulation):
         species="human",
     )
 
-    rhaenyra = generate_character(
+    rhaenyra = character_factory.generate_character(
         test_sim.world,
         first_name="Rhaenyra",
         surname="Targaryen",
@@ -64,7 +58,7 @@ def test_set_current_ruler(test_sim: Simulation):
         species="human",
     )
 
-    corlys = generate_character(
+    corlys = character_factory.generate_character(
         test_sim.world,
         first_name="Corlys",
         surname="Velaryon",
@@ -74,8 +68,8 @@ def test_set_current_ruler(test_sim: Simulation):
         species="human",
     )
 
-    targaryen_family = generate_family(test_sim.world, name="Targaryen")
-    velaryon_family = generate_family(test_sim.world, name="Velaryon")
+    targaryen_family = family_factory.generate_family(test_sim.world, name="Targaryen")
+    velaryon_family = family_factory.generate_family(test_sim.world, name="Velaryon")
 
     set_character_family(viserys, targaryen_family)
     set_character_family(rhaenyra, targaryen_family)

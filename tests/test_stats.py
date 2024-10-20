@@ -14,25 +14,18 @@ from minerva.relationships.base_types import (
     SocialRule,
     SocialRuleLibrary,
 )
-from minerva.relationships.helpers import (
-    add_relationship,
-    get_relationship,
-    remove_stat_modifier,
-)
+from minerva.relationships.helpers import add_relationship, get_relationship
+from minerva.relationships.preconditions import ConstantPrecondition
 from minerva.stats.base_types import (
     StatComponent,
-    StatManager,
     StatModifier,
-    StatModifierData,
     StatModifierType,
     StatusEffect,
     StatusEffectManager,
 )
 from minerva.stats.helpers import (
-    add_stat_modifier,
     add_status_effect,
     default_stat_calc_strategy,
-    has_stat_with_name,
     remove_status_effect,
 )
 from minerva.systems import TickStatusEffectSystem
@@ -69,15 +62,13 @@ class HighMetabolismStatusEffect(StatusEffect):
 
     def __init__(self, duration: int = 0) -> None:
         super().__init__("High Metabolism", "Increases hunger", duration)
-        self.modifier = StatModifier(
-            "High Metabolism", value=70, modifier_type=StatModifierType.FLAT
-        )
+        self.modifier = StatModifier(value=70, modifier_type=StatModifierType.FLAT)
 
     def apply(self, target: GameObject) -> None:
-        add_stat_modifier(target, "Hunger", self.modifier)
+        target.get_component(Hunger).add_modifier(self.modifier)
 
     def remove(self, target: GameObject) -> None:
-        remove_stat_modifier(target, "Hunger", self.modifier)
+        target.get_component(Hunger).remove_modifier(self.modifier)
 
 
 class RivalClansPrecondition(RelationshipPrecondition):
@@ -91,26 +82,11 @@ class RivalClansPrecondition(RelationshipPrecondition):
         return target_clan in owner_rival_clans
 
 
-def test_has_stat() -> None:
-    """Test checking for stats."""
-    world = World()
-
-    character = world.gameobjects.spawn_gameobject(
-        components=[StatManager(), Hunger(0)]
-    )
-
-    assert has_stat_with_name(character, "Hunger") is True
-
-    assert has_stat_with_name(character, "Health") is False
-
-
 def test_get_stat() -> None:
     """Test stat get stat when changing base_value."""
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(
-        components=[StatManager(), Hunger(0)]
-    )
+    character = world.gameobjects.spawn_gameobject(components=[Hunger(0)])
 
     hunger = character.get_component(Hunger)
 
@@ -144,7 +120,6 @@ def test_stat_change_listener() -> None:
 
     character = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             HungerState(),
@@ -171,9 +146,7 @@ def test_add_stat_modifier() -> None:
 
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(
-        components=[StatManager(), Hunger(0)]
-    )
+    character = world.gameobjects.spawn_gameobject(components=[Hunger(0)])
 
     hunger = character.get_component(Hunger)
 
@@ -193,9 +166,7 @@ def test_remove_stat_modifier() -> None:
 
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(
-        components=[StatManager(), Hunger(0)]
-    )
+    character = world.gameobjects.spawn_gameobject(components=[Hunger(0)])
 
     hunger = character.get_component(Hunger)
 
@@ -218,7 +189,7 @@ def test_status_effect() -> None:
     world = World()
 
     character = world.gameobjects.spawn_gameobject(
-        components=[StatManager(), Hunger(0), StatusEffectManager()]
+        components=[Hunger(0), StatusEffectManager()]
     )
 
     hunger = character.get_component(Hunger)
@@ -238,7 +209,7 @@ def test_remove_status_effect() -> None:
     world = World()
 
     character = world.gameobjects.spawn_gameobject(
-        components=[StatManager(), Hunger(0), StatusEffectManager()]
+        components=[Hunger(0), StatusEffectManager()]
     )
 
     hunger = character.get_component(Hunger)
@@ -266,7 +237,7 @@ def test_status_effect_system() -> None:
     world.systems.add_system(TickStatusEffectSystem())
 
     character = world.gameobjects.spawn_gameobject(
-        components=[StatManager(), Hunger(0), StatusEffectManager()]
+        components=[Hunger(0), StatusEffectManager()]
     )
 
     hunger = character.get_component(Hunger)
@@ -298,7 +269,6 @@ def test_get_relationship_stat() -> None:
 
     c1 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -307,7 +277,6 @@ def test_get_relationship_stat() -> None:
 
     c2 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -334,7 +303,6 @@ def test_get_modifier_to_relationship_stat() -> None:
 
     c1 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -343,7 +311,6 @@ def test_get_modifier_to_relationship_stat() -> None:
 
     c2 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -355,9 +322,7 @@ def test_get_modifier_to_relationship_stat() -> None:
 
     assert reputation.value == 0
 
-    reputation.add_modifier(
-        StatModifier(modifier_type=StatModifierType.FLAT, value=35, label="")
-    )
+    reputation.add_modifier(StatModifier(modifier_type=StatModifierType.FLAT, value=35))
 
     assert reputation.value == 35
 
@@ -372,7 +337,6 @@ def test_relationship_modifiers() -> None:
 
     c1 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -381,7 +345,6 @@ def test_relationship_modifiers() -> None:
 
     c2 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -390,27 +353,21 @@ def test_relationship_modifiers() -> None:
 
     c1.get_component(RelationshipManager).outgoing_modifiers.append(
         RelationshipModifier(
-            description="Friendly",
-            preconditions=[],
-            modifiers={
-                "Reputation": StatModifierData(
-                    modifier_type=StatModifierType.FLAT,
-                    value=20,
-                )
-            },
+            precondition=ConstantPrecondition(True),
+            reputation_modifier=StatModifier(
+                modifier_type=StatModifierType.FLAT,
+                value=20,
+            ),
         )
     )
 
     c2.get_component(RelationshipManager).incoming_modifiers.append(
         RelationshipModifier(
-            description="Attractive",
-            preconditions=[],
-            modifiers={
-                "Romance": StatModifierData(
-                    modifier_type=StatModifierType.FLAT,
-                    value=12,
-                )
-            },
+            precondition=ConstantPrecondition(True),
+            romance_modifier=StatModifier(
+                modifier_type=StatModifierType.FLAT,
+                value=12,
+            ),
         )
     )
 
@@ -431,19 +388,16 @@ def test_social_rules() -> None:
     world.resources.add_resource(social_rule_library)
     social_rule_library.add_rule(
         SocialRule(
-            rule_id="RivalClans",
+            rule_id="rival_clans_clash",
             precondition=RivalClansPrecondition(),
-            modifiers={
-                "Reputation": StatModifierData(
-                    modifier_type=StatModifierType.FLAT, value=-10
-                )
-            },
+            reputation_modifier=StatModifier(
+                modifier_type=StatModifierType.FLAT, value=-10
+            ),
         )
     )
 
     c1 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -454,7 +408,6 @@ def test_social_rules() -> None:
 
     c2 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -465,27 +418,21 @@ def test_social_rules() -> None:
 
     c1.get_component(RelationshipManager).outgoing_modifiers.append(
         RelationshipModifier(
-            description="Friendly",
-            preconditions=[],
-            modifiers={
-                "Reputation": StatModifierData(
-                    modifier_type=StatModifierType.FLAT,
-                    value=20,
-                )
-            },
+            precondition=ConstantPrecondition(True),
+            reputation_modifier=StatModifier(
+                modifier_type=StatModifierType.FLAT,
+                value=20,
+            ),
         )
     )
 
     c2.get_component(RelationshipManager).incoming_modifiers.append(
         RelationshipModifier(
-            description="Attractive",
-            preconditions=[],
-            modifiers={
-                "Romance": StatModifierData(
-                    modifier_type=StatModifierType.FLAT,
-                    value=12,
-                )
-            },
+            precondition=ConstantPrecondition(True),
+            romance_modifier=StatModifier(
+                modifier_type=StatModifierType.FLAT,
+                value=12,
+            ),
         )
     )
 
@@ -516,7 +463,6 @@ def test_relationship_stat_listener() -> None:
 
     c1 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
@@ -525,7 +471,6 @@ def test_relationship_stat_listener() -> None:
 
     c2 = world.gameobjects.spawn_gameobject(
         components=[
-            StatManager(),
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),

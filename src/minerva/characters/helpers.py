@@ -37,9 +37,8 @@ from minerva.characters.war_helpers import end_alliance
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Event, GameObject
 from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
-from minerva.relationships.helpers import deactivate_relationships, get_relationship
+from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
-from minerva.traits.helpers import add_trait
 from minerva.world_map.components import Settlement
 from minerva.world_map.helpers import set_settlement_controlling_family
 
@@ -1004,9 +1003,6 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
 
     db.commit()
 
-    add_trait(get_relationship(character_a, character_b), "lover")
-    add_trait(get_relationship(character_b, character_a), "lover")
-
 
 def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
     """End a romantic affair between two characters."""
@@ -1075,9 +1071,6 @@ def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> Non
     character_b_lovers.current_affair = None
 
     db.commit()
-
-    add_trait(get_relationship(character_a, character_b), "ex_lover")
-    add_trait(get_relationship(character_b, character_a), "ex_lover")
 
 
 def set_character_alive(character: GameObject, is_alive: bool) -> None:

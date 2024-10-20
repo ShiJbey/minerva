@@ -3,8 +3,6 @@
 
 """
 
-import pathlib
-
 import pytest
 
 from minerva.characters.components import Family
@@ -17,14 +15,9 @@ from minerva.characters.war_helpers import (
     start_alliance,
     start_war,
 )
+from minerva.data import japanese_city_names, japanese_names
 from minerva.datetime import SimDate
-from minerva.loaders import (
-    load_female_first_names,
-    load_male_first_names,
-    load_settlement_names,
-    load_surnames,
-)
-from minerva.pcg.character import generate_character, generate_family
+from minerva.pcg.base_types import PCGFactories
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
@@ -34,24 +27,25 @@ def test_sim() -> Simulation:
     """Create a test simulation."""
     sim = Simulation()
 
-    data_dir = pathlib.Path(__file__).parent.parent / "data"
-
-    load_male_first_names(sim, data_dir / "masculine_japanese_names.txt")
-    load_female_first_names(sim, data_dir / "feminine_japanese_names.txt")
-    load_surnames(sim, data_dir / "japanese_surnames.txt")
-    load_settlement_names(sim, data_dir / "japanese_city_names.txt")
+    japanese_city_names.load_names(sim.world)
+    japanese_names.load_names(sim.world)
 
     return sim
 
 
 def test_start_alliance(test_sim: Simulation):
     """Test starting new alliances."""
+    character_factory = test_sim.world.resources.get_resource(
+        PCGFactories
+    ).character_factory
 
-    character_0 = generate_character(test_sim.world)
-    character_1 = generate_character(test_sim.world)
+    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
 
-    family_0 = generate_family(test_sim.world)
-    family_1 = generate_family(test_sim.world)
+    character_0 = character_factory.generate_character(test_sim.world)
+    character_1 = character_factory.generate_character(test_sim.world)
+
+    family_0 = family_factory.generate_family(test_sim.world)
+    family_1 = family_factory.generate_family(test_sim.world)
 
     set_family_head(family_0, character_0)
     set_family_head(family_1, character_1)
@@ -72,13 +66,19 @@ def test_start_alliance(test_sim: Simulation):
 
 def test_end_alliance(test_sim: Simulation):
     """Test terminating an existing alliance."""
+    character_factory = test_sim.world.resources.get_resource(
+        PCGFactories
+    ).character_factory
+
+    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+
     db = test_sim.world.resources.get_resource(SimDB).db
 
-    character_0 = generate_character(test_sim.world)
-    character_1 = generate_character(test_sim.world)
+    character_0 = character_factory.generate_character(test_sim.world)
+    character_1 = character_factory.generate_character(test_sim.world)
 
-    family_0 = generate_family(test_sim.world)
-    family_1 = generate_family(test_sim.world)
+    family_0 = family_factory.generate_family(test_sim.world)
+    family_1 = family_factory.generate_family(test_sim.world)
 
     set_family_head(family_0, character_0)
     set_family_head(family_1, character_1)
@@ -109,12 +109,20 @@ def test_end_alliance(test_sim: Simulation):
 
 def test_start_war(test_sim: Simulation):
     """Test starting a war."""
+    territory_factory = test_sim.world.resources.get_resource(
+        PCGFactories
+    ).territory_factory
+
+    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+
     db = test_sim.world.resources.get_resource(SimDB).db
 
-    family_0 = generate_family(test_sim.world)
-    family_1 = generate_family(test_sim.world)
+    family_0 = family_factory.generate_family(test_sim.world)
+    family_1 = family_factory.generate_family(test_sim.world)
 
-    war = start_war(family_0, family_1)
+    territory = territory_factory.generate_territory(test_sim.world)
+
+    war = start_war(family_0, family_1, territory)
 
     assert war in family_0.get_component(WarTracker).offensive_wars
     assert war in family_1.get_component(WarTracker).defensive_wars
@@ -128,14 +136,22 @@ def test_start_war(test_sim: Simulation):
 
 def test_end_war(test_sim: Simulation):
     """Test ending a war."""
+    territory_factory = test_sim.world.resources.get_resource(
+        PCGFactories
+    ).territory_factory
+
+    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+
     db = test_sim.world.resources.get_resource(SimDB).db
 
-    family_0 = generate_family(test_sim.world)
-    family_1 = generate_family(test_sim.world)
-    family_2 = generate_family(test_sim.world)
-    family_3 = generate_family(test_sim.world)
+    family_0 = family_factory.generate_family(test_sim.world)
+    family_1 = family_factory.generate_family(test_sim.world)
+    family_2 = family_factory.generate_family(test_sim.world)
+    family_3 = family_factory.generate_family(test_sim.world)
 
-    war = start_war(family_0, family_1)
+    territory = territory_factory.generate_territory(test_sim.world)
+
+    war = start_war(family_0, family_1, territory)
 
     join_war_as(war, family_2, WarRole.AGGRESSOR_ALLY)
     join_war_as(war, family_3, WarRole.DEFENDER_ALLY)
@@ -158,14 +174,22 @@ def test_end_war(test_sim: Simulation):
 
 def test_join_war_as(test_sim: Simulation):
     """Test character's joining a war on a specific side."""
+    territory_factory = test_sim.world.resources.get_resource(
+        PCGFactories
+    ).territory_factory
+
+    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+
     db = test_sim.world.resources.get_resource(SimDB).db
 
-    family_0 = generate_family(test_sim.world)
-    family_1 = generate_family(test_sim.world)
-    family_2 = generate_family(test_sim.world)
-    family_3 = generate_family(test_sim.world)
+    family_0 = family_factory.generate_family(test_sim.world)
+    family_1 = family_factory.generate_family(test_sim.world)
+    family_2 = family_factory.generate_family(test_sim.world)
+    family_3 = family_factory.generate_family(test_sim.world)
 
-    war = start_war(family_0, family_1)
+    territory = territory_factory.generate_territory(test_sim.world)
+
+    war = start_war(family_0, family_1, territory)
     war_component = war.get_component(War)
 
     join_war_as(war, family_2, WarRole.AGGRESSOR_ALLY)

@@ -3,19 +3,13 @@
 
 """
 
-import pathlib
-
 import pytest
 
 from minerva.characters.betrothal_data import BetrothalTracker
 from minerva.characters.betrothal_helpers import init_betrothal, terminate_betrothal
-from minerva.loaders import (
-    load_female_first_names,
-    load_male_first_names,
-    load_settlement_names,
-    load_surnames,
-)
-from minerva.pcg.character import generate_character
+from minerva.data import japanese_city_names, japanese_names
+from minerva.ecs import GameObject, World
+from minerva.pcg.base_types import PCGFactories
 from minerva.simulation import Simulation
 
 
@@ -24,19 +18,21 @@ def test_sim() -> Simulation:
     """Create a test simulation."""
     sim = Simulation()
 
-    data_dir = pathlib.Path(__file__).parent.parent / "data"
-
-    load_male_first_names(sim, data_dir / "masculine_japanese_names.txt")
-    load_female_first_names(sim, data_dir / "feminine_japanese_names.txt")
-    load_surnames(sim, data_dir / "japanese_surnames.txt")
-    load_settlement_names(sim, data_dir / "japanese_city_names.txt")
+    japanese_city_names.load_names(sim.world)
+    japanese_names.load_names(sim.world)
 
     return sim
 
 
+def generate_character(world: World) -> GameObject:
+    """Generate character."""
+    return world.resources.get_resource(
+        PCGFactories
+    ).character_factory.generate_character(world)
+
+
 def test_init_betrothal(test_sim: Simulation):
     """Test initializing betrothals."""
-
     c0 = generate_character(test_sim.world)
     c1 = generate_character(test_sim.world)
 

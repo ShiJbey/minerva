@@ -13,27 +13,25 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.config import Config
-from minerva.loaders import (
-    load_female_first_names,
-    load_male_first_names,
-    load_settlement_names,
-    load_surnames,
-)
-from minerva.pcg.character import generate_character
+from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.text_gen import load_tracery_file
 from minerva.simulation import Simulation
 
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 DB_OUTPUT_PATH = str(pathlib.Path(__file__).parent / "HotD.db")
 
+
 if __name__ == "__main__":
     sim = Simulation(Config(n_initial_families=0))
 
-    load_male_first_names(sim, DATA_DIR / "masculine_japanese_names.txt")
-    load_female_first_names(sim, DATA_DIR / "feminine_japanese_names.txt")
-    load_surnames(sim, DATA_DIR / "japanese_surnames.txt")
-    load_settlement_names(sim, DATA_DIR / "japanese_city_names.txt")
+    load_tracery_file(sim.world, DATA_DIR / "masculine_japanese_names.txt")
+    load_tracery_file(sim.world, DATA_DIR / "feminine_japanese_names.txt")
+    load_tracery_file(sim.world, DATA_DIR / "japanese_surnames.txt")
+    load_tracery_file(sim.world, DATA_DIR / "japanese_city_names.txt")
 
-    rhaenyra = generate_character(
+    character_factory = sim.world.resources.get_resource(PCGFactories).character_factory
+
+    rhaenyra = character_factory.generate_character(
         sim.world,
         first_name="Rhaenyra",
         surname="Targaryen",
@@ -43,7 +41,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    leanor = generate_character(
+    leanor = character_factory.generate_character(
         sim.world,
         first_name="Leanor",
         surname="Velaryon",
@@ -53,7 +51,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    harwin = generate_character(
+    harwin = character_factory.generate_character(
         sim.world,
         first_name="Harwin",
         surname="Strong",
@@ -63,7 +61,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    jace = generate_character(
+    jace = character_factory.generate_character(
         sim.world,
         first_name="Jacaerys",
         surname="Velaryon",
@@ -73,7 +71,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    addam = generate_character(
+    addam = character_factory.generate_character(
         sim.world,
         first_name="Addam",
         surname="Of Hull",
@@ -83,7 +81,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    corlys = generate_character(
+    corlys = character_factory.generate_character(
         sim.world,
         first_name="Corlys",
         surname="Velaryon",
@@ -93,7 +91,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    marilda = generate_character(
+    marilda = character_factory.generate_character(
         sim.world,
         first_name="Marilda",
         surname="Of Hull",
@@ -103,7 +101,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    alyn = generate_character(
+    alyn = character_factory.generate_character(
         sim.world,
         first_name="Alyn",
         surname="Of Hull",
@@ -113,7 +111,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    rhaenys = generate_character(
+    rhaenys = character_factory.generate_character(
         sim.world,
         first_name="Rhaenys",
         surname="Targaryen",
@@ -125,7 +123,7 @@ if __name__ == "__main__":
 
     set_character_alive(rhaenys, False)
 
-    laena = generate_character(
+    laena = character_factory.generate_character(
         sim.world,
         first_name="Laena",
         surname="Velaryon",
@@ -137,7 +135,7 @@ if __name__ == "__main__":
 
     set_character_alive(laena, False)
 
-    daemon = generate_character(
+    daemon = character_factory.generate_character(
         sim.world,
         first_name="Daemon",
         surname="Targaryen",
@@ -147,7 +145,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    baela = generate_character(
+    baela = character_factory.generate_character(
         sim.world,
         first_name="Baela",
         surname="Targaryen",
@@ -157,7 +155,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    viserys = generate_character(
+    viserys = character_factory.generate_character(
         sim.world,
         first_name="Viserys",
         surname="Targaryen",
@@ -167,7 +165,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    alicent = generate_character(
+    alicent = character_factory.generate_character(
         sim.world,
         first_name="Alicent",
         surname="Hightower",
@@ -176,7 +174,7 @@ if __name__ == "__main__":
         sexual_orientation=SexualOrientation.BISEXUAL,
     )
 
-    otto = generate_character(
+    otto = character_factory.generate_character(
         sim.world,
         first_name="Otto",
         surname="Hightower",
@@ -186,7 +184,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    aegon_2 = generate_character(
+    aegon_2 = character_factory.generate_character(
         sim.world,
         first_name="Aegon",
         surname="Targaryen",
@@ -196,7 +194,7 @@ if __name__ == "__main__":
         species="human",
     )
 
-    cole = generate_character(
+    cole = character_factory.generate_character(
         sim.world,
         first_name="Cristen",
         surname="Cole",

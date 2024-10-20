@@ -62,8 +62,14 @@ from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject, World
-from minerva.pcg.character import CharacterNameFactory
-from minerva.pcg.settlement import SettlementNameFactory
+from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.character import (
+    DefaultBabyFactory,
+    DefaultCharacterFactory,
+    DefaultFamilyFactory,
+)
+from minerva.pcg.settlement import DefaultTerritoryFactory
+from minerva.pcg.text_gen import Tracery, TraceryNameFactory
 from minerva.relationships import social_rules
 from minerva.relationships.base_types import SocialRuleLibrary
 from minerva.sim_db import SimDB
@@ -113,8 +119,22 @@ class Simulation:
         self._world.resources.add_resource(self._date)
         self._world.resources.add_resource(self._config)
         self._world.resources.add_resource(random.Random(self._config.seed))
-        self._world.resources.add_resource(CharacterNameFactory(seed=self.config.seed))
-        self._world.resources.add_resource(SettlementNameFactory(seed=self.config.seed))
+        self._world.resources.add_resource(
+            PCGFactories(
+                character_factory=DefaultCharacterFactory(
+                    male_first_name_factory=TraceryNameFactory("#male_first_name#"),
+                    female_first_name_factory=TraceryNameFactory("#female_first_name#"),
+                    surname_factory=TraceryNameFactory("#surname#"),
+                ),
+                baby_factory=DefaultBabyFactory(),
+                family_factory=DefaultFamilyFactory(
+                    name_factory=TraceryNameFactory("#surname#")
+                ),
+                territory_factory=DefaultTerritoryFactory(
+                    name_factory=TraceryNameFactory("#territory_name#")
+                ),
+            )
+        )
         self._world.resources.add_resource(SpeciesLibrary())
         self._world.resources.add_resource(TraitLibrary())
         self._world.resources.add_resource(SocialRuleLibrary())
@@ -122,6 +142,7 @@ class Simulation:
         self._world.resources.add_resource(AIBehaviorLibrary())
         self._world.resources.add_resource(DynastyTracker())
         self._world.resources.add_resource(AIActionLibrary())
+        self._world.resources.add_resource(Tracery(self.config.seed))
 
     def initialize_systems(self) -> None:
         """Initialize built-in systems."""

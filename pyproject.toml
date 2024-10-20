@@ -51,6 +51,7 @@ dependencies = [
     "pygame-ce==2.5.*",
     "pygame-gui==0.6.12",
     "numpy==2.0.1",
+    "tracery3==1.0.1",
 ]
 
 [project.optional-dependencies]
