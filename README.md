@@ -7,29 +7,20 @@
 
 ![Minerva Screenshot](https://github.com/user-attachments/assets/25f7def9-a375-4f72-b4ac-3bc5c9d60759)
 
-Minerva is a non-interactive dynasty simulator, that models procedurally generated characters and families vying for influence and power over a shared map. It is designed for emergent narrative research and data analysis. I've found it to be an excellent project for learning how to write SQL queries. Minerva's core architecture is based on [Neighborly](https://github.com/ShiJbey/neighborly), and its systems and mechanics were inspired by [Game of Thrones](https://gameofthrones.fandom.com/wiki/Wiki_of_Westeros), the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), [WorldBox](https://the-official-worldbox-wiki.fandom.com/wiki/The_Official_Worldbox_Wiki), [Crusader Kings III](https://duckduckgo.com/?q=crusader+kings+wiki+3&t=osx), and [the Japanese Clan system](https://en.wikipedia.org/wiki/Japanese_clans).
+Minerva is a non-interactive dynasty simulator that models procedurally generated characters and families vying for influence and power over a shared map. It is designed for emergent narrative research and data analysis. I've found it to be an excellent project for learning how to write SQL queries. Minerva's core architecture is based on [Neighborly](https://github.com/ShiJbey/neighborly), and its systems and mechanics were inspired by [Game of Thrones](https://gameofthrones.fandom.com/wiki/Wiki_of_Westeros), the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), [WorldBox](https://the-official-worldbox-wiki.fandom.com/wiki/The_Official_Worldbox_Wiki), [Crusader Kings III](https://duckduckgo.com/?q=crusader+kings+wiki+3&t=osx), and [the Japanese Clan system](https://en.wikipedia.org/wiki/Japanese_clans).
 
-I started this project as a fork of Neighborly because I felt that Neighborly was trying to do too many things. Neighborly, provides an expandable platform, but, in my opinion offers, little scaffolding for creating interesting emergent stories "out of the box". Most of Neighborly's stories are rather mundane slice of life stories about people raising families and working jobs. Minerva addresses this dullness, by providing a more interesting narrative framing around families fighting for power, and the adventures of those in-charge of the families.
+I started this project as a fork of Neighborly because I felt that Neighborly was trying to do too many things. Neighborly provides an expandable platform, but creating emergent stories requires a lot of authoring work. Additionally, Neighborly's stories felt like mundane slice-of-life stories about people raising families, working jobs, and moving in and out of romantic relationships. Minerva addresses this dullness by providing a more interesting narrative framing about families fighting for power.
 
 > [!IMPORTANT]
 > **Minerva is still a work-in-progress**.
 >
-> It does not have any releases yet. Most of the simulation infrastructure is built. I still need to create all the various character behaviors and some associated systems. I will try to always keep the samples functional. However, you may notice breaking changes between updates.
+> It does not have any official releases. Most of the simulation infrastructure is built but still needs tweaks. I still need to create all the various character behaviors and some associated systems. I will try to always keep the samples functional. However, you may notice breaking changes between updates.
 
 ## 🚀 How Does Minerva Work?
 
-Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories.
+Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories. Over decades of simulated time, Minerva generates a history for the simulated world, containing records of royal dynasties, conflicts between families, intermarriages, and conquests. We use this generated history for data analysis. 
 
-The simulation starts by creating a world grid and dividing the grid into separate provinces. Each province is given a name and is home to zero or more families. Each family is comprised of procedurally generated characters that are related by blood or marriage. The simulation initializes a collection of families and distributes them among the provinces.
-
-Each family has a family head who is responsible for taking actions on behalf of the family. These actions might include forming alliances, going to war, arranging marriages, increasing political influence, etc.
-
-Families work to control multiple provinces, with the hope of becoming the royal family. At the beginning of the simulation, one family is selected as the initial royal family, and the simulation tracks the exchange of power from ruler to heir, and from family to family.
-
-Character AI operates on simple principles. First, all behaviors cost *influence points*. Second, all AI behaviors are evaluated on how well they satisfy a character's *motives*. Character motives are a utility AI concept borrowed from *The Sims 4*. You can think of them as bing similar to personal needs. In minerva, a character's motives are their wants for money, power, respect, happiness, family, honor, lust, and dread. Characters will select actions that best satisfy these motives.
-
-> [!NOTE]
-> Since Minerva is WIP, some of the motives mentioned previously may be replaced. As of this writing, the motives given above are the ones used when defining character behaviors.
+This simulation takes place on a map subdivided into procedurally generated territories. Each territory has a name and is home to zero or more families. Families are controlled by a family head, a generated character responsible for taking action on behalf of the family. These actions might include forming alliances, going to war, increasing political influence, quelling revolts, or planning coups against the royal family. Characters select actions using utility scores, prioritizing actions that are most beneficial to them. Generally, characters seek to take actions that increase their power and influence. 
 
 ## 📦 Download and Installation
 
@@ -66,7 +57,7 @@ Before running any samples, please ensure that you have installed Minerva locall
 The House of the Dragon sample demonstrates how to manually generate characters and build relationship structures. The script builds family trees based on the relationships of the main characters in the show series. It also exports the data to a SQLite database file. I have found this script to be useful for learning how to do intermediate to complex SQL queries. Information about the characters is sampled from the [Game of Thrones Fandom Wiki](https://gameofthrones.fandom.com/wiki/Wiki_of_Westeros).
 
 > [!NOTE]
-> The command below assumes that your're running them from the root directory of this project.
+> The command below assumes that you're running them from the root directory of this project.
 
 To run the sample:
 
@@ -78,10 +69,10 @@ python ./samples/house_of_the_dragon.py
 
 The Shōgun sample runs the full simulation. It procedurally generates a map with multiple territories, characters, and families. It then simulates decades of political and martial strife between families as they compete for power and influence. As with the House of the Dragon sample, the Shōgun sample also exports the generated world data to a SQLite file for later data analysis.
 
-The Shōgun sample has an CLI interface to facilitate running the full visualization in PyGame or running the simulation in headless mode (no PyGame window).
+The Shōgun sample has a CLI interface to facilitate running the full visualization in PyGame or running the simulation in headless mode (no PyGame window).
 
 > [!NOTE]
-> The commands below assume that your're running them from the root directory of this project.
+> The commands below assume that you're running them from the root directory of this project.
 
 ```bash
 # The following command will display usage information
@@ -104,7 +95,7 @@ python ./samples/shogun.py --help
 #   --db-out DB_OUT       The output location for the simulation database.
 ```
 
-So for example you could use the following commands:
+For example, you could use the following commands:
 
 ```bash
 # Run the simulation with the pygame visualization
@@ -120,15 +111,15 @@ python ./samples/shogun.py -y 100 --db-out ./sample123.db
 
 ## 🧭 Exploring the SQL Data
 
-Running minerva's samples will produce `*.db` SQLite database files for external data analysis. These files can be loaded into other script using `sqlite`, `pandas`, `polars`, or any other data analysis library that supports SQLite.
+Running Minerva's samples will produce `*.db` SQLite database files for external data analysis. These files can be loaded into other script using `sqlite`, `pandas`, `polars`, or any other data analysis library that supports SQLite.
 
-Personally, I use [DB Browser for SQLite](https://sqlitebrowser.org) on MacOS to look through the generated data and run queries. In the future, I might include examples of how to perform data analysis using Pandas.
+I use [DB Browser for SQLite](https://sqlitebrowser.org) on MacOS to explore the generated data and run queries. In the future, I might include examples of how to perform data analysis using Pandas.
 
 ### Database Configuration and Naming Conventions
 
 Minerva uses the following naming convention to facilitate exploration and query writing.
 
-1. Table names are pluralized and snake_case
+1. Table names are pluralized, and snake_case
 2. Column names are snake_case
 
 Please see the [this file](./src/minerva/sim_db.py) in the source code to see how the database tables are configured within SQLite.
