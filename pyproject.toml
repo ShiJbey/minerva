@@ -45,13 +45,13 @@ classifiers = [
 dependencies = [
     "esper==2.*",
     "ordered-set==4.*",
-    "tabulate==0.9.*",
     "tqdm==4.*",
     "pydantic==2.*",
     "pygame-ce==2.5.*",
     "pygame-gui==0.6.12",
     "numpy==2.0.1",
     "tracery3==1.0.1",
+    "rich==13.9.2",
 ]
 
 [project.optional-dependencies]
