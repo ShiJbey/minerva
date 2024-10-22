@@ -29,6 +29,7 @@ from minerva.characters.components import (
     Emperor,
     LifeStage,
 )
+from minerva.characters.metric_data import CharacterMetrics
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject, World
 from minerva.life_events.succession import BecameEmperorEvent
@@ -269,6 +270,8 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
                 dynasty_tracker.current_dynasty = None
 
     if character is not None:
+
+        character.get_component(CharacterMetrics).data.times_as_ruler += 1
 
         if dynasty_tracker.current_dynasty is not None:
             current_dynasty_component = dynasty_tracker.current_dynasty.get_component(

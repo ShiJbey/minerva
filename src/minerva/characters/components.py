@@ -476,6 +476,19 @@ class HeadOfFamily(Component):
         self.family = family
 
 
+class FormerFamilyHead(Component):
+    """Marks a character as being a former head of a family."""
+
+    __slots__ = ("family",)
+
+    family: GameObject
+    """The family they were the head of."""
+
+    def __init__(self, family: GameObject) -> None:
+        super().__init__()
+        self.family = family
+
+
 class Emperor(TagComponent):
     """Tags the character as the emperor of the land."""
 

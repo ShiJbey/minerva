@@ -18,6 +18,7 @@ from minerva.actions.base_types import (
 from minerva.actions.scheme_helpers import add_member_to_scheme
 from minerva.actions.scheme_types import CoupScheme
 from minerva.characters.components import Character, Family, HeadOfFamily
+from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance
 from minerva.characters.war_helpers import (
@@ -142,6 +143,8 @@ class QuellRevoltActionType(AIActionType):
         population_happiness = territory.get_component(PopulationHappiness)
 
         population_happiness.base_value = config.base_territory_happiness
+
+        family_head.get_component(CharacterMetrics).data.num_revolts_quelled += 1
 
         # TODO: Fire and log events
         _logger.info(
@@ -362,6 +365,8 @@ class DisbandAlliance(AIBehavior):
         end_alliance(family_component.alliance)
 
         world = character.world
+
+        character.get_component(CharacterMetrics).data.num_alliances_disbanded += 1
 
         # TODO: Fire and log event
         _logger.info(
@@ -595,6 +600,8 @@ class PlanCoupBehavior(AIBehavior):
             return False
 
         create_coup_scheme(initiator=character, target=current_ruler)
+
+        character.get_component(CharacterMetrics).data.num_coups_planned += 1
 
         # TODO: Fire and log events
         _logger.info(

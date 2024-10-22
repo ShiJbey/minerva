@@ -74,6 +74,7 @@ from minerva.characters.helpers import (
     set_relation_sibling,
     start_marriage,
 )
+from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import set_current_ruler
 from minerva.characters.war_data import WarTracker
 from minerva.config import Config
@@ -256,6 +257,7 @@ class DefaultCharacterFactory(CharacterFactory):
 
         obj.add_component(TraitManager())
         obj.add_component(StatusEffectManager())
+        obj.add_component(CharacterMetrics())
         obj.add_component(RelationshipManager())
         obj.add_component(LifeEventHistory())
         obj.add_component(MarriageTracker())

@@ -44,6 +44,7 @@ from minerva.characters.helpers import (
     set_relation_sibling,
     start_marriage,
 )
+from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import (
     SuccessionChartCache,
     get_current_ruler,
@@ -1051,6 +1052,10 @@ class AllianceSchemeUpdateSystem(System):
                                 Opinion
                             ).base_value += 20
 
+                    scheme.initiator.get_component(
+                        CharacterMetrics
+                    ).data.num_alliances_founded += 1
+
                     # TODO: Swap this out with a new life event
                     _logger.info(
                         "[%s]: %s founded a new alliance.",
@@ -1059,6 +1064,10 @@ class AllianceSchemeUpdateSystem(System):
                     )
 
                 else:
+                    scheme.initiator.get_component(
+                        CharacterMetrics
+                    ).data.num_failed_alliance_attempts += 1
+
                     # TODO: Swap this out with a new life event
                     _logger.info(
                         "[%s]: %s failed to start a new alliance.",
@@ -1157,6 +1166,15 @@ class WarSchemeUpdateSystem(System):
             if elapsed_months >= scheme.required_time:
                 aggressor_family = self.get_family(scheme.initiator)
                 defender_family = self.get_family(war_scheme.defender)
+
+                scheme.initiator.get_component(CharacterMetrics).data.num_wars += 1
+                war_scheme.defender.get_component(CharacterMetrics).data.num_wars += 1
+                scheme.initiator.get_component(
+                    CharacterMetrics
+                ).data.num_wars_started += 1
+                scheme.initiator.get_component(
+                    CharacterMetrics
+                ).data.date_of_last_declared_war = current_date.copy()
 
                 war = start_war(aggressor_family, defender_family, war_scheme.territory)
 
@@ -1305,6 +1323,22 @@ class WarUpdateSystem(System):
                     war.contested_territory.name_with_uid,
                 )
 
+                aggressor_family_head = war.aggressor.get_component(Family).head
+                if aggressor_family_head:
+                    aggressor_family_head.get_component(
+                        CharacterMetrics
+                    ).data.num_wars_won += 1
+
+                    aggressor_family_head.get_component(
+                        CharacterMetrics
+                    ).data.num_territories_taken += 1
+
+                defending_family_head = war.defender.get_component(Family).head
+                if defending_family_head:
+                    defending_family_head.get_component(
+                        CharacterMetrics
+                    ).data.num_wars_lost += 1
+
                 end_war(war.gameobject, war.aggressor)
 
             else:
@@ -1320,6 +1354,18 @@ class WarUpdateSystem(System):
                     war.defender.name_with_uid,
                     war.contested_territory.name_with_uid,
                 )
+
+                aggressor_family_head = war.aggressor.get_component(Family).head
+                if aggressor_family_head:
+                    aggressor_family_head.get_component(
+                        CharacterMetrics
+                    ).data.num_wars_lost += 1
+
+                defending_family_head = war.defender.get_component(Family).head
+                if defending_family_head:
+                    defending_family_head.get_component(
+                        CharacterMetrics
+                    ).data.num_wars_won += 1
 
                 end_war(war.gameobject, war.defender)
 

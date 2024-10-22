@@ -16,6 +16,7 @@ from minerva.characters.components import (
     Emperor,
     Family,
     FamilyRoleFlags,
+    FormerFamilyHead,
     HeadOfFamily,
     LifeStage,
     Marriage,
@@ -28,6 +29,7 @@ from minerva.characters.components import (
     SexualOrientation,
     Stewardship,
 )
+from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import (
     get_succession_depth_chart,
     set_current_ruler,
@@ -109,6 +111,9 @@ def set_family_head(
     if family_component.head is not None:
         former_head = family_component.head
         former_head.remove_component(HeadOfFamily)
+        if former_head.has_component(FormerFamilyHead):
+            former_head.remove_component(FormerFamilyHead)
+        former_head.add_component(FormerFamilyHead(family))
         family_component.head = None
         family_component.former_heads.add(former_head)
         cur.execute(
@@ -309,6 +314,8 @@ def remove_character_from_play(character: GameObject) -> None:
 
     if _ := character.try_component(Emperor):
         set_current_ruler(world, heir)
+        if heir:
+            heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
 
     character_component = character.get_component(Character)
 
@@ -865,6 +872,9 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
     )
 
     db.commit()
+
+    character_a.get_component(CharacterMetrics).data.times_married += 1
+    character_b.get_component(CharacterMetrics).data.times_married += 1
 
 
 def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
