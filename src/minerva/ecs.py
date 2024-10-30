@@ -26,7 +26,6 @@ from abc import ABC, abstractmethod
 from queue import PriorityQueue
 from typing import (
     Any,
-    Callable,
     ClassVar,
     Iterable,
     Iterator,
@@ -159,34 +158,6 @@ class ComponentNotFoundError(Exception):
         return f"{self.__class__.__name__}(component={self.component_type.__name__})"
 
 
-class Event:
-    """Events signal when things happen in the simulation."""
-
-    __slots__ = ("_world", "_event_type", "data")
-
-    _world: World
-    """The world instance to fire this event on."""
-    _event_type: str
-    """The ID of this event."""
-    data: dict[str, Any]
-    """General metadata."""
-
-    def __init__(self, event_type: str, world: World, **kwargs: Any) -> None:
-        self._world = world
-        self._event_type = event_type
-        self.data = {**kwargs}
-
-    @property
-    def world(self) -> World:
-        """The world instance to fire this event on."""
-        return self._world
-
-    @property
-    def event_type(self) -> str:
-        """The type name for the event."""
-        return self._event_type
-
-
 class GameObject:
     """A reference to an entity within the world.
 
@@ -199,12 +170,9 @@ class GameObject:
         "_name",
         "_is_active",
         "world",
-        "children",
-        "parent",
         "metadata",
         "_component_types",
         "_component_manager",
-        "_event_listeners",
     )
 
     _uid: int
@@ -217,16 +185,10 @@ class GameObject:
     """The world instance a GameObject belongs to."""
     _component_manager: esper.World
     """Reference to Esper ECS instance with all the component data."""
-    children: list[GameObject]
-    """Child GameObjects below this one in the hierarchy."""
-    parent: Optional[GameObject]
-    """The parent GameObject that this GameObject is a child of."""
     metadata: dict[str, Any]
     """Metadata associated with this GameObject."""
     _component_types: list[Type[Component]]
     """Types of the GameObjects components in order of addition."""
-    _event_listeners: dict[str, OrderedSet[Callable[[Event], None]]]
-    """Event listeners that are only called when a specific type of event fires."""
 
     def __init__(
         self,
@@ -236,14 +198,12 @@ class GameObject:
         name: str = "",
     ) -> None:
         self._uid = unique_id
+        self._is_active = True
         self._name = name if name else f"GameObject({unique_id})"
         self.world = world
         self._component_manager = component_manager
-        self.parent = None
-        self.children = []
         self.metadata = {}
         self._component_types = []
-        self._event_listeners = {}
 
     @property
     def uid(self) -> int:
@@ -286,21 +246,10 @@ class GameObject:
         self.add_component(Active())
         self._is_active = True
 
-        for child in self.children:
-            child.activate()
-
-        self.dispatch_event(Event("activated", world=self.world, gameobject=self))
-
     def deactivate(self) -> None:
         """Remove the Active tag from a GameObject."""
-
         self.remove_component(Active)
         self._is_active = False
-
-        for child in self.children:
-            child.deactivate()
-
-        self.dispatch_event(Event("deactivated", world=self.world, gameobject=self))
 
     def get_components(self) -> tuple[Component, ...]:
         """Get all components associated with the GameObject.
@@ -352,68 +301,6 @@ class GameObject:
         component.on_add()
 
         return component
-
-    def add_event_listener(
-        self,
-        event_name: str,
-        listener: Callable[[Event], None],
-    ) -> None:
-        """Register a listener function to a specific event type.
-
-        Parameters
-        ----------
-        event_name
-            The name of the event to listen for.
-        listener
-            A function to be called when the given event type fires.
-        """
-        if event_name not in self._event_listeners:
-            self._event_listeners[event_name] = OrderedSet([])
-
-        listener_set = self._event_listeners[event_name]
-        listener_set.add(listener)
-
-    def remove_event_listener(
-        self, event_name: str, listener: Callable[[Event], None]
-    ) -> None:
-        """Remove a listener function from a specific event type.
-
-        Parameters
-        ----------
-        event_name : str
-            The type of event to remove the listener from.
-        listener : Callable[[Event], None]
-            The listener function to be removed.
-        """
-        if event_name in self._event_listeners:
-            listener_set = self._event_listeners[event_name]
-            listener_set.discard(listener)
-
-    def remove_all_event_listeners_for_event(self, event_name: str) -> None:
-        """Remove all event listeners for a specific event type.
-
-        Parameters
-        ----------
-        event_name : str
-            The type of event to remove listeners for.
-        """
-        if event_name in self._event_listeners:
-            del self._event_listeners[event_name]
-
-    def remove_all_event_listeners(self) -> None:
-        """Remove all event listeners associated with this GameObject."""
-        self._event_listeners.clear()
-
-    def dispatch_event(self, event: Event) -> None:
-        """Fire an event and trigger associated event listeners.
-
-        Parameters
-        ----------
-        event : Event
-            The event to fire
-        """
-        for callback_fn in self._event_listeners.get(event.event_type, OrderedSet([])):
-            callback_fn(event)
 
     def remove_component(self, component_type: Type[Component]) -> bool:
         """Remove a component from the GameObject.
@@ -517,105 +404,6 @@ class GameObject:
         except KeyError:
             return None
 
-    def add_child(self, gameobject: GameObject) -> None:
-        """Add a child GameObject.
-
-        Parameters
-        ----------
-        gameobject
-            A GameObject instance.
-        """
-        if gameobject.parent is not None:
-            gameobject.parent.remove_child(gameobject)
-        gameobject.parent = self
-        self.children.append(gameobject)
-
-    def remove_child(self, gameobject: GameObject) -> None:
-        """Remove a child GameObject.
-
-        Parameters
-        ----------
-        gameobject
-            The GameObject to remove.
-        """
-        self.children.remove(gameobject)
-        gameobject.parent = None
-
-    def get_component_in_child(self, component_type: Type[_CT]) -> tuple[int, _CT]:
-        """Get a single instance of a component type attached to a child.
-
-        Parameters
-        ----------
-        component_type
-            The class type of the component.
-
-        Returns
-        -------
-        tuple[int, _CT]
-            A tuple containing the ID of the child and an instance of the component.
-
-        Notes
-        -----
-        Performs a depth-first search of the children and their children and
-        returns the first instance of the component type.
-        """
-
-        stack: list[GameObject] = list(*self.children)
-        checked: set[GameObject] = set()
-
-        while stack:
-            entity = stack.pop()
-
-            if entity in checked:
-                continue
-
-            checked.add(entity)
-
-            if component := entity.try_component(component_type):
-                return entity.uid, component
-
-            for child in entity.children:
-                stack.append(child)
-
-        raise ComponentNotFoundError(component_type)
-
-    def get_component_in_children(
-        self, component_type: Type[_CT]
-    ) -> list[tuple[int, _CT]]:
-        """Get all the instances of a component attached to children of a GameObject.
-
-        Parameters
-        ----------
-        component_type
-            The class type of the component
-
-        Returns
-        -------
-        list[tuple[int, _CT]]
-            A list containing tuples with the ID of the children and the instance of the
-            component.
-        """
-        results: list[tuple[int, _CT]] = []
-
-        stack: list[GameObject] = list(*self.children)
-        checked: set[GameObject] = set()
-
-        while stack:
-            entity = stack.pop()
-
-            if entity in checked:
-                continue
-
-            checked.add(entity)
-
-            if component := entity.try_component(component_type):
-                results.append((entity.uid, component))
-
-            for child in entity.children:
-                stack.append(child)
-
-        return results
-
     def destroy(self) -> None:
         """Remove a GameObject from the world."""
         self.world.gameobjects.destroy_gameobject(self)
@@ -702,6 +490,11 @@ class System(ABC):
         super().__init__()
         self._active = True
 
+    @property
+    def is_active(self) -> bool:
+        """Is the system active and available to run each timestep."""
+        return self._active
+
     def set_active(self, value: bool) -> None:
         """Toggle if this system is active and will update.
 
@@ -714,16 +507,6 @@ class System(ABC):
 
     def on_add(self, world: World) -> None:
         """Lifecycle method called when the system is added to the world.
-
-        Parameters
-        ----------
-        world
-            The world instance the system is mounted to.
-        """
-        return
-
-    def on_start_running(self, world: World) -> None:
-        """Lifecycle method called before checking if a system will update.
 
         Parameters
         ----------
@@ -752,20 +535,6 @@ class System(ABC):
             The world instance the system was removed from.
         """
         return
-
-    def on_stop_running(self, world: World) -> None:
-        """Lifecycle method called after a system updates.
-
-        Parameters
-        ----------
-        world
-            The world instance the system is mounted to.
-        """
-        return
-
-    def should_run_system(self, world: World) -> bool:
-        """Checks if this system should run this simulation step."""
-        return self._active
 
     @classmethod
     def system_name(cls) -> str:
@@ -967,10 +736,8 @@ class SystemGroup(System, ABC):
             The world instance the system is updating
         """
         for child in self._children:
-            child.on_start_running(world)
-            if child.should_run_system(world):
+            if child.is_active:
                 child.on_update(world)
-            child.on_stop_running(world)
 
     def sort_children(self) -> None:
         """Performs topologically sort child systems."""
@@ -1210,89 +977,6 @@ class ResourceManager:
         """
         return resource_type in self._resources
 
-    def try_resource(self, resource_type: Type[_RT]) -> Optional[_RT]:
-        """Attempt to access a shared resource.
-
-        Parameters
-        ----------
-        resource_type
-            The class of the resource.
-
-        Returns
-        -------
-        _RT or None
-            The instance of the resource.
-        """
-        return self._resources.get(resource_type)
-
-
-class EventManager:
-    """Manages event listeners for a single World instance."""
-
-    __slots__ = (
-        "_general_event_listeners",
-        "_event_listeners_by_type",
-        "_world",
-    )
-
-    _world: World
-    """The world instance associated with the SystemManager."""
-    _general_event_listeners: OrderedSet[Callable[[Event], None]]
-    """Event listeners that are called when any event fires."""
-    _event_listeners_by_type: dict[str, OrderedSet[Callable[[Event], None]]]
-    """Event listeners that are only called when a specific type of event fires."""
-
-    def __init__(self, world: World) -> None:
-        self._world = world
-        self._general_event_listeners = OrderedSet([])
-        self._event_listeners_by_type = {}
-
-    def on_event(
-        self,
-        event_type: str,
-        listener: Callable[[Event], None],
-    ) -> None:
-        """Register a listener function to a specific event type.
-
-        Parameters
-        ----------
-        event_type
-            The type of event to listen for.
-        listener
-            A function to be called when the given event type fires.
-        """
-        if event_type not in self._event_listeners_by_type:
-            self._event_listeners_by_type[event_type] = OrderedSet([])
-        listener_set = self._event_listeners_by_type[event_type]
-        listener_set.add(listener)
-
-    def on_any_event(self, listener: Callable[[Event], None]) -> None:
-        """Register a listener function to all event types.
-
-        Parameters
-        ----------
-        listener
-            A function to be called any time an event fires.
-        """
-        self._general_event_listeners.append(listener)
-
-    def dispatch_event(self, event: Event) -> None:
-        """Fire an event and trigger associated event listeners.
-
-        Parameters
-        ----------
-        event
-            The event to fire
-        """
-
-        for callback_fn in self._event_listeners_by_type.get(
-            event.event_type, OrderedSet([])
-        ):
-            callback_fn(event)
-
-        for callback_fn in self._general_event_listeners:
-            callback_fn(event)
-
 
 class GameObjectManager:
     """Manages GameObject and Component Data for a single World instance."""
@@ -1425,13 +1109,6 @@ class GameObjectManager:
 
         # Deactivate first
         gameobject.deactivate()
-        gameobject.dispatch_event(
-            Event("destroyed", world=self.world, gameobject=gameobject)
-        )
-
-        # Destroy all children
-        for child in gameobject.children:
-            self.destroy_gameobject(child)
 
         # Destroy attached components
         for component_type in reversed(gameobject.get_component_types()):
@@ -1442,11 +1119,6 @@ class GameObjectManager:
         for gameobject_id in self._dead_gameobjects:
             if len(self._gameobjects[gameobject_id].get_components()) > 0:
                 self._component_manager.delete_entity(gameobject_id, True)
-
-            gameobject = self._gameobjects[gameobject_id]
-
-            if gameobject.parent is not None:
-                gameobject.parent.remove_child(gameobject)
 
             del self._gameobjects[gameobject_id]
         self._dead_gameobjects.clear()
@@ -1469,7 +1141,6 @@ class World:
         "_resources",
         "_gameobjects",
         "_systems",
-        "_events",
     )
 
     _gameobjects: GameObjectManager
@@ -1478,13 +1149,10 @@ class World:
     """Global resources shared by systems in the ECS."""
     _systems: SystemManager
     """The systems run every simulation step."""
-    _events: EventManager
-    """Manages event listeners."""
 
     def __init__(self) -> None:
         self._resources = ResourceManager(self)
         self._systems = SystemManager(self)
-        self._events = EventManager(self)
         self._gameobjects = GameObjectManager(self)
         self.systems.add_system(InitializationSystems())
         self.systems.add_system(EarlyUpdateSystems())
@@ -1505,11 +1173,6 @@ class World:
     def resources(self) -> ResourceManager:
         """Get the world's resource manager"""
         return self._resources
-
-    @property
-    def events(self) -> EventManager:
-        """Get the world's event manager."""
-        return self._events
 
     def initialize(self) -> None:
         """Run initialization systems only."""
