@@ -215,27 +215,27 @@ class BornEvent(LifeEvent):
         return f"{self.character.name_with_uid} was born."
 
 
-class TakeOverProvinceEvent(LifeEvent):
-    """Event dispatched when a family head seizes power over a province."""
+class TakeOverTerritoryEvent(LifeEvent):
+    """Event dispatched when a family head seizes power over a territory."""
 
-    __slots__ = ("character", "province", "family")
+    __slots__ = ("character", "territory", "family")
 
     character: GameObject
-    province: GameObject
+    territory: GameObject
     family: GameObject
 
     def __init__(
-        self, character: GameObject, province: GameObject, family: GameObject
+        self, character: GameObject, territory: GameObject, family: GameObject
     ) -> None:
         super().__init__(
             event_type="born",
             world=character.world,
             character=character,
-            province=province,
+            territory=territory,
             family=family,
         )
         self.character = character
-        self.province = province
+        self.territory = territory
         self.family = family
 
     def on_dispatch(self) -> None:
@@ -272,6 +272,6 @@ class TakeOverProvinceEvent(LifeEvent):
     def get_description(self) -> str:
         return (
             f"{self.character.name_with_uid} took control of the "
-            f"{self.province.name_with_uid} province for the "
+            f"{self.territory.name_with_uid} territory for the "
             f"{self.family.name_with_uid} family."
         )

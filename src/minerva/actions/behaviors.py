@@ -322,7 +322,7 @@ class PlanCoupBehavior(AIBehavior):
         # The family head will start a scheme to overthrow the royal family and other
         # characters can join. This is effectively the same as declaring war, but
         # alliances don't join and if discovered, all family heads involved are
-        # executed and their families lose control of provinces
+        # executed and their families lose control of territory
 
         current_ruler = get_current_ruler(character.world)
 
@@ -360,7 +360,7 @@ class ExpandPoliticalDomain(AIBehavior):
     """A family head expands the family's political influence to a new territory."""
 
     def get_actions(self, character: GameObject) -> list[AIAction]:
-        # Loop through all provinces that neighbor existing political territories
+        # Loop through all territories that neighbor existing political territories
         # Consider all those where the family does not have an existing political
         # foothold
         character_brain = character.get_component(AIBrain)
@@ -381,7 +381,7 @@ class SeizeControlOfTerritory(AIBehavior):
     def get_actions(self, character: GameObject) -> list[AIAction]:
         # Loop through all the territories where this character has political influence
         # For all those that that are unclaimed and the territory to a list of
-        # potential provinces to expand into.
+        # potential territories to expand into.
 
         actions: list[AIAction] = []
 

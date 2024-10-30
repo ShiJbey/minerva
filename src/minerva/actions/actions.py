@@ -21,7 +21,7 @@ from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, GameObject
 from minerva.life_events.aging import CharacterDeathEvent
-from minerva.life_events.events import TakeOverProvinceEvent
+from minerva.life_events.events import TakeOverTerritoryEvent
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
@@ -622,9 +622,9 @@ class SeizeTerritoryAction(AIAction):
 
         self.performer.get_component(CharacterMetrics).data.num_territories_taken += 1
 
-        TakeOverProvinceEvent(
+        TakeOverTerritoryEvent(
             character=family_head,
-            province=territory,
+            territory=territory,
             family=family_head_component.family,
         ).dispatch()
 

@@ -178,7 +178,7 @@ class Simulation:
             minerva.systems.ChildBirthSystem(),
         )
         self.world.systems.add_system(
-            minerva.systems.ProvinceInfluencePointBoostSystem(),
+            minerva.systems.TerritoryInfluencePointBoostSystem(),
         )
         self.world.systems.add_system(
             minerva.systems.SchemeUpdateSystems(),

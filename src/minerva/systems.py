@@ -653,17 +653,17 @@ class InfluencePointGainSystem(System):
             )
 
 
-class ProvinceInfluencePointBoostSystem(System):
-    """The head of a family that controls a province gets a influence point increase."""
+class TerritoryInfluencePointBoostSystem(System):
+    """The head of a family that controls a territory gets a influence point increase."""
 
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (province, _) in world.get_components((Territory, Active)):
-            if province.controlling_family is None:
+        for _, (territory, _) in world.get_components((Territory, Active)):
+            if territory.controlling_family is None:
                 continue
 
-            family_component = province.controlling_family.get_component(Family)
+            family_component = territory.controlling_family.get_component(Family)
 
             if family_component.head is None:
                 continue
