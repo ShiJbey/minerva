@@ -67,10 +67,21 @@ from minerva.datetime import MONTHS_PER_YEAR, SimDate
 from minerva.ecs import Active, GameObject, System, SystemGroup, World
 from minerva.life_events.aging import LifeStageChangeEvent
 from minerva.life_events.events import (
-    BornEvent,
-    GiveBirthEvent,
+    AllianceFoundedEvent,
+    AllianceSchemeFailedEvent,
+    BirthEvent,
+    ChildBirthEvent,
+    CoupSchemeDiscoveredEvent,
+    DeclareWarEvent,
+    DefendingTerritoryEvent,
+    LostTerritoryEvent,
     MarriageEvent,
     PregnancyEvent,
+    RemovedFromPowerEvent,
+    RevoltEvent,
+    RuleOverthrownEvent,
+    SentencedToDeathEvent,
+    UsurpEvent,
 )
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.base_types import PCGFactories
@@ -148,7 +159,7 @@ class CharacterAgingSystem(System):
                         character.life_stage = LifeStage.SENIOR
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.SENIOR
-                        ).dispatch()
+                        ).log_event()
 
                 elif age >= species.adult_age:
                     if character.life_stage != LifeStage.ADULT:
@@ -162,7 +173,7 @@ class CharacterAgingSystem(System):
                         character.life_stage = LifeStage.ADULT
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.ADULT
-                        ).dispatch()
+                        ).log_event()
 
                 elif age >= species.young_adult_age:
                     if character.life_stage != LifeStage.YOUNG_ADULT:
@@ -177,7 +188,7 @@ class CharacterAgingSystem(System):
                         character.life_stage = LifeStage.YOUNG_ADULT
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.YOUNG_ADULT
-                        ).dispatch()
+                        ).log_event()
 
                 elif age >= species.adolescent_age:
                     if character.life_stage != LifeStage.ADOLESCENT:
@@ -192,7 +203,7 @@ class CharacterAgingSystem(System):
                         character.life_stage = LifeStage.ADOLESCENT
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.ADOLESCENT
-                        ).dispatch()
+                        ).log_event()
 
                 else:
                     if character.life_stage != LifeStage.CHILD:
@@ -200,7 +211,7 @@ class CharacterAgingSystem(System):
 
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.CHILD
-                        ).dispatch()
+                        ).log_event()
 
 
 class CharacterLifespanSystem(System):
@@ -258,7 +269,7 @@ class FallbackFamilySuccessionSystem(System):
                 set_family_head(family.gameobject, oldest_member.gameobject)
                 BecameFamilyHeadEvent(
                     oldest_member.gameobject, family.gameobject
-                ).dispatch()
+                ).log_event()
 
             else:
                 remove_family_from_play(family.gameobject)
@@ -452,13 +463,10 @@ class TerritoryRevoltSystem(System):
 
             territory.gameobject.add_component(InRevolt(start_date=current_date))
 
-            # TODO: Fire an event for revolting
-            _logger.info(
-                "[%s]: %s is revolting against the %s family.",
-                current_date.to_iso_str(),
-                territory.gameobject.name_with_uid,
-                territory.controlling_family.name_with_uid,
-            )
+            RevoltEvent(
+                subject=territory.controlling_family,
+                territory=territory.gameobject,
+            ).log_event()
 
 
 class RevoltUpdateSystem(System):
@@ -494,13 +502,16 @@ class RevoltUpdateSystem(System):
             territory.gameobject.remove_component(InRevolt)
             happiness.base_value = config.base_territory_happiness
 
-            # TODO: Fire and log an event when a family is removed from power
-            _logger.info(
-                "[%s]: %s has removed the %s family from power.",
-                current_date.to_iso_str(),
-                territory.gameobject.name_with_uid,
-                territory.controlling_family.name_with_uid,
-            )
+            if controlling_family_component.head:
+                LostTerritoryEvent(
+                    subject=controlling_family_component.head,
+                    territory=territory.gameobject,
+                ).log_event()
+
+            RemovedFromPowerEvent(
+                subject=territory.controlling_family,
+                territory=territory.gameobject,
+            ).log_event()
 
             # Remove the current family from power
             set_territory_controlling_family(territory.gameobject, None)
@@ -891,8 +902,8 @@ class PlaceholderMarriageSystem(System):
                 assert family_a is not None
                 set_character_family(new_spouse.gameobject, family_a)
 
-            MarriageEvent(character.gameobject, new_spouse.gameobject).dispatch()
-            MarriageEvent(new_spouse.gameobject, character.gameobject).dispatch()
+            MarriageEvent(character.gameobject, new_spouse.gameobject).log_event()
+            MarriageEvent(new_spouse.gameobject, character.gameobject).log_event()
 
 
 class PregnancyPlaceHolderSystem(System):
@@ -939,7 +950,7 @@ class PregnancyPlaceHolderSystem(System):
 
             character_fertility_comp.base_value -= 25
 
-            PregnancyEvent(character.gameobject).dispatch()
+            PregnancyEvent(character.gameobject).log_event()
 
 
 class ChildBirthSystem(System):
@@ -987,7 +998,8 @@ class ChildBirthSystem(System):
                 set_relation_sibling(existing_child, baby)
 
             # Create relationships with children of other parent
-            for existing_child in father.children:
+            father_children = father.get_component(Character).children
+            for existing_child in father_children:
                 if existing_child == baby:
                     continue
 
@@ -999,14 +1011,9 @@ class ChildBirthSystem(System):
             # Reduce the character's fertility according to their species
             fertility.base_value -= character.species.fertility_cost_per_child
 
-            GiveBirthEvent(
-                character=character.gameobject,
-                child=baby,
-            ).dispatch()
+            ChildBirthEvent(subject=character.gameobject, child=baby).log_event()
 
-            BornEvent(
-                character=baby,
-            ).dispatch()
+            BirthEvent(subject=baby).log_event()
 
 
 class ActionCooldownSystem(System):
@@ -1054,7 +1061,7 @@ class AllianceSchemeUpdateSystem(System):
                             raise RuntimeError("Alliance member is missing family.")
                         alliance_families.append(character_component.family)
 
-                    start_alliance(*alliance_families)
+                    alliance = start_alliance(*alliance_families)
 
                     # Increase the opinion between alliance members.
                     for member_a in scheme.members:
@@ -1073,24 +1080,17 @@ class AllianceSchemeUpdateSystem(System):
                         CharacterMetrics
                     ).data.num_alliances_founded += 1
 
-                    # TODO: Swap this out with a new life event
-                    _logger.info(
-                        "[%s]: %s founded a new alliance.",
-                        world.resources.get_resource(SimDate).to_iso_str(),
-                        scheme.initiator.name_with_uid,
-                    )
+                    AllianceFoundedEvent(
+                        subject=scheme.initiator,
+                        alliance=alliance,
+                    ).log_event()
 
                 else:
                     scheme.initiator.get_component(
                         CharacterMetrics
                     ).data.num_failed_alliance_attempts += 1
 
-                    # TODO: Swap this out with a new life event
-                    _logger.info(
-                        "[%s]: %s failed to start a new alliance.",
-                        world.resources.get_resource(SimDate).to_iso_str(),
-                        scheme.initiator.name_with_uid,
-                    )
+                    AllianceSchemeFailedEvent(scheme.initiator).log_event()
 
                 scheme.is_valid = False
                 destroy_alliance_scheme(scheme.gameobject)
@@ -1205,14 +1205,17 @@ class WarSchemeUpdateSystem(System):
                     war, war_scheme.defender, WarRole.DEFENDER_ALLY
                 )
 
-                # TODO: Swap this log out with a life event.
-                _logger.info(
-                    "[%s]: %s is at war with %s for the %s territory.",
-                    current_date.to_iso_str(),
-                    scheme.initiator.name_with_uid,
-                    war_scheme.defender.name_with_uid,
-                    war_scheme.territory.name_with_uid,
-                )
+                DeclareWarEvent(
+                    subject=scheme.initiator,
+                    target=war_scheme.defender,
+                    territory=war_scheme.territory,
+                ).log_event()
+
+                DefendingTerritoryEvent(
+                    subject=war_scheme.defender,
+                    opponent=scheme.initiator,
+                    territory=war_scheme.territory,
+                ).log_event()
 
                 scheme.is_valid = False
                 destroy_war_scheme(scheme.gameobject)
@@ -1235,7 +1238,7 @@ class CoupSchemeUpdateSystem(System):
                 continue
 
             if not coup_scheme.target.is_active:
-                scheme.is_valid = False
+                destroy_coup_scheme(scheme.gameobject)
                 continue
 
             elapsed_months = (current_date - scheme.start_date).total_months
@@ -1252,18 +1255,19 @@ class CoupSchemeUpdateSystem(System):
                         scheme.is_valid = False
                         continue
 
-                    # TODO: Swap this out for a logged life event
-                    _logger.info(
-                        "[%s]: %s has overthrown %s as the ruler.",
-                        world.resources.get_resource(SimDate).to_iso_str(),
-                        scheme.initiator.name_with_uid,
-                        current_ruler.name_with_uid,
-                    )
+                    RuleOverthrownEvent(
+                        subject=current_ruler, usurper=scheme.initiator
+                    ).log_event()
+
+                    UsurpEvent(
+                        subject=scheme.initiator, former_ruler=current_ruler
+                    ).log_event()
 
                     ruler_family = current_ruler.get_component(Character).family
 
-                    # TODO: Add cause of death (coup) to the death
-                    DieAction(current_ruler, pass_crown=False).execute()
+                    DieAction(
+                        current_ruler, pass_crown=False, cause_of_death="assassination"
+                    ).execute()
 
                     if ruler_family is not None:
                         # Remove the rulers family from being in control of their home
@@ -1288,23 +1292,12 @@ class CoupSchemeUpdateSystem(System):
                 if (rng.random() * 0.75) < intrigue_score:
                     continue
 
-                # TODO: Swap this out for logged life event
-                _logger.info(
-                    "[%s]: %s's coup scheme was discovered.",
-                    world.resources.get_resource(SimDate).to_iso_str(),
-                    scheme.initiator.name_with_uid,
-                )
+                CoupSchemeDiscoveredEvent(scheme.initiator).log_event()
 
                 # They are discovered and put to death
                 for member in scheme.members:
-                    # TODO: Swap this out for a logged life event
-                    _logger.info(
-                        "[%s]: %s has been sentenced to death for conspiring a coup.",
-                        world.resources.get_resource(SimDate).to_iso_str(),
-                        member.name_with_uid,
-                    )
-                    # TODO: Add cause of death (execution) to the action
-                    DieAction(member).execute()
+                    SentencedToDeathEvent(member, "treason").log_event()
+                    DieAction(member, "treason").execute()
 
                 scheme.is_valid = False
                 destroy_coup_scheme(scheme.gameobject)

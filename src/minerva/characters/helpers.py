@@ -37,7 +37,7 @@ from minerva.characters.succession_helpers import (
 from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.datetime import SimDate
-from minerva.ecs import Active, Event, GameObject
+from minerva.ecs import Active, GameObject
 from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
 from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
@@ -101,8 +101,6 @@ def set_family_head(
     db = family.world.resources.get_resource(SimDB).db
     cur = db.cursor()
     family_component = family.get_component(Family)
-    former_head: Optional[GameObject] = None
-
     # Do nothing if already set properly
     if family_component.head == character:
         return
@@ -144,17 +142,6 @@ def set_family_head(
 
     db.commit()
 
-    if former_head != character:
-        family.dispatch_event(
-            Event(
-                event_type="head-change",
-                world=family.world,
-                family=family,
-                former_head=former_head,
-                current_head=character,
-            )
-        )
-
 
 def set_character_family(
     character: GameObject,
@@ -162,8 +149,6 @@ def set_character_family(
 ) -> None:
     """Set a character's current family."""
     character_component = character.get_component(Character)
-
-    former_family: Optional[GameObject] = None
 
     if character_component.family == family:
         return
@@ -188,16 +173,6 @@ def set_character_family(
         (family, character),
     )
     db.commit()
-
-    character.dispatch_event(
-        Event(
-            event_type="family-change",
-            world=character.world,
-            former_family=former_family,
-            family=family,
-            character=character,
-        )
-    )
 
 
 def set_family_home_base(family: GameObject, territory: Optional[GameObject]) -> None:
@@ -274,7 +249,7 @@ def remove_family_from_play(family: GameObject) -> None:
     if family_component.alliance:
         end_alliance(family_component.alliance)
 
-    FamilyRemovedFromPlay(family).dispatch()
+    FamilyRemovedFromPlay(family).log_event()
 
 
 def remove_character_from_play(character: GameObject, pass_crown: bool = True) -> None:
@@ -310,7 +285,7 @@ def remove_character_from_play(character: GameObject, pass_crown: bool = True) -
         family = family_head_component.family
         set_family_head(family, heir)
         if heir is not None:
-            BecameFamilyHeadEvent(heir, family).dispatch()
+            BecameFamilyHeadEvent(heir, family).log_event()
 
     if _ := character.try_component(Emperor):
         if pass_crown and heir:
@@ -352,13 +327,10 @@ def set_character_birth_family(
     """Set the birth family of a character."""
     character_component = character.get_component(Character)
 
-    former_family: Optional[GameObject] = None
-
     if character_component.birth_family == family:
         return
 
     if character_component.birth_family is not None:
-        former_family = character_component.birth_family
         character_component.birth_family = None
 
     if family is not None:
@@ -371,16 +343,6 @@ def set_character_birth_family(
         (family, character),
     )
     db.commit()
-
-    character.dispatch_event(
-        Event(
-            event_type="birth-family-change",
-            world=character.world,
-            former_family=former_family,
-            family=family,
-            character=character,
-        )
-    )
 
 
 def merge_family_with(
@@ -752,10 +714,8 @@ def set_character_heir(character: GameObject, heir: Optional[GameObject]) -> Non
     """Set the heir of a character."""
 
     character_component = character.get_component(Character)
-    former_heir: Optional[GameObject] = None
 
     if character_component.heir is not None:
-        former_heir = character_component.heir
         character_component.heir = None
 
     if heir is not None:
@@ -769,16 +729,6 @@ def set_character_heir(character: GameObject, heir: Optional[GameObject]) -> Non
     )
 
     db.commit()
-
-    character.dispatch_event(
-        Event(
-            event_type="heir-change",
-            world=character.world,
-            character=character,
-            former_heir=former_heir,
-            heir=heir,
-        )
-    )
 
 
 def set_character_father(character: GameObject, father: Optional[GameObject]) -> None:
@@ -1111,18 +1061,21 @@ def set_relation_sibling(character: GameObject, sibling: GameObject) -> None:
         The character to set as the sibling.
     """
 
-    character.get_component(Character).siblings.append(sibling)
+    character_siblings = character.get_component(Character).siblings
 
-    db = character.world.resources.get_resource(SimDB).db
+    if sibling not in character_siblings:
+        character_siblings.append(sibling)
 
-    db.execute(
-        """
-        INSERT INTO siblings (character_id, sibling_id) VALUES (?, ?);
-        """,
-        (character.uid, sibling.uid),
-    )
+        db = character.world.resources.get_resource(SimDB).db
 
-    db.commit()
+        db.execute(
+            """
+            INSERT INTO siblings (character_id, sibling_id) VALUES (?, ?);
+            """,
+            (character.uid, sibling.uid),
+        )
+
+        db.commit()
 
 
 def set_relation_child(character: GameObject, child: GameObject) -> None:

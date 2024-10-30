@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from minerva.ecs import Event, GameObject
+from minerva.ecs import GameObject
 from minerva.relationships.base_types import (
     Attraction,
     Opinion,
@@ -96,10 +96,6 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
 
     _add_outgoing_relationship(owner, relationship)
     _add_incoming_relationship(target, relationship)
-
-    relationship.world.events.dispatch_event(
-        Event("relationship-added", world=relationship.world, relationship=relationship)
-    )
 
     return relationship
 

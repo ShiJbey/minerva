@@ -1,43 +1,25 @@
 """Life Events Associated with Power Succession."""
 
 from minerva.ecs import GameObject
-from minerva.life_events.base_types import LifeEvent, LifeEventHistory
+from minerva.life_events.base_types import LifeEvent
 from minerva.sim_db import SimDB
 
 
 class BecameFamilyHeadEvent(LifeEvent):
     """Event dispatched when a character becomes head of a family."""
 
-    __slots__ = ("character", "family")
+    __slots__ = ("family",)
 
-    character: GameObject
-    family: GameObject
-
-    def __init__(self, character: GameObject, family: GameObject) -> None:
-        super().__init__(
-            event_type="became-family-head",
-            world=character.world,
-            character=character,
-            family=family,
-        )
-        self.character = character
+    def __init__(self, subject: GameObject, family: GameObject) -> None:
+        super().__init__(subject)
         self.family = family
 
-    def record_in_database(self, db: SimDB) -> None:
-        """Record event within the database."""
-        cur = db.db.cursor()
-        cur.execute(
-            """
-            INSERT INTO life_events (event_id, event_type, timestamp, description)
-            VALUES (?, ?, ?, ?);
-            """,
-            (
-                self.event_id,
-                self.event_type,
-                self.timestamp.to_iso_str(),
-                self.get_description(),
-            ),
-        )
+    def get_event_type(self) -> str:
+        return "BecameFamilyHead"
+
+    def on_event_logged(self) -> None:
+        db = self.world.resources.get_resource(SimDB).db
+        cur = db.cursor()
         cur.execute(
             """
             INSERT INTO became_family_head_events
@@ -46,55 +28,29 @@ class BecameFamilyHeadEvent(LifeEvent):
             """,
             (
                 self.event_id,
-                self.character.uid,
+                self.subject.uid,
                 self.family.uid,
                 self.timestamp.to_iso_str(),
             ),
         )
-        db.db.commit()
-
-    def on_dispatch(self) -> None:
-        self.character.dispatch_event(self)
-        self.character.get_component(LifeEventHistory).history.append(self)
-        self.record_in_database(self.world.resources.get_resource(SimDB))
+        db.commit()
 
     def get_description(self) -> str:
-        return f"{self.character.name_with_uid} became the head of the {self.family.name_with_uid} family."
+        return (
+            f"{self.subject.name_with_uid} became the head of the "
+            f"{self.family.name_with_uid} family."
+        )
 
 
 class BecameEmperorEvent(LifeEvent):
     """Event dispatched when a character becomes emperor."""
 
-    __slots__ = ("character",)
+    def get_event_type(self) -> str:
+        return "BecameEmperor"
 
-    character: GameObject
-
-    def __init__(self, character: GameObject) -> None:
-        super().__init__(
-            event_type="became-emperor",
-            world=character.world,
-            character=character,
-        )
-        self.character = character
-
-    def on_dispatch(self) -> None:
-        self.character.dispatch_event(self)
-        self.character.get_component(LifeEventHistory).history.append(self)
-
+    def on_event_logged(self) -> None:
         db = self.world.resources.get_resource(SimDB).db
         cur = db.cursor()
-        cur.execute(
-            """
-            INSERT INTO life_events (event_id, event_type, timestamp, description)
-            VALUES (?, ?, ?, ?);
-            """,
-            (
-                self.event_id,
-                self.event_type,
-                self.timestamp.to_iso_str(),
-                self.get_description(),
-            ),
-        )
         cur.execute(
             """
             INSERT INTO became_emperor_events
@@ -103,33 +59,24 @@ class BecameEmperorEvent(LifeEvent):
             """,
             (
                 self.event_id,
-                self.character.uid,
+                self.subject.uid,
                 self.timestamp.to_iso_str(),
             ),
         )
         db.commit()
 
     def get_description(self) -> str:
-        return f"{self.character.name_with_uid} became emperor."
+        return f"{self.subject.name_with_uid} became emperor."
 
 
 class FamilyRemovedFromPlay(LifeEvent):
     """Event dispatched when a family is removed from play."""
 
-    __slots__ = ("family",)
+    def get_event_type(self) -> str:
+        return "FamilyRemovedFromPlay"
 
-    family: GameObject
-
-    def __init__(self, family: GameObject) -> None:
-        super().__init__(
-            event_type="family-removed-from-play",
-            world=family.world,
-            family=family,
-        )
-        self.family = family
-
-    def on_dispatch(self) -> None:
+    def on_event_logged(self) -> None:
         pass
 
     def get_description(self) -> str:
-        return f"The {self.family.name_with_uid} family has been removed from play."
+        return f"The {self.subject.name_with_uid} family has been removed from play."

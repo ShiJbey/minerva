@@ -103,7 +103,7 @@ CREATE TABLE family_heads (
 CREATE TABLE siblings (
     character_id INT,
     sibling_id INT,
-    PRIMARY KEY(character_id, sibling_id),
+    PRIMARY KEY (character_id, sibling_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (sibling_id) REFERENCES characters(uid)
 );
@@ -151,6 +151,7 @@ CREATE TABLE children (
 
 CREATE TABLE life_events (
     event_id INT NOT NULL PRIMARY KEY,
+    subject_id INT NOT NULL,
     event_type TEXT,
     timestamp TEXT,
     description TEXT
@@ -187,6 +188,7 @@ CREATE TABLE death_events (
     event_id INT NOT NULL PRIMARY KEY,
     character_id INT,
     timestamp TEXT,
+    cause TEXT,
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
 );

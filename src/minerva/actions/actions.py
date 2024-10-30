@@ -20,8 +20,24 @@ from minerva.characters.war_helpers import (
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, GameObject
-from minerva.life_events.aging import CharacterDeathEvent
-from minerva.life_events.events import TakeOverTerritoryEvent
+from minerva.life_events.aging import DeathEvent
+from minerva.life_events.events import (
+    AttemptingFormAllianceEvent,
+    DisbandedAllianceEvent,
+    ExpandedFamilyTerritoryEvent,
+    ExpandedTerritoryEvent,
+    FamilyJoinedAllianceEvent,
+    GiveBackToSmallFolkEvent,
+    GrowPoliticalInfluenceEvent,
+    JoinAllianceSchemeEvent,
+    JoinCoupSchemeEvent,
+    JoinedAllianceEvent,
+    QuellRevoltEvent,
+    StartCoupSchemeEvent,
+    StartWarSchemeEvent,
+    TakeOverTerritoryEvent,
+    TaxTerritoryEvent,
+)
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
@@ -69,19 +85,11 @@ class GiveBackToTerritoryAction(AIAction):
         self.territory = territory
 
     def execute(self) -> bool:
-        current_date = self.context.world.resources.get_resource(SimDate)
-
         increment_political_influence(self.territory, self.family, 5)
 
         self.territory.get_component(PopulationHappiness).base_value += 5
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s gave back to the small folk of %s.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.territory.name_with_uid,
-        )
+        GiveBackToSmallFolkEvent(self.performer, self.territory).log_event()
 
         return True
 
@@ -104,17 +112,11 @@ class GrowPoliticalInfluenceAction(AIAction):
         self.territory = territory
 
     def execute(self) -> bool:
-        current_date = self.context.world.resources.get_resource(SimDate)
-
         increment_political_influence(self.territory, self.family, 15)
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s grew their political influence in %s.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.territory.name_with_uid,
-        )
+        GrowPoliticalInfluenceEvent(
+            self.performer, self.family, self.territory
+        ).log_event()
 
         return True
 
@@ -133,9 +135,12 @@ class GetMarriedAction(AIAction):
 class DieAction(AIAction):
     """Instance of an action where a character dies."""
 
-    def __init__(self, performer: GameObject, pass_crown: bool = True) -> None:
+    def __init__(
+        self, performer: GameObject, cause_of_death: str = "", pass_crown: bool = True
+    ) -> None:
         super().__init__(performer, "Die")
         self.pass_crown = pass_crown
+        self.cause_of_death = cause_of_death
 
     def execute(self) -> bool:
         """Have a character die."""
@@ -144,7 +149,7 @@ class DieAction(AIAction):
         set_character_alive(character, False)
         character.deactivate()
 
-        CharacterDeathEvent(character).dispatch()
+        DeathEvent(character, cause=self.cause_of_death).log_event()
 
         remove_character_from_play(character, pass_crown=self.pass_crown)
 
@@ -293,7 +298,6 @@ class QuellRevoltAction(AIAction):
         self.territory = territory
 
     def execute(self) -> bool:
-        current_date = self.context.world.resources.get_resource(SimDate)
         config = self.context.world.resources.get_resource(Config)
 
         self.territory.remove_component(InRevolt)
@@ -304,13 +308,7 @@ class QuellRevoltAction(AIAction):
 
         self.performer.get_component(CharacterMetrics).data.num_revolts_quelled += 1
 
-        # TODO: Fire and log events
-        _logger.info(
-            "[%s]: %s quelled the revolt in %s",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.territory.name_with_uid,
-        )
+        QuellRevoltEvent(self.performer, self.territory).log_event()
 
         return True
 
@@ -318,27 +316,22 @@ class QuellRevoltAction(AIAction):
 class TaxTerritoryAction(AIAction):
     """An instance of a get married action."""
 
+    __slots__ = ("territory",)
+
+    territory: GameObject
+
     def __init__(self, performer: GameObject, territory: GameObject) -> None:
         super().__init__(performer, "TaxTerritory")
         self.context["territory"] = territory
+        self.territory = territory
 
     def execute(self) -> bool:
-        current_date = self.context.world.resources.get_resource(SimDate)
-
-        territory: GameObject = self.context["territory"]
-
         character_component = self.context.character.get_component(Character)
         character_component.influence_points += 250
 
-        territory.get_component(PopulationHappiness).base_value -= 20
+        self.territory.get_component(PopulationHappiness).base_value -= 20
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s taxed the %s territory.",
-            current_date.to_iso_str(),
-            self.context.character.name_with_uid,
-            territory.name_with_uid,
-        )
+        TaxTerritoryEvent(self.performer, self.territory)
 
         return True
 
@@ -365,20 +358,15 @@ class StartWarSchemeAction(AIAction):
         self.context["territory"] = territory
 
     def execute(self) -> bool:
-        current_date = self.context.world.resources.get_resource(SimDate)
-
         create_war_scheme(
             initiator=self.performer, target=self.target, territory=self.territory
         )
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s started a war scheme against %s for the %s territory.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.target.name_with_uid,
-            self.territory.name_with_uid,
-        )
+        StartWarSchemeEvent(
+            subject=self.performer,
+            target=self.target,
+            territory=self.territory,
+        ).log_event()
 
         return True
 
@@ -397,22 +385,11 @@ class StartCoupSchemeAction(AIAction):
         self.target = target
 
     def execute(self) -> bool:
-        current_date = self.context.world.resources.get_resource(SimDate).copy()
-
-        initiator: GameObject = self.context["initiator"]
-        target: GameObject = self.context["target"]
-
         create_coup_scheme(initiator=self.performer, target=self.target)
 
         self.performer.get_component(CharacterMetrics).data.num_coups_planned += 1
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s began a scheme to overthrow %s",
-            current_date.to_iso_str(),
-            initiator.name_with_uid,
-            target.name_with_uid,
-        )
+        StartCoupSchemeEvent(self.performer, self.target)
 
         return True
 
@@ -430,17 +407,11 @@ class JoinCoupSchemeAction(AIAction):
         self.scheme = scheme
 
     def execute(self) -> bool:
-        current_date = self.world.resources.get_resource(SimDate)
-
         add_member_to_scheme(self.scheme, self.performer)
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s has joined %s's coup scheme.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.scheme.get_component(Scheme).initiator.name_with_uid,
-        )
+        JoinCoupSchemeEvent(
+            self.performer, self.scheme.get_component(Scheme).initiator
+        ).log_event()
 
         return True
 
@@ -458,17 +429,12 @@ class JoinAllianceSchemeAction(AIAction):
         self.scheme = scheme
 
     def execute(self) -> bool:
-        current_date = self.world.resources.get_resource(SimDate)
-
         add_member_to_scheme(self.scheme, self.performer)
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s has joined %s's alliance scheme.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.scheme.get_component(Scheme).initiator.name_with_uid,
-        )
+        JoinAllianceSchemeEvent(
+            self.performer,
+            self.scheme.get_component(Scheme).initiator,
+        ).log_event()
 
         return True
 
@@ -485,12 +451,7 @@ class StartAllianceSchemeAction(AIAction):
     def execute(self) -> bool:
         create_alliance_scheme(self.performer)
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s is attempting to form a new alliance.",
-            self.world.resources.get_resource(SimDate).to_iso_str(),
-            self.performer.name_with_uid,
-        )
+        AttemptingFormAllianceEvent(self.performer).log_event()
 
         return True
 
@@ -515,13 +476,8 @@ class JoinExistingAllianceAction(AIAction):
 
         join_alliance(alliance=self.alliance, family=family)
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: the %s family has joined the alliance started by the %s family.",
-            self.world.resources.get_resource(SimDate).to_iso_str(),
-            family.name_with_uid,
-            self.alliance.get_component(Alliance).founder_family.name_with_uid,
-        )
+        JoinedAllianceEvent(subject=self.performer, alliance=self.alliance).log_event()
+        FamilyJoinedAllianceEvent(subject=family, alliance=self.alliance).log_event()
 
         return True
 
@@ -561,13 +517,9 @@ class DisbandAllianceAction(AIAction):
 
         self.performer.get_component(CharacterMetrics).data.num_alliances_disbanded += 1
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: the %s family has disbanded the alliance started by the %s family.",
-            self.world.resources.get_resource(SimDate).to_iso_str(),
-            family_component.gameobject.name_with_uid,
-            founding_family.name_with_uid,
-        )
+        DisbandedAllianceEvent(
+            subject=self.performer, founding_family=founding_family
+        ).log_event()
 
         return True
 
@@ -581,8 +533,6 @@ class ExpandIntoTerritoryAction(AIAction):
         self.context["territory"] = territory
 
     def execute(self) -> bool:
-        current_date = self.context.world.resources.get_resource(SimDate)
-
         family_head: GameObject = self.context["family_head"]
         territory: GameObject = self.context["territory"]
 
@@ -592,14 +542,16 @@ class ExpandIntoTerritoryAction(AIAction):
         territory_component.political_influence[family_head_component.family] = 50
         family_head_component.family.get_component(Family).territories.add(territory)
 
-        # TODO: Fire and log event
-        _logger.info(
-            "[%s]: %s expanded the %s family into the %s territory.",
-            current_date.to_iso_str(),
-            family_head.name_with_uid,
-            family_head_component.family.name_with_uid,
-            territory.name_with_uid,
-        )
+        ExpandedTerritoryEvent(
+            subject=family_head_component.family,
+            territory=territory,
+        ).log_event()
+
+        ExpandedFamilyTerritoryEvent(
+            subject=family_head,
+            family=family_head_component.family,
+            territory=territory,
+        ).log_event()
 
         return True
 
@@ -623,9 +575,9 @@ class SeizeTerritoryAction(AIAction):
         self.performer.get_component(CharacterMetrics).data.num_territories_taken += 1
 
         TakeOverTerritoryEvent(
-            character=family_head,
+            subject=family_head,
             territory=territory,
             family=family_head_component.family,
-        ).dispatch()
+        ).log_event()
 
         return True

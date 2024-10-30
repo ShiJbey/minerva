@@ -78,7 +78,7 @@ from minerva.characters.succession_helpers import set_current_ruler
 from minerva.characters.war_data import WarTracker
 from minerva.config import Config
 from minerva.datetime import SimDate
-from minerva.ecs import Active, Event, GameObject, World
+from minerva.ecs import Active, GameObject, World
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.pcg.base_types import (
     BabyFactory,
@@ -89,6 +89,7 @@ from minerva.pcg.base_types import (
 )
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
+from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import StatusEffectManager
 from minerva.stats.helpers import default_stat_calc_strategy
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
@@ -647,6 +648,7 @@ class DefaultFamilyFactory(FamilyFactory):
                 banner_symbol=banner_symbol,
             )
         )
+        family.add_component(LifeEventHistory())
         family.add_component(WarTracker())
         family.name = f"{family_name}"
 
@@ -661,13 +663,7 @@ class DefaultFamilyFactory(FamilyFactory):
 
         db.commit()
 
-        world.events.dispatch_event(
-            Event(
-                event_type="family-added",
-                world=world,
-                family=family,
-            )
-        )
+        world.resources.get_resource(SimulationEvents).family_added.emit(family)
 
         return family
 

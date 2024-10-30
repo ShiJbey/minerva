@@ -282,7 +282,7 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
             last_ruler = dynasty_tracker.last_ruler
             dynasty_tracker.all_rulers.add(character)
             character.add_component(Emperor())
-            BecameEmperorEvent(character).dispatch()
+            BecameEmperorEvent(character).log_event()
 
             cur.execute(
                 """
@@ -352,7 +352,7 @@ def _start_new_dynasty(founding_character: GameObject) -> GameObject:
     dynasty_component.current_ruler = founding_character
     dynasty_component.previous_dynasty = dynasty_tracker.last_dynasty
     founding_character.add_component(Emperor())
-    BecameEmperorEvent(founding_character).dispatch()
+    BecameEmperorEvent(founding_character).log_event()
     dynasty_tracker.all_rulers.add(founding_character)
 
     previous_ruler: Optional[GameObject] = None

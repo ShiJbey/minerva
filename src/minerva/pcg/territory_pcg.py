@@ -1,7 +1,7 @@
 """Territory Generation Functions and Classes."""
 
 from minerva.config import Config
-from minerva.ecs import Event, GameObject, World
+from minerva.ecs import GameObject, World
 from minerva.pcg.base_types import NameFactory, TerritoryFactory
 from minerva.sim_db import SimDB
 from minerva.stats.helpers import default_stat_calc_strategy
@@ -43,9 +43,5 @@ class DefaultTerritoryFactory(TerritoryFactory):
             (territory.uid, name),
         )
         db.commit()
-
-        world.events.dispatch_event(
-            Event(event_type="territory-added", world=world, territory=territory)
-        )
 
         return territory

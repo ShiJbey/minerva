@@ -52,6 +52,7 @@ from minerva.pcg.text_gen import Tracery, TraceryNameFactory
 from minerva.relationships import social_rules
 from minerva.relationships.base_types import SocialRuleLibrary
 from minerva.sim_db import SimDB
+from minerva.simulation_events import SimulationEvents
 from minerva.traits.base_types import TraitLibrary
 
 
@@ -122,6 +123,7 @@ class Simulation:
         self._world.resources.add_resource(DynastyTracker())
         self._world.resources.add_resource(AIActionLibrary())
         self._world.resources.add_resource(Tracery(self.config.seed))
+        self._world.resources.add_resource(SimulationEvents())
 
     def initialize_systems(self) -> None:
         """Initialize built-in systems."""

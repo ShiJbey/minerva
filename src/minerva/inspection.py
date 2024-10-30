@@ -26,11 +26,11 @@ from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
 from minerva.ecs import Active
 from minerva.life_events.base_types import LifeEventHistory
-
 # from minerva.relationships.base_types import Attraction, Opinion, RelationshipManager
 from minerva.simulation import Simulation
 from minerva.traits.base_types import TraitManager
 from minerva.world_map.components import Territory
+
 
 # def _sign(num: Union[int, float]) -> str:
 #     """Get the sign of a number."""
@@ -241,7 +241,7 @@ class SimulationInspector:
         life_event_table = rich.table.Table(
             "Timestamp", "Description", title="Life Events", title_justify="left"
         )
-        for event in life_event_history.history:
+        for event in life_event_history.get_history():
             life_event_table.add_row(str(event.timestamp), event.get_description())
 
         console.print(life_event_table)

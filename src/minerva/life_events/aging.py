@@ -2,46 +2,27 @@
 
 from minerva.characters.components import LifeStage
 from minerva.ecs import GameObject
-from minerva.life_events.base_types import LifeEvent, LifeEventHistory
+from minerva.life_events.base_types import LifeEvent
 from minerva.sim_db import SimDB
 
 
 class LifeStageChangeEvent(LifeEvent):
     """Event dispatched when a character changes life stages."""
 
-    __slots__ = ("character", "life_stage")
+    __slots__ = ("life_stage",)
 
-    character: GameObject
     life_stage: LifeStage
 
-    def __init__(self, character: GameObject, life_stage: LifeStage) -> None:
-        super().__init__(
-            event_type="life-stage-change",
-            world=character.world,
-            character=character,
-            life_stage=life_stage,
-        )
-        self.character = character
+    def __init__(self, subject: GameObject, life_stage: LifeStage) -> None:
+        super().__init__(subject)
         self.life_stage = life_stage
 
-    def on_dispatch(self) -> None:
-        self.character.dispatch_event(self)
-        self.character.get_component(LifeEventHistory).history.append(self)
+    def get_event_type(self) -> str:
+        return "LifeStageChange"
 
+    def on_event_logged(self) -> None:
         db = self.world.resources.get_resource(SimDB).db
         cur = db.cursor()
-        cur.execute(
-            """
-            INSERT INTO life_events (event_id, event_type, timestamp, description)
-            VALUES (?, ?, ?, ?);
-            """,
-            (
-                self.event_id,
-                self.event_type,
-                self.timestamp.to_iso_str(),
-                self.get_description(),
-            ),
-        )
         cur.execute(
             """
             INSERT INTO life_stage_change_events
@@ -50,7 +31,7 @@ class LifeStageChangeEvent(LifeEvent):
             """,
             (
                 self.event_id,
-                self.character.uid,
+                self.subject.uid,
                 self.life_stage,
                 self.timestamp.to_iso_str(),
             ),
@@ -58,52 +39,34 @@ class LifeStageChangeEvent(LifeEvent):
         db.commit()
 
     def get_description(self) -> str:
-        return (
-            f"{self.character.name_with_uid} became an {self.life_stage.name.lower()}."
-        )
+        return f"{self.subject.name_with_uid} became an {self.life_stage.name.lower()}."
 
 
-class CharacterDeathEvent(LifeEvent):
+class DeathEvent(LifeEvent):
     """Event dispatched when a character dies."""
 
-    __slots__ = ("character",)
+    __slots__ = ("cause",)
 
-    character: GameObject
+    cause: str
 
-    def __init__(self, character: GameObject) -> None:
-        super().__init__(
-            event_type="character-death",
-            world=character.world,
-            character=character,
-        )
-        self.character = character
+    def __init__(self, subject: GameObject, cause: str = "") -> None:
+        super().__init__(subject)
+        self.cause = cause
 
-    def on_dispatch(self) -> None:
-        self.character.dispatch_event(self)
-        self.character.get_component(LifeEventHistory).history.append(self)
+    def get_event_type(self) -> str:
+        return "Death"
 
+    def on_event_logged(self) -> None:
         db = self.world.resources.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
-            INSERT INTO life_events (event_id, event_type, timestamp, description)
+            INSERT INTO death_events (event_id, character_id, timestamp, cause)
             VALUES (?, ?, ?, ?);
             """,
-            (
-                self.event_id,
-                self.event_type,
-                self.timestamp.to_iso_str(),
-                self.get_description(),
-            ),
-        )
-        cur.execute(
-            """
-            INSERT INTO death_events (event_id, character_id, timestamp)
-            VALUES (?, ?, ?);
-            """,
-            (self.event_id, self.character.uid, self.timestamp.to_iso_str()),
+            (self.event_id, self.subject.uid, self.timestamp.to_iso_str(), self.cause),
         )
         db.commit()
 
     def get_description(self) -> str:
-        return f"{self.character.name_with_uid} died."
+        return f"{self.subject.name_with_uid} died."
