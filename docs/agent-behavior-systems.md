@@ -39,7 +39,7 @@ selection. Example goals might be things like `GetAJob` or `ExpandLand`.
 Behaviors are divided into different pools based on the types of agents that can perform the behavior, and each pool is
 assigned to a system. Below is a list of Minerva's behavior systems and what types of behaviors/actions they manage.
 Each system is run once each timestep. The systems calculate a utility score for all eligible behaviors for a given
-agent and randomly choses one to perform from the top scoring behaviors.
+agent and randomly chooses one to perform from the top scoring behaviors.
 
 - `CharacterBehaviorsSystem`: Handles basic character behaviors like getting a job, getting married, sex, committing
   marriage infidelity, and having children.
@@ -106,4 +106,6 @@ public fields.
 
 ## Family System
 
-Families re the core unit of power in Minerva. All characters belong to a family and each family strives to survive for as long as possible. The family system is inspired by Game of Thrones, House of the Dragon, Naruto, Castlevania, the Japanese Uji clan system, Crusader Kings, and the WorldBox clan system.
+Families re the core unit of power in Minerva. All characters belong to a family and each family strives to survive for
+as long as possible. The family system is inspired by Game of Thrones, House of the Dragon, Naruto, Castlevania, the
+Japanese Uji clan system, Crusader Kings, and the WorldBox clan system.

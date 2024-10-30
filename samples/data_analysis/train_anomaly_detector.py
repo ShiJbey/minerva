@@ -66,33 +66,67 @@ def train_anomaly_detector(
     )
 
 
-def plot_training_loss(detector: MinervaAnomalyDetector, loss: pd.DataFrame):
+def plot_training_loss(
+    detector: MinervaAnomalyDetector, loss: pd.DataFrame, title: str
+):
     """Plot the loss of the model and the error threshold."""
     # Defining the Plot Style
     plt.style.use("fivethirtyeight")
     plt.ylim((0, 6))
     plt.xlabel("Iterations")
-    plt.ylabel("Loss")
+    plt.ylabel("Reconstruction Loss (MSE)")
 
     # Plotting the last 100 values
     plt.axhline(y=detector.error_threshold, color="r", linestyle="-")
     plt.plot(loss)
-
+    plt.title(title)
     plt.show()
 
 
 def main():
     """Main Function."""
 
-    dataset = MinervaCharacterDataset(
-        pathlib.Path(__file__).parent / "output.csv", family_heads_only=True
+    mixed_detector, mixed_detector_loss = train_anomaly_detector(
+        MinervaCharacterDataset(pathlib.Path(__file__).parent / "output.csv")
     )
 
-    detector, loss = train_anomaly_detector(dataset)
+    plot_training_loss(
+        mixed_detector, mixed_detector_loss, "Training Loss (All Characters)"
+    )
 
-    plot_training_loss(detector, loss)
+    mixed_detector.save(pathlib.Path(__file__).parent / "mixed_detector.json")
 
-    detector.save(pathlib.Path(__file__).parent / "family_head_only_detector.json")
+    family_head_only_detector, family_head_only_detector_loss = train_anomaly_detector(
+        MinervaCharacterDataset(
+            pathlib.Path(__file__).parent / "output.csv", family_heads_only=True
+        )
+    )
+
+    plot_training_loss(
+        family_head_only_detector,
+        family_head_only_detector_loss,
+        "Training Loss (Family Heads Only)",
+    )
+
+    family_head_only_detector.save(
+        pathlib.Path(__file__).parent / "family_head_only_detector.json"
+    )
+
+    normies_only_detector, normies_only_detector_loss = train_anomaly_detector(
+        MinervaCharacterDataset(
+            pathlib.Path(__file__).parent / "output.csv", no_family_heads=True
+        )
+    )
+
+    plot_training_loss(
+        normies_only_detector,
+        normies_only_detector_loss,
+        "Training Loss (BG NPCs Only)",
+    )
+
+    normies_only_detector.save(
+        pathlib.Path(__file__).parent / "normies_only_detector.json"
+    )
 
 
 if __name__ == "__main__":

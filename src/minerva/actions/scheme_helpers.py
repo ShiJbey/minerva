@@ -62,6 +62,8 @@ def destroy_scheme(scheme: GameObject) -> None:
     for member in [*scheme_component.members]:
         remove_member_from_scheme(scheme, member)
 
+    scheme_component.initiator.get_component(SchemeManager)
+
     db = scheme.world.resources.get_resource(SimDB).db
     cursor = db.cursor()
 

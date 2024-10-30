@@ -9,22 +9,21 @@ import numpy.typing as npt
 import tqdm
 from feature_extraction import get_default_vector_factory
 
-from minerva.characters.components import Character, HeadOfFamily
+from minerva.characters.components import Character
 from minerva.config import Config
 from minerva.data import ck3_traits, japanese_city_names, japanese_names
-from minerva.ecs import Active
 from minerva.pcg.character import generate_initial_families
 from minerva.pcg.world_map import generate_world_map
 from minerva.simulation import Simulation
 
 # How many simulations to aggregate
-N_SIMULATION_RUNS = 10
+N_SIMULATION_RUNS = 50
 
 # How many years of history to generate
 YEAR_TO_SIMULATE = 100
 
 # The world seeds to use for data generation.
-WORLD_SEEDS = list(random.sample(range(9999), N_SIMULATION_RUNS))
+WORLD_SEEDS = list(random.sample(range(1000), N_SIMULATION_RUNS))
 
 # File path for CSV output
 OUTPUT_PATH = pathlib.Path(__file__).parent / "output.csv"
@@ -36,6 +35,8 @@ def main():
     character_feature_vectors: list[npt.NDArray[np.float32]] = []
 
     vect_factory = get_default_vector_factory()
+
+    n_completed_simulations: int = 0
 
     # Run simulations for each seed
     for seed in WORLD_SEEDS:
@@ -59,19 +60,17 @@ def main():
         try:
             for _ in tqdm.trange(YEAR_TO_SIMULATE * 12):
                 sim.step()
-        except RuntimeError:
-            print("Encountered  runtime error.")
+            n_completed_simulations += 1
+        except RuntimeError as exc:
+            print(exc)
             continue
 
         # Print the number of generated characters
-        active_characters = sim.world.get_components((Character, Active))
-        num_generated_characters = len(active_characters)
-        num_family_heads = len(sim.world.get_components((HeadOfFamily, Active)))
-        print(f"Total generated characters: {num_generated_characters}.")
-        print(f"Family Heads: {num_family_heads}.")
+        generated_characters = sim.world.get_components((Character,))
+        print(f"Total generated characters: {len(generated_characters)}.")
         print("===")
 
-        for _, (character, _) in active_characters:
+        for _, (character,) in generated_characters:
             character_feature_vectors.append(
                 vect_factory.create_feature_vector(character.gameobject)
             )
@@ -86,9 +85,9 @@ def main():
         for array in character_feature_vectors:
             writer.writerow(array)
 
-    print(np.array(character_feature_vectors))
-
-    character_feature_vectors.clear()
+    print("Done.")
+    print(f"Completed {n_completed_simulations} simulations")
+    print(f"Generated {len(character_feature_vectors)} characters")
 
 
 if __name__ == "__main__":

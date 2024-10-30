@@ -277,7 +277,7 @@ def remove_family_from_play(family: GameObject) -> None:
     FamilyRemovedFromPlay(family).dispatch()
 
 
-def remove_character_from_play(character: GameObject) -> None:
+def remove_character_from_play(character: GameObject, pass_crown: bool = True) -> None:
     """Remove a character from play."""
     world = character.world
     current_date = world.resources.get_resource(SimDate).copy()
@@ -313,9 +313,11 @@ def remove_character_from_play(character: GameObject) -> None:
             BecameFamilyHeadEvent(heir, family).dispatch()
 
     if _ := character.try_component(Emperor):
-        set_current_ruler(world, heir)
-        if heir:
+        if pass_crown and heir:
+            set_current_ruler(world, heir)
             heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
+        else:
+            set_current_ruler(world, None)
 
     character_component = character.get_component(Character)
 
@@ -337,10 +339,10 @@ def remove_character_from_play(character: GameObject) -> None:
     for scheme in [*scheme_manager.get_schemes()]:
         scheme_component = scheme.get_component(Scheme)
 
-        remove_member_from_scheme(scheme, character)
-
         if scheme_component.initiator == character:
             scheme_component.is_valid = False
+
+        remove_member_from_scheme(scheme, character)
 
 
 def set_character_birth_family(

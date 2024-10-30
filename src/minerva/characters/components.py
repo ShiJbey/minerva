@@ -90,6 +90,46 @@ class Species:
     spawn_frequency: int = 1
     """How likely a character will spawn of this species."""
 
+    def get_max_fertility(self, sex: Sex, life_stage: LifeStage) -> int:
+        """Get the max fertility for the given life stage and sex."""
+        if life_stage == LifeStage.SENIOR:
+            fertility_max = (
+                self.senior_male_fertility
+                if sex == Sex.MALE
+                else self.senior_female_fertility
+            )
+
+            return fertility_max
+
+        if life_stage == LifeStage.ADULT:
+            fertility_max = (
+                self.adult_male_fertility
+                if sex == Sex.MALE
+                else self.adult_female_fertility
+            )
+            return fertility_max
+
+        if life_stage == LifeStage.YOUNG_ADULT:
+            fertility_max = (
+                self.young_adult_male_fertility
+                if sex == Sex.MALE
+                else self.young_adult_female_fertility
+            )
+
+            return fertility_max
+
+        if life_stage == LifeStage.ADOLESCENT:
+            fertility_max = (
+                self.adolescent_male_fertility
+                if sex == Sex.MALE
+                else self.adolescent_female_fertility
+            )
+
+            return fertility_max
+
+        else:
+            return 100
+
     def get_life_stage_for_age(self, age: int) -> LifeStage:
         """Get the life stage for a character with a given species and age."""
 

@@ -30,7 +30,7 @@ from minerva.pcg.character import generate_initial_families
 from minerva.pcg.world_map import generate_world_map
 from minerva.simulation import Simulation
 
-LOGGER = logging.getLogger(__file__)
+LOGGER = logging.getLogger(__name__)
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 
 

@@ -342,8 +342,7 @@ def calculate_alliance_martial(*families: GameObject) -> float:
     for family in families:
         family_component = family.get_component(Family)
 
-        if len(family_component.warriors) == 0:
-            assert family_component.head
+        if len(family_component.warriors) == 0 and family_component.head:
             martial_sum += family_component.head.get_component(Martial).value
             total_warriors += 1
 
@@ -351,5 +350,8 @@ def calculate_alliance_martial(*families: GameObject) -> float:
             for character in family_component.warriors:
                 martial_sum += character.get_component(Martial).value
                 total_warriors += 1
+
+    if total_warriors == 0:
+        return 0
 
     return martial_sum / total_warriors

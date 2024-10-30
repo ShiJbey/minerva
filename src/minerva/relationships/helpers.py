@@ -146,7 +146,7 @@ def _add_outgoing_relationship(character: GameObject, relationship: GameObject) 
 
     Parameters
     ----------
-    target
+    character
         The GameObject that the Relationship is directed toward.
     relationship
         The relationship.

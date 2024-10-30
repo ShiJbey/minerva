@@ -8,7 +8,7 @@ from typing import Callable, ClassVar, Optional
 from ordered_set import OrderedSet
 
 from minerva.actions.actions import DieAction
-from minerva.actions.base_types import AIBehavior, AIBehaviorLibrary, AIBrain, Scheme
+from minerva.actions.base_types import AIAction, AIBehaviorLibrary, AIBrain, Scheme
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
 from minerva.characters.components import (
     Character,
@@ -209,11 +209,11 @@ class CharacterLifespanSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (character, brain, life_span, _) in world.get_components(
-            (Character, AIBrain, Lifespan, Active)
+        for _, (character, life_span, _) in world.get_components(
+            (Character, Lifespan, Active)
         ):
             if character.age >= life_span.value:
-                DieAction(brain.context).execute()
+                DieAction(character.gameobject).execute()
 
 
 class SuccessionDepthChartUpdateSystem(System):
@@ -304,7 +304,6 @@ class CharacterBehaviorSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.resources.get_resource(random.Random)
-        config = world.resources.get_resource(Config)
         behavior_library = world.resources.get_resource(AIBehaviorLibrary)
 
         family_heads = [
@@ -327,37 +326,54 @@ class CharacterBehaviorSystem(System):
 
         for character in acting_order:
             if character.is_active:
-                behaviors: list[AIBehavior] = []
+                actions: list[AIAction] = []
+                character_component = character.get_component(Character)
                 brain = character.get_component(AIBrain)
                 brain.context.update_sensors()
 
                 for behavior in behavior_library.iter_behaviors():
-                    if brain.behavior_cooldowns[behavior.get_name()] > 0:
-                        continue
-
                     if behavior.passes_preconditions(character):
-                        utility = behavior.calculate_utility(character)
-                        if utility >= config.behavior_utility_threshold and utility > 0:
-                            behaviors.append(behavior)
+                        for potential_action in behavior.get_actions(character):
+                            if (
+                                brain.action_cooldowns[potential_action.get_name()] <= 0
+                                and character_component.influence_points
+                                >= potential_action.get_cost()
+                            ):
+                                # if potential_action.get_name() == "StartCoupScheme":
+                                #     utility = potential_action.calculate_utility()
+                                #     _logger.info(
+                                #         "D:: [%s] Coup Scheme => %s",
+                                #         character.uid,
+                                #         utility,
+                                #     )
 
-                if len(behaviors) > 0:
-                    selected_behavior = (
-                        brain.behavior_selection_strategy.choose_behavior(
-                            character, behaviors
-                        )
+                                # if potential_action.get_name() == "StartWarScheme":
+                                #     utility = potential_action.calculate_utility()
+                                #     _logger.info(
+                                #         "D:: [%s] War Scheme => %s",
+                                #         character.uid,
+                                #         utility,
+                                #     )
+
+                                actions.append(potential_action)
+
+                if len(actions) > 0:
+                    selected_action = brain.action_selection_strategy.choose_action(
+                        actions
                     )
 
-                    brain.behavior_cooldowns[selected_behavior.get_name()] = (
-                        selected_behavior.get_cooldown()
+                    brain.action_cooldowns[selected_action.get_name()] = (
+                        selected_action.get_cooldown_time()
                     )
 
-                    success = selected_behavior.execute(character)
+                    success = selected_action.execute()
 
                     if success:
-                        character_component = character.get_component(Character)
-                        character_component.influence_points -= selected_behavior.cost
+                        character_component.influence_points -= (
+                            selected_action.get_cost()
+                        )
 
-                brain.context.clear_sensors()
+                brain.context.clear_blackboard()
 
 
 class FamilyRoleSystem(System):
@@ -438,9 +454,10 @@ class TerritoryRevoltSystem(System):
 
             # TODO: Fire an event for revolting
             _logger.info(
-                "[%s]: %s is revolting.",
+                "[%s]: %s is revolting against the %s family.",
                 current_date.to_iso_str(),
                 territory.gameobject.name_with_uid,
+                territory.controlling_family.name_with_uid,
             )
 
 
@@ -893,19 +910,19 @@ class PregnancyPlaceHolderSystem(System):
             character = marriage.character.get_component(Character)
             spouse = marriage.spouse.get_component(Character)
 
-            if not (character.sex == Sex.FEMALE and spouse.sex == Sex.FEMALE):
+            if not (character.sex == Sex.FEMALE and spouse.sex == Sex.MALE):
                 continue
 
             if character.gameobject.has_component(Pregnancy):
                 continue
 
             character_fertility_comp = marriage.character.get_component(Fertility)
-            character_fertility = character_fertility_comp.value / 100.0
+            character_fertility = character_fertility_comp.normalized
 
             spouse_fertility_comp = marriage.spouse.get_component(Fertility)
-            spouse_fertility = spouse_fertility_comp.value / 100.0
+            spouse_fertility = spouse_fertility_comp.normalized
 
-            chance_have_child = character_fertility * spouse_fertility
+            chance_have_child = (character_fertility + spouse_fertility) / 2
 
             if not rng.random() < chance_have_child:
                 continue
@@ -920,7 +937,7 @@ class PregnancyPlaceHolderSystem(System):
                 )
             )
 
-            character_fertility_comp.base_value -= 0.2
+            character_fertility_comp.base_value -= 25
 
             PregnancyEvent(character.gameobject).dispatch()
 
@@ -992,15 +1009,15 @@ class ChildBirthSystem(System):
             ).dispatch()
 
 
-class BehaviorCooldownSystem(System):
+class ActionCooldownSystem(System):
     """Update all active schemes."""
 
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
         for _, (brain, _) in world.get_components((AIBrain, Active)):
-            for key in brain.behavior_cooldowns:
-                brain.behavior_cooldowns[key] -= 1
+            for key in brain.action_cooldowns:
+                brain.action_cooldowns[key] -= 1
 
 
 class SchemeUpdateSystems(SystemGroup):
@@ -1076,6 +1093,7 @@ class AllianceSchemeUpdateSystem(System):
                     )
 
                 scheme.is_valid = False
+                destroy_alliance_scheme(scheme.gameobject)
 
 
 class WarSchemeUpdateSystem(System):
@@ -1137,12 +1155,12 @@ class WarSchemeUpdateSystem(System):
                     continue
 
                 member_family_head = member_family.get_component(Family).head
-                if member_family_head is None:
-                    raise RuntimeError(
-                        f"{member_family.name_with_uid} is missing a head."
-                    )
+                if member_family_head is not None:
+                    # raise RuntimeError(
+                    #     f"{member_family.name_with_uid} is missing a head."
+                    # )
 
-                join_war_as(war, member_family, role)
+                    join_war_as(war, member_family, role)
 
     def on_update(self, world: World) -> None:
         current_date = world.resources.get_resource(SimDate).copy()
@@ -1159,6 +1177,7 @@ class WarSchemeUpdateSystem(System):
             # same alliance
             if self.are_in_same_alliance(scheme.initiator, war_scheme.defender):
                 scheme.is_valid = False
+                destroy_war_scheme(scheme.gameobject)
                 continue
 
             elapsed_months = (current_date - scheme.start_date).total_months
@@ -1196,6 +1215,7 @@ class WarSchemeUpdateSystem(System):
                 )
 
                 scheme.is_valid = False
+                destroy_war_scheme(scheme.gameobject)
 
 
 class CoupSchemeUpdateSystem(System):
@@ -1243,7 +1263,7 @@ class CoupSchemeUpdateSystem(System):
                     ruler_family = current_ruler.get_component(Character).family
 
                     # TODO: Add cause of death (coup) to the death
-                    DieAction(current_ruler.get_component(AIBrain).context).execute()
+                    DieAction(current_ruler, pass_crown=False).execute()
 
                     if ruler_family is not None:
                         # Remove the rulers family from being in control of their home
@@ -1255,7 +1275,10 @@ class CoupSchemeUpdateSystem(System):
                             if territory_component.controlling_family == ruler_family:
                                 set_territory_controlling_family(territory, None)
 
+                    set_current_ruler(world, scheme.initiator)
+
                 scheme.is_valid = False
+                destroy_coup_scheme(scheme.gameobject)
 
             else:
                 # Check if the coup is discovered by the royal family
@@ -1281,9 +1304,10 @@ class CoupSchemeUpdateSystem(System):
                         member.name_with_uid,
                     )
                     # TODO: Add cause of death (execution) to the action
-                    DieAction(member.get_component(AIBrain).context).execute()
+                    DieAction(member).execute()
 
                 scheme.is_valid = False
+                destroy_coup_scheme(scheme.gameobject)
 
 
 class WarUpdateSystem(System):

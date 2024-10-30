@@ -9,10 +9,9 @@ how likely the action is to succeed if it is attempted.
 from __future__ import annotations
 
 import enum
-import random
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, DefaultDict, Iterable, Iterator, Optional
+from typing import Any, DefaultDict, Iterable, Iterator, Literal, Optional, TypeVar
 
 from ordered_set import OrderedSet
 
@@ -29,43 +28,28 @@ class ActionSelectionStrategy(ABC):
         raise NotImplementedError()
 
 
-class BehaviorSelectionStrategy(ABC):
-    """A utility object that helps AIBrains choose a behavior to execute."""
-
-    @abstractmethod
-    def choose_behavior(
-        self, character: GameObject, behaviors: Iterable[AIBehavior]
-    ) -> AIBehavior:
-        """Select a behavior from the given collection of behaviors."""
-        raise NotImplementedError()
-
-
 class AIBrain(Component):
     """A brain used to make choices for a character."""
 
     __slots__ = (
         "context",
         "action_selection_strategy",
-        "behavior_selection_strategy",
-        "behavior_cooldowns",
+        "action_cooldowns",
     )
 
     context: AIContext
     action_selection_strategy: ActionSelectionStrategy
-    behavior_selection_strategy: BehaviorSelectionStrategy
-    behavior_cooldowns: DefaultDict[str, int]
+    action_cooldowns: DefaultDict[str, int]
 
     def __init__(
         self,
         context: AIContext,
         action_selection_strategy: ActionSelectionStrategy,
-        behavior_selection_strategy: BehaviorSelectionStrategy,
     ) -> None:
         super().__init__()
         self.context = context
         self.action_selection_strategy = action_selection_strategy
-        self.behavior_selection_strategy = behavior_selection_strategy
-        self.behavior_cooldowns = defaultdict(lambda: 0)
+        self.action_cooldowns = defaultdict(lambda: 0)
 
 
 class AISensor(ABC):
@@ -76,45 +60,76 @@ class AISensor(ABC):
         """Run the sensor and write to the context's blackboard."""
         raise NotImplementedError()
 
-    @abstractmethod
-    def clear_output(self, context: AIContext) -> None:
-        """Clear the output from the sensor."""
-        raise NotImplementedError()
+
+_RT = TypeVar("_RT")
 
 
 class AIContext:
-    """A context of information used for AI decision making."""
+    """A context of information used for AI decision making.
 
-    __slots__ = ("blackboard", "world", "character", "sensors")
+    AIContexts can be hierarchical and use information from a parent context
+    to prevent from duplicating data.
+    """
 
-    blackboard: dict[str, Any]
+    __slots__ = ("_blackboard", "world", "character", "sensors", "_parent")
+
+    _blackboard: dict[str, Any]
+    """A key-value store of variables used for decision-making."""
     world: World
+    """The simulation's World instance."""
     character: GameObject
+    """The character this context is in reference to."""
     sensors: list[AISensor]
+    """Sensors used to fill the blackboard with information about the world/action."""
+    _parent: Optional[AIContext]
+    """The context this context is derived from."""
 
     def __init__(
-        self, world: World, character: GameObject, sensors: list[AISensor]
+        self,
+        world: World,
+        character: GameObject,
+        sensors: list[AISensor],
+        *,
+        parent: Optional[AIContext] = None,
     ) -> None:
-        self.blackboard = {}
+        self._blackboard = {}
         self.world = world
         self.character = character
         self.sensors = [*sensors]
+        self._parent = parent
 
     def update_sensors(self) -> None:
         """Run all the sensors."""
         for sensor in self.sensors:
             sensor.evaluate(self)
 
-    def clear_sensors(self) -> None:
-        """Clear the output from all sensors."""
-        for sensor in self.sensors:
-            sensor.clear_output(self)
+    def create_child(self) -> AIContext:
+        """Create a child of the context."""
+        return AIContext(self.world, self.character, self.sensors, parent=self)
 
-    def copy(self) -> AIContext:
-        """Create a copy of the context."""
-        context_copy = AIContext(self.world, self.character, self.sensors)
-        context_copy.blackboard = self.blackboard.copy()
-        return context_copy
+    def set_value(self, key: str, value: Any) -> None:
+        """Set a value."""
+        self._blackboard[key] = value
+
+    def get_value(self, key: str, default_value: _RT = None) -> _RT:
+        """Get a value."""
+        try:
+            return self._blackboard[key]
+        except KeyError:
+            if self._parent:
+                return self._parent.get_value(key, default_value)
+            else:
+                return default_value
+
+    def clear_blackboard(self) -> None:
+        """Clear all key-value entries."""
+        self._blackboard.clear()
+
+    def __getitem__(self, key: str) -> Any:
+        return self.get_value(key)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.set_value(key, value)
 
 
 class AIPrecondition(ABC):
@@ -129,38 +144,54 @@ class AIPrecondition(ABC):
 class AIUtilityConsideration(ABC):
     """A consideration of the utility of taking an action."""
 
+    def invert(self) -> AIUtilityConsideration:
+        """Invert the consideration."""
+        return _InvertedConsideration(self)
+
+    def pow(self, exponent: int) -> AIUtilityConsideration:
+        """Raise the utility value to a given exponent."""
+        return _ExponentialConsideration(self, exponent)
+
     @abstractmethod
     def evaluate(self, context: AIContext) -> float:
         """Evaluate the consideration."""
         raise NotImplementedError()
 
 
-class AISuccessConsideration(ABC):
-    """A consideration of the chance of success for an action."""
+class _InvertedConsideration(AIUtilityConsideration):
+    """Inverts a consideration score."""
 
-    @abstractmethod
+    __slots__ = ("consideration",)
+
+    consideration: AIUtilityConsideration
+
+    def __init__(self, consideration: AIUtilityConsideration) -> None:
+        super().__init__()
+        self.consideration = consideration
+
     def evaluate(self, context: AIContext) -> float:
-        """Evaluate the consideration."""
-        raise NotImplementedError()
+        return 1 - self.consideration.evaluate(context)
+
+
+class _ExponentialConsideration(AIUtilityConsideration):
+    """Inverts a consideration score."""
+
+    __slots__ = ("consideration", "exponent")
+
+    consideration: AIUtilityConsideration
+    exponent: int
+
+    def __init__(self, consideration: AIUtilityConsideration, exponent: int) -> None:
+        super().__init__()
+        self.consideration = consideration
+        self.exponent = exponent
+
+    def evaluate(self, context: AIContext) -> float:
+        return self.consideration.evaluate(context) ** self.exponent
 
 
 class ConstantUtilityConsideration(AIUtilityConsideration):
     """A utility consideration that is a constant value."""
-
-    __slots__ = ("value",)
-
-    value: float
-
-    def __init__(self, value: float) -> None:
-        super().__init__()
-        self.value = value
-
-    def evaluate(self, context: AIContext) -> float:
-        return self.value
-
-
-class ConstantSuccessConsideration(AISuccessConsideration):
-    """A success consideration that is a constant value."""
 
     __slots__ = ("value",)
 
@@ -207,7 +238,7 @@ class AIPreconditionGroup(AIPrecondition):
 class AIConsiderationGroupOp(enum.IntEnum):
     """An operation to perform on a group of considerations."""
 
-    GEOMETRIC_MEAN = 0
+    MEAN = 0
     MIN = enum.auto()
     MAX = enum.auto()
 
@@ -222,15 +253,15 @@ class AIUtilityConsiderationGroup(AIUtilityConsideration):
 
     def __init__(
         self,
-        op: AIConsiderationGroupOp,
-        considerations: Iterable[AIUtilityConsideration],
+        *considerations: AIUtilityConsideration,
+        op: Literal["mean", "min", "max"] = "mean",
     ) -> None:
         super().__init__()
-        self.op = op
+        self.op = AIConsiderationGroupOp[op.upper()]
         self.considerations = list(considerations)
 
     def evaluate(self, context: AIContext) -> float:
-        if self.op == AIConsiderationGroupOp.GEOMETRIC_MEAN:
+        if self.op == AIConsiderationGroupOp.MEAN:
             return self.get_geometric_mean_score(context)
         elif self.op == AIConsiderationGroupOp.MAX:
             return self.get_max_score(context)
@@ -289,153 +320,83 @@ class AIUtilityConsiderationGroup(AIUtilityConsideration):
         return max_score
 
 
-class AISuccessConsiderationGroup(AISuccessConsideration):
-    """A composite group of success considerations."""
-
-    __slots__ = ("op", "considerations")
-
-    op: AIConsiderationGroupOp
-    considerations: list[AISuccessConsideration]
-
-    def __init__(
-        self,
-        op: AIConsiderationGroupOp,
-        considerations: Iterable[AISuccessConsideration],
-    ) -> None:
-        super().__init__()
-        self.op = op
-        self.considerations = list(considerations)
-
-    def evaluate(self, context: AIContext) -> float:
-        if self.op == AIConsiderationGroupOp.GEOMETRIC_MEAN:
-            return self.get_geometric_mean_score(context)
-        elif self.op == AIConsiderationGroupOp.MAX:
-            return self.get_max_score(context)
-        elif self.op == AIConsiderationGroupOp.MIN:
-            return self.get_min_score(context)
-        else:
-            raise ValueError(f"Error: Unsupported op value: {self.op}")
-
-    def get_geometric_mean_score(self, context: AIContext) -> float:
-        """Calculate the geometric mean of the considerations."""
-        score: float = 1
-        consideration_count: int = 0
-
-        for consideration in self.considerations:
-            utility_score = consideration.evaluate(context)
-
-            if utility_score < 0.0:
-                continue
-
-            elif utility_score == 0.0:
-                return 0.0
-
-            # Update the current score and counts
-            score = score * utility_score
-            consideration_count += 1
-
-        if consideration_count == 0:
-            return 0.5
-        else:
-            return score ** (1 / consideration_count)
-
-    def get_min_score(self, context: AIContext) -> float:
-        """Get the minimum score of the considerations."""
-
-        min_score: float = 999_999.0
-
-        for consideration in self.considerations:
-            utility_score = consideration.evaluate(context)
-
-            if utility_score < min_score:
-                min_score = utility_score
-
-        return min_score
-
-    def get_max_score(self, context: AIContext) -> float:
-        """Get the maximum score of the considerations."""
-
-        max_score: float = -999_999.0
-
-        for consideration in self.considerations:
-            utility_score = consideration.evaluate(context)
-
-            if utility_score > max_score:
-                max_score = utility_score
-
-        return max_score
-
-
-class AIActionType(ABC):
+class AIActionType:
     """An abstract base class for all actions."""
 
     __slots__ = (
-        "success_consideration",
+        "name",
+        "cost",
+        "cooldown",
         "utility_consideration",
-        "precondition",
     )
 
-    success_consideration: AISuccessConsideration
+    name: str
+    """The name of this action type."""
+    cost: int
+    """The number of influence points required to execute this action."""
+    cooldown: int
+    """Number of months between recurred uses of this action by the same character."""
     utility_consideration: AIUtilityConsideration
-    precondition: AIPrecondition
+    """Consideration(s) for how much a character wants to perform this action."""
 
     def __init__(
         self,
-        success_consideration: AISuccessConsideration,
+        name: str,
+        cost: int,
+        cooldown: int,
         utility_consideration: AIUtilityConsideration,
-        precondition: AIPrecondition,
     ) -> None:
         super().__init__()
-        self.success_consideration = success_consideration
+        self.name = name
+        self.cost = cost
+        self.cooldown = cooldown
         self.utility_consideration = utility_consideration
-        self.precondition = precondition
-
-    def can_execute(self, context: AIContext) -> bool:
-        """Check if the action can be executed."""
-        return self.precondition.evaluate(context)
-
-    def calculate_utility(self, context: AIContext) -> float:
-        """Get the utility of this action."""
-        return self.utility_consideration.evaluate(context)
-
-    def calculate_success_probability(self, context: AIContext) -> float:
-        """Get probability of the action being successful."""
-        return self.success_consideration.evaluate(context)
-
-    @abstractmethod
-    def execute(self, context: AIContext) -> bool:
-        """Execute the action."""
-        raise NotImplementedError()
 
 
 class AIAction(ABC):
     """An action that a character can take."""
 
-    __slots__ = ("context", "action")
+    __slots__ = ("performer", "context", "action_type", "world")
 
+    performer: GameObject
     context: AIContext
-    action: AIActionType
+    action_type: AIActionType
+    world: World
 
-    def __init__(self, context: AIContext, action: AIActionType) -> None:
+    def __init__(self, performer: GameObject, action_type: str) -> None:
         super().__init__()
-        self.context = context.copy()
-        self.action = action
+        self.performer = performer
+        self.context = performer.get_component(AIBrain).context.create_child()
+        self.action_type = performer.world.resources.get_resource(
+            AIActionLibrary
+        ).get_action_with_name(action_type)
+        self.context["performer"] = performer
+        self.world = self.context.world
 
-    def can_execute(self) -> bool:
-        """Check if the action can be executed."""
-        return self.action.can_execute(self.context)
+    def get_name(self) -> str:
+        """Get the name of the behavior."""
+        return self.action_type.name
+
+    def get_cost(self) -> int:
+        """Get the cost of the behavior."""
+        return self.action_type.cost
+
+    def get_cooldown_time(self) -> int:
+        """Get the amount of time between repeat uses of this action type."""
+        return self.action_type.cooldown
+
+    def get_performer(self) -> GameObject:
+        """Get the character performing the action."""
+        return self.performer
 
     def calculate_utility(self) -> float:
         """Get the utility of this action."""
-        return self.action.calculate_utility(self.context)
+        return self.action_type.utility_consideration.evaluate(self.context)
 
-    def calculate_success_probability(self) -> float:
-        """Get probability of the action being successful."""
-        return self.action.calculate_success_probability(self.context)
-
+    @abstractmethod
     def execute(self) -> bool:
-        """Execute the action type."""
-        return self.action.execute(self.context)
+        """Execute the action."""
+        raise NotImplementedError()
 
 
 class AIActionLibrary:
@@ -450,7 +411,7 @@ class AIActionLibrary:
 
     def add_action(self, action: AIActionType) -> None:
         """Add an action to the library."""
-        self.actions[action.__class__.__name__] = action
+        self.actions[action.name] = action
 
     def iter_actions(self) -> Iterator[AIActionType]:
         """Return iterator for the library."""
@@ -466,68 +427,35 @@ class AIBehavior(ABC):
 
     __slots__ = (
         "name",
-        "motives",
-        "cost",
-        "cooldown",
         "precondition",
-        "utility_consideration",
     )
 
     name: str
     """The name of the behavior."""
     precondition: AIPrecondition
     """Calculates if the action can be performed."""
-    utility_consideration: AIUtilityConsideration
-    """Calculates the utility of the behavior."""
-    cost: int
-    """The number of influence point required to execute this behavior."""
-    cooldown: int
-    """Number of months between recurred uses of th this behavior by the same person."""
 
     def __init__(
         self,
         name: str,
-        cost: int,
-        cooldown: int,
         precondition: AIPrecondition,
-        utility_consideration: AIUtilityConsideration,
     ) -> None:
         self.name = name
-        self.utility_consideration = utility_consideration
         self.precondition = precondition
-        self.cost = cost
-        self.cooldown = cooldown
 
     def get_name(self) -> str:
         """Get the name of the behavior."""
         return self.name
 
-    def get_cooldown(self) -> int:
-        """Get the cooldown time."""
-        return self.cooldown
-
-    def can_execute(self, gameobject: GameObject) -> bool:
-        """Check if the action can be executed."""
-        context = gameobject.get_component(AIBrain).context.copy()
-        context.blackboard["behavior_cost"] = self.cost
-        return self.precondition.evaluate(context)
-
-    def calculate_utility(self, gameobject: GameObject) -> float:
-        """Get the utility of this action."""
-        context = gameobject.get_component(AIBrain).context.copy()
-        context.blackboard["behavior_cost"] = self.cost
-        return self.utility_consideration.evaluate(context)
-
     def passes_preconditions(self, gameobject: GameObject) -> bool:
-        """check if the given character passes all the preconditions."""
-        context = gameobject.get_component(AIBrain).context.copy()
-        context.blackboard["behavior_cost"] = self.cost
+        """Check if the given character passes all the preconditions."""
+        context = gameobject.get_component(AIBrain).context.create_child()
         return self.precondition.evaluate(context)
 
     @abstractmethod
-    def execute(self, character: GameObject) -> bool:
-        """Execute the behavior with the given character."""
-        raise NotImplementedError()
+    def get_actions(self, character: GameObject) -> list[AIAction]:
+        """Get valid actions for performing this behavior."""
+        raise NotImplementedError
 
 
 class AIBehaviorLibrary:
@@ -542,7 +470,7 @@ class AIBehaviorLibrary:
 
     def add_behavior(self, behavior: AIBehavior) -> None:
         """Add behavior to the library."""
-        self.behaviors[behavior.__class__.__name__] = behavior
+        self.behaviors[behavior.get_name()] = behavior
 
     def iter_behaviors(self) -> Iterator[AIBehavior]:
         """Return iterator to behaviors."""
@@ -551,148 +479,6 @@ class AIBehaviorLibrary:
     def get_behavior(self, name: str) -> AIBehavior:
         """Get a behavior by name."""
         return self.behaviors[name]
-
-
-class AIActionCollection:
-    """A collection of actions to select from."""
-
-    __slots__ = ("actions", "utilities")
-
-    actions: list[AIAction]
-    utilities: list[float]
-
-    def __init__(self) -> None:
-        self.actions = []
-        self.utilities = []
-
-    def add(self, action: AIAction, utility: float) -> None:
-        """Add an action to the collection."""
-        self.actions.append(action)
-        self.utilities.append(utility)
-
-    def select_max(self) -> AIAction:
-        """Select the action with the highest utility"""
-        max_utility: float = -999_999
-        best_action: Optional[AIAction] = None
-
-        for i, action in enumerate(self.actions):
-            utility = self.utilities[i]
-            if utility > max_utility:
-                best_action = action
-
-        if best_action is None:
-            raise ValueError("No actions found in list with utility greater than 0.")
-
-        return best_action
-
-    def select_any(self, rng: Optional[random.Random] = None) -> AIAction:
-        """Randomly select any action from the collection."""
-        if len(self.actions) == 0:
-            raise ValueError("No actions found in list.")
-
-        if rng is not None:
-            return rng.choice(self.actions)
-        else:
-            return random.choice(self.actions)
-
-    def select_weighted_random(self, rng: Optional[random.Random] = None) -> AIAction:
-        """Perform weighted random selection over the actions."""
-        if len(self.actions) == 0:
-            raise ValueError("No actions found in list.")
-
-        # Filter those with weights less than or equal to zero
-        filtered_actions: list[AIAction] = []
-        filtered_utilities: list[float] = []
-        for i, utility in enumerate(self.utilities):
-            if utility > 0:
-                filtered_actions.append(self.actions[i])
-                filtered_utilities.append(utility)
-
-        if len(filtered_actions) == 0:
-            raise ValueError("No actions found in list after filtering.")
-
-        if rng is not None:
-            return rng.choices(filtered_actions, filtered_utilities, k=1)[0]
-        else:
-            return random.choices(filtered_actions, filtered_utilities, k=1)[0]
-
-    def __len__(self) -> int:
-        return len(self.actions)
-
-    def __bool__(self) -> bool:
-        return bool(self.actions)
-
-
-class AIBehaviorCollection:
-    """A collection of behaviors to select from."""
-
-    __slots__ = ("behaviors", "utilities", "rng")
-
-    behaviors: list[AIBehavior]
-    utilities: list[float]
-    rng: Optional[random.Random]
-
-    def __init__(self, rng: Optional[random.Random] = None) -> None:
-        self.behaviors = []
-        self.utilities = []
-        self.rng = rng
-
-    def add(self, behavior: AIBehavior, utility: float) -> None:
-        """Add an action to the collection."""
-        self.behaviors.append(behavior)
-        self.utilities.append(utility)
-
-    def select_max(self) -> AIBehavior:
-        """Select the behavior with the highest utility"""
-        max_utility: float = -999_999
-        best_behavior: Optional[AIBehavior] = None
-
-        for i, behavior in enumerate(self.behaviors):
-            utility = self.utilities[i]
-            if utility > max_utility:
-                best_behavior = behavior
-
-        if best_behavior is None:
-            raise ValueError("No behaviors found in list with utility greater than 0.")
-
-        return best_behavior
-
-    def select_any(self) -> AIBehavior:
-        """Randomly select any behavior from the collection."""
-        if len(self.behaviors) == 0:
-            raise ValueError("No behavior found in list.")
-
-        if self.rng is not None:
-            return self.rng.choice(self.behaviors)
-        else:
-            return random.choice(self.behaviors)
-
-    def select_weighted_random(self) -> AIBehavior:
-        """Perform weighted random selection over the behaviors."""
-        if len(self.behaviors) == 0:
-            raise ValueError("No behaviors found in list.")
-
-        # Filter those with weights less than or equal to zero
-        filtered_behaviors: list[AIBehavior] = []
-        filtered_utilities: list[float] = []
-        for i, utility in enumerate(self.utilities):
-            if utility > 0:
-                filtered_behaviors.append(self.behaviors[i])
-                filtered_utilities.append(utility)
-
-        if len(filtered_behaviors) == 0:
-            raise ValueError("No actions found in list after filtering.")
-
-        if self.rng is not None:
-            return self.rng.choices(filtered_behaviors, filtered_utilities, k=1)[0]
-        else:
-            return random.choices(filtered_behaviors, filtered_utilities, k=1)[0]
-
-    def __len__(self) -> int:
-        return len(self.behaviors)
-
-    def __bool__(self) -> bool:
-        return bool(self.behaviors)
 
 
 class SchemeData(Component, ABC):

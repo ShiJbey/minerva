@@ -254,6 +254,6 @@ def get_default_vector_factory() -> FeatureVectorFactory:
         "num alliances disbanded", num_alliances_disbanded_extractor
     )
     factory.add_extractor_fn("inherited throne?", did_inherit_throne_extractor)
-    factory.add_extractor_fn("time since last war", time_since_last_war_extractor)
+    # factory.add_extractor_fn("time since last war", time_since_last_war_extractor)
 
     return factory

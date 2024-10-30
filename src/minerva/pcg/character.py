@@ -8,13 +8,12 @@ from typing import Optional
 from ordered_set import OrderedSet
 
 from minerva.actions.base_types import AIBrain, AIContext, SchemeManager
-from minerva.actions.behavior_helpers import (
-    TerritoriesControlledByOpps,
+from minerva.actions.selection_strategies import MaxUtilActionSelectStrategy
+from minerva.actions.sensors import (
     TerritoriesInRevoltSensor,
-    UnControlledTerritoriesSensor,
     UnexpandedTerritoriesSensor,
-    WeightedActionSelectStrategy,
-    WeightedBehaviorSelectStrategy,
+    UnControlledTerritoriesSensor,
+    TerritoriesControlledByOpps,
 )
 from minerva.characters.betrothal_data import BetrothalTracker
 from minerva.characters.components import (
@@ -275,8 +274,8 @@ class DefaultCharacterFactory(CharacterFactory):
                         TerritoriesControlledByOpps(),
                     ],
                 ),
-                action_selection_strategy=WeightedActionSelectStrategy(rng=rng),
-                behavior_selection_strategy=WeightedBehaviorSelectStrategy(rng=rng),
+                action_selection_strategy=MaxUtilActionSelectStrategy(),
+                # action_selection_strategy=WeightedActionSelectStrategy(rng=rng),
             )
         )
         obj.add_component(SchemeManager())
@@ -288,7 +287,19 @@ class DefaultCharacterFactory(CharacterFactory):
                 rng.randint(chosen_species.lifespan[0], chosen_species.lifespan[1]),
             )
         )
-        obj.add_component(Fertility(default_stat_calc_strategy, base_value=100))
+        obj.add_component(
+            Fertility(
+                default_stat_calc_strategy,
+                base_value=(
+                    rng.randint(
+                        0,
+                        chosen_species.get_max_fertility(chosen_sex, chosen_life_stage),
+                    )
+                    if randomize_stats
+                    else chosen_species.get_max_fertility(chosen_sex, chosen_life_stage)
+                ),
+            )
+        )
         obj.add_component(
             Diplomacy(
                 default_stat_calc_strategy,

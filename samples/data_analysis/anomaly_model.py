@@ -11,13 +11,13 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import torch
-from feature_extraction import FeatureVectorFactory, get_default_vector_factory
 from torch import nn
 from torch.utils.data import Dataset
 
+from feature_extraction import FeatureVectorFactory, get_default_vector_factory
 from minerva.ecs import GameObject
 
-FEATURE_VECT_SIZE = 25
+FEATURE_VECT_SIZE = 24
 
 
 class MinervaAutoEncoder(nn.Module):
@@ -55,7 +55,7 @@ class MinervaCharacterDataset(Dataset):
 
     def __init__(
         self,
-        csv_file_path: str,
+        csv_file_path: Union[str, pathlib.Path],
         no_family_heads=False,
         family_heads_only=False,
         transform=None,
@@ -75,7 +75,7 @@ class MinervaCharacterDataset(Dataset):
 
     def __getitem__(self, index):
         if torch.is_tensor(index):
-            idx = idx.tolist()
+            index = index.tolist()
 
         sample = (
             ((self.data.iloc[index] - self.data_mean) / (self.data_std + 1e-10))
@@ -169,12 +169,14 @@ class MinervaAnomalyDetector:
             error_threshold=error_threshold,
         )
 
-    def predict(self, character: GameObject) -> tuple[bool, npt.NDArray[np.float32]]:
+    def predict(
+        self, character: GameObject
+    ) -> tuple[bool, float, npt.NDArray[np.float32]]:
         """Predict if a character is an anomaly.
 
         Returns
         -------
-        tuple[bool, npt.NDArray[np.float32]]
+        tuple[bool, float, npt.NDArray[np.float32]]
             The final classification (True if a character is an anomaly)
             And the columns of the feature vector with errors that contributed to
             the classification.
@@ -196,4 +198,4 @@ class MinervaAnomalyDetector:
 
         is_anomaly = mean_squared_error > self.error_threshold
 
-        return is_anomaly, squared_error > self.error_threshold
+        return is_anomaly, mean_squared_error, squared_error > self.error_threshold

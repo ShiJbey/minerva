@@ -10,46 +10,25 @@ from typing import Optional
 
 import minerva.actions.behaviors as behaviors
 import minerva.systems
-from minerva.actions.actions import DieActionType, GetMarriedActionType
 from minerva.actions.base_types import (
     AIActionLibrary,
+    AIActionType,
     AIBehaviorLibrary,
-    AIConsiderationGroupOp,
     AIPreconditionGroup,
     AIUtilityConsiderationGroup,
     ConstantPrecondition,
-    ConstantSuccessConsideration,
     ConstantUtilityConsideration,
 )
-from minerva.actions.behavior_helpers import (
-    AreAlliancesActive,
-    AreAllianceSchemesActive,
-    AreCoupSchemesActive,
-    BehaviorCostPrecondition,
-    BoldnessConsideration,
-    CompassionConsideration,
-    DiplomacyConsideration,
-    FamilyInAlliancePrecondition,
-    GreedConsideration,
-    HasActiveSchemes,
-    HasTerritoriesInRevolt,
-    HonorConsideration,
-    InfluencePointConsideration,
-    IntrigueConsideration,
-    Invert,
-    IsAllianceMemberPlottingCoup,
-    IsCurrentlyAtWar,
-    IsFamilyHeadPrecondition,
-    IsRulerPrecondition,
-    JoinedAllianceScheme,
-    MartialConsideration,
-    Not,
+from minerva.actions.considerations import (
+    OpinionOfRecipientCons,
+    OpinionOfSchemeInitiatorCons, StewardshipConsideration, RationalityConsideration, DiplomacyConsideration,
+    GreedConsideration, HonorConsideration, CompassionConsideration, BoldnessConsideration, MartialConsideration,
+    WantForPowerConsideration, IntrigueConsideration, InfluencePointGoalConsideration, OpinionOfRulerConsideration,
     OpinionOfAllianceLeader,
-    OpinionOfRulerConsideration,
-    RationalityConsideration,
-    StewardshipConsideration,
-    WantForPowerConsideration,
 )
+from minerva.actions.preconditions import IsFamilyHeadPrecondition, FamilyInAlliancePrecondition, \
+    JoinedAllianceScheme, IsRulerPrecondition, AreCoupSchemesActive, IsAllianceMemberPlottingCoup, HasActiveSchemes, \
+    IsCurrentlyAtWar, Not
 from minerva.characters.components import (
     DynastyTracker,
     LifeStage,
@@ -183,9 +162,9 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.RevoltUpdateSystem(),
         )
-        # self.world.systems.add_system(
-        #     minerva.systems.TerritoryRandomEventSystem(),
-        # )
+        self.world.systems.add_system(
+            minerva.systems.TerritoryRandomEventSystem(),
+        )
         self.world.systems.add_system(
             minerva.systems.InfluencePointGainSystem(),
         )
@@ -217,7 +196,7 @@ class Simulation:
             minerva.systems.WarUpdateSystem(),
         )
         self.world.systems.add_system(
-            minerva.systems.BehaviorCooldownSystem(),
+            minerva.systems.ActionCooldownSystem(),
         )
 
     def initialize_actions(self) -> None:
@@ -225,66 +204,285 @@ class Simulation:
         action_library = self.world.resources.get_resource(AIActionLibrary)
 
         action_library.add_action(
-            DieActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
-                utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(True),
+            AIActionType(
+                name="Idle",
+                cost=0,
+                cooldown=0,
+                utility_consideration=ConstantUtilityConsideration(0.4),
             )
         )
 
         action_library.add_action(
-            GetMarriedActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
-                utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(False),
+            AIActionType(
+                name="SendGift",
+                cost=200,
+                cooldown=4,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    DiplomacyConsideration(),
+                    GreedConsideration().invert().pow(2),
+                ),
             )
         )
 
         action_library.add_action(
-            behaviors.GiveBackToTerritoryActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
-                utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(True),
+            AIActionType(
+                name="SendAid",
+                cost=100,
+                cooldown=4,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    CompassionConsideration(),
+                    GreedConsideration().invert().pow(2),
+                    OpinionOfRecipientCons().pow(2),
+                ),
             )
         )
 
         action_library.add_action(
-            behaviors.QuellRevoltActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
-                utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(True),
+            AIActionType(
+                name="ExtortLocalFamilies",
+                cost=500,
+                cooldown=4,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    GreedConsideration().pow(2),
+                    WantForPowerConsideration().pow(2),
+                    CompassionConsideration().invert(),
+                ),
             )
         )
 
         action_library.add_action(
-            behaviors.SeizeTerritoryActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
-                utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(True),
+            AIActionType(
+                name="ExtortTerritoryOwners",
+                cost=500,
+                cooldown=4,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    GreedConsideration().pow(2),
+                    WantForPowerConsideration().pow(2),
+                    CompassionConsideration().invert(),
+                ),
             )
         )
 
         action_library.add_action(
-            behaviors.ExpandIntoTerritoryActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
+            AIActionType(
+                name="Die",
+                cost=0,
+                cooldown=0,
                 utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(True),
             )
         )
 
         action_library.add_action(
-            behaviors.StartWarSchemeActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
+            AIActionType(
+                name="GetMarried",
+                cost=0,
+                cooldown=0,
                 utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(True),
             )
         )
 
         action_library.add_action(
-            behaviors.TaxTerritoryActionType(
-                success_consideration=ConstantSuccessConsideration(1.0),
+            AIActionType(
+                name="GiveBackToTerritory",
+                cost=100,
+                cooldown=4,
                 utility_consideration=ConstantUtilityConsideration(1.0),
-                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="QuellRevolt",
+                cost=200,
+                cooldown=2,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    ConstantUtilityConsideration(0.6),
+                    StewardshipConsideration(),
+                    RationalityConsideration(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="GrowPoliticalInfluence",
+                cost=400,
+                cooldown=4,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    GreedConsideration(),
+                    WantForPowerConsideration(),
+                    DiplomacyConsideration(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="SeizeTerritory",
+                cooldown=3,
+                cost=500,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    ConstantUtilityConsideration(0.5),
+                    AIUtilityConsiderationGroup(
+                        GreedConsideration(),
+                        WantForPowerConsideration(),
+                        op="max",
+                    ),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="ExpandIntoTerritory",
+                cooldown=6,
+                cost=500,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    ConstantUtilityConsideration(0.5),
+                    WantForPowerConsideration(),
+                    AIUtilityConsiderationGroup(
+                        GreedConsideration(),
+                        MartialConsideration(),
+                        op="max",
+                    ),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="StartWarScheme",
+                cooldown=3,
+                cost=300,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    BoldnessConsideration(),
+                    WantForPowerConsideration(),
+                    ConstantUtilityConsideration(0.5),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="StartCoupScheme",
+                cost=7000,
+                cooldown=480,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    HonorConsideration().invert().pow(2),
+                    DiplomacyConsideration().invert().pow(2),
+                    BoldnessConsideration().pow(2),
+                    WantForPowerConsideration().pow(2),
+                    OpinionOfRulerConsideration().invert().pow(2),
+                    IntrigueConsideration().pow(2),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="JoinCoupScheme",
+                cost=3000,
+                cooldown=12,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    ConstantUtilityConsideration(0.3),
+                    HonorConsideration().invert().pow(2),
+                    IntrigueConsideration().pow(2),
+                    BoldnessConsideration(),
+                    WantForPowerConsideration(),
+                    OpinionOfRulerConsideration().invert(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="JoinCoupScheme",
+                cost=3000,
+                cooldown=12,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    ConstantUtilityConsideration(0.3),
+                    HonorConsideration().invert().pow(2),
+                    IntrigueConsideration().pow(2),
+                    BoldnessConsideration(),
+                    WantForPowerConsideration(),
+                    OpinionOfRulerConsideration().invert(),
+                    OpinionOfSchemeInitiatorCons().pow(2),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="JoinAllianceScheme",
+                cost=0,
+                cooldown=5,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    DiplomacyConsideration(),
+                    OpinionOfSchemeInitiatorCons(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="TaxTerritory",
+                cost=100,
+                cooldown=3,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    GreedConsideration(),
+                    CompassionConsideration().invert(),
+                    InfluencePointGoalConsideration(400).invert(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="StartAllianceScheme",
+                cost=500,
+                cooldown=6,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    DiplomacyConsideration().pow(2),
+                    StewardshipConsideration(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="JoinAllianceScheme",
+                cost=0,
+                cooldown=4,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    DiplomacyConsideration().pow(2),
+                    StewardshipConsideration(),
+                    OpinionOfSchemeInitiatorCons(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="JoinExistingAlliance",
+                cost=400,
+                cooldown=4,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    DiplomacyConsideration().pow(2),
+                    StewardshipConsideration(),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="DisbandAlliance",
+                cost=500,
+                cooldown=12,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    DiplomacyConsideration().invert().pow(2),
+                    StewardshipConsideration(),
+                    OpinionOfAllianceLeader().invert().pow(2),
+                ),
             )
         )
 
@@ -295,36 +493,60 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.IdleBehavior(
                 name="Idle",
-                cooldown=0,
-                cost=0,
+                precondition=ConstantPrecondition(True),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.SendGiftBehavior(
+                name="SendGift",
                 precondition=AIPreconditionGroup(
-                    BehaviorCostPrecondition(),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.5),
-                    ],
+                    IsFamilyHeadPrecondition(),
                 ),
             )
         )
 
         behavior_library.add_behavior(
-            behaviors.GiveToSmallfolkBehavior(
-                name="GiveToSmallfolk",
-                cooldown=2,
-                cost=200,
+            behaviors.SendAidBehavior(
+                name="SendAid",
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
                 ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.5),
-                        Invert(GreedConsideration()),
-                        CompassionConsideration(),
-                    ],
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.GiveToSmallFolkBehavior(
+                name="GiveToSmallfolk",
+                precondition=AIPreconditionGroup(
+                    IsFamilyHeadPrecondition(),
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.GrowPoliticalInfluenceBehavior(
+                name="GrowPoliticalInfluence",
+                precondition=AIPreconditionGroup(
+                    IsFamilyHeadPrecondition(),
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.ExtortTerritoryOwners(
+                name="ExtortTerritoryOwners",
+                precondition=AIPreconditionGroup(
+                    IsRulerPrecondition(),
+                ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.ExtortLocalFamiliesBehavior(
+                name="ExtortLocalFamilies",
+                precondition=AIPreconditionGroup(
+                    IsFamilyHeadPrecondition(),
                 ),
             )
         )
@@ -332,20 +554,8 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.QuellRevolt(
                 name="QuellRevolt",
-                cooldown=2,
-                cost=300,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
-                    HasTerritoriesInRevolt(),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.MAX,
-                    considerations=[
-                        ConstantUtilityConsideration(0.6),
-                        StewardshipConsideration(),
-                        RationalityConsideration(),
-                    ],
                 ),
             )
         )
@@ -353,20 +563,8 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.TaxTerritory(
                 name="TaxTerritory",
-                cooldown=4,
-                cost=50,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.MAX,
-                    considerations=[
-                        ConstantUtilityConsideration(0.5),
-                        GreedConsideration(),
-                        Invert(CompassionConsideration()),
-                        Invert(InfluencePointConsideration(600)),
-                    ],
                 ),
             )
         )
@@ -374,18 +572,8 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.ExpandPoliticalDomain(
                 name="ExpandPoliticalDomain",
-                cooldown=3,
-                cost=500,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.5),
-                        GreedConsideration(),
-                    ],
                 ),
             )
         )
@@ -393,67 +581,32 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.SeizeControlOfTerritory(
                 name="SeizeControlOfTerritory",
-                cooldown=3,
-                cost=500,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.5),
-                        GreedConsideration(),
-                    ],
                 ),
             )
         )
 
         behavior_library.add_behavior(
-            behaviors.FormAlliance(
-                name="FormAlliance",
-                cooldown=2,
-                cost=500,
+            behaviors.StartAllianceSchemeBehavior(
+                name="StartAllianceScheme",
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
-                    Not(FamilyInAlliancePrecondition()),
-                    Not(JoinedAllianceScheme()),
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
                 ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.5),
-                        DiplomacyConsideration(),
-                        StewardshipConsideration(),
-                        BoldnessConsideration(),
-                    ],
-                ),
             )
         )
 
         behavior_library.add_behavior(
-            behaviors.JoinAllianceScheme(
+            behaviors.JoinAllianceSchemeBehavior(
                 name="JoinAllianceScheme",
-                cooldown=0,
-                cost=0,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
                     Not(FamilyInAlliancePrecondition()),
-                    AreAllianceSchemesActive(),
                     Not(JoinedAllianceScheme()),
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(1.0),
-                        WantForPowerConsideration(),
-                    ],
                 ),
             )
         )
@@ -461,24 +614,12 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.JoinExistingAlliance(
                 name="JoinExistingAlliance",
-                cooldown=0,
-                cost=300,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
                     Not(FamilyInAlliancePrecondition()),
-                    AreAlliancesActive(),
                     Not(JoinedAllianceScheme()),
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.4),
-                        WantForPowerConsideration(),
-                        DiplomacyConsideration(),
-                    ],
                 ),
             )
         )
@@ -486,45 +627,23 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.DisbandAlliance(
                 name="DisbandAlliance",
-                cooldown=0,
-                cost=500,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
                     FamilyInAlliancePrecondition(),
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.5),
-                        Invert(DiplomacyConsideration()),
-                        Invert(OpinionOfAllianceLeader()),
-                    ],
                 ),
             )
         )
 
         behavior_library.add_behavior(
-            behaviors.DeclareWar(
+            behaviors.DeclareWarBehavior(
                 name="DeclareWar",
-                cooldown=3,
-                cost=300,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
+                    Not(IsAllianceMemberPlottingCoup()),
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(1.0),
-                        MartialConsideration(),
-                        BoldnessConsideration(),
-                        WantForPowerConsideration(),
-                    ],
                 ),
             )
         )
@@ -532,54 +651,25 @@ class Simulation:
         behavior_library.add_behavior(
             behaviors.PlanCoupBehavior(
                 name="PlanCoup",
-                cooldown=2,
-                cost=2000,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
                     Not(IsRulerPrecondition()),
                     Not(IsAllianceMemberPlottingCoup()),
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
                 ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.2),
-                        Invert(DiplomacyConsideration()),
-                        Invert(HonorConsideration()),
-                        BoldnessConsideration(),
-                        WantForPowerConsideration(),
-                        Invert(OpinionOfRulerConsideration()),
-                        IntrigueConsideration(),
-                    ],
-                ),
             )
         )
 
         behavior_library.add_behavior(
-            behaviors.JoinCoupScheme(
+            behaviors.JoinCoupSchemeBehavior(
                 name="JoinCoupScheme",
-                cooldown=2,
-                cost=300,
                 precondition=AIPreconditionGroup(
                     IsFamilyHeadPrecondition(),
-                    BehaviorCostPrecondition(),
                     Not(IsRulerPrecondition()),
                     AreCoupSchemesActive(),
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
-                ),
-                utility_consideration=AIUtilityConsiderationGroup(
-                    op=AIConsiderationGroupOp.GEOMETRIC_MEAN,
-                    considerations=[
-                        ConstantUtilityConsideration(0.3),
-                        Invert(DiplomacyConsideration()),
-                        Invert(HonorConsideration()),
-                        BoldnessConsideration(),
-                        WantForPowerConsideration(),
-                        Invert(OpinionOfRulerConsideration()),
-                    ],
                 ),
             )
         )
