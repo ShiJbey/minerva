@@ -4,37 +4,64 @@ Tools and helper functions for inspecting simulations.
 
 """
 
-# from typing import Union
+from typing import Any
 
+import rich.columns
 import rich.console
 import rich.markdown
 import rich.panel
 import rich.table
 
 from minerva import __version__
+from minerva.actions.base_types import Scheme, SchemeManager
 from minerva.characters.components import (
+    Boldness,
     Character,
+    Compassion,
+    Diplomacy,
+    DreadMotive,
     Dynasty,
     DynastyTracker,
     Emperor,
     Family,
+    FamilyMotive,
     FamilyRoleFlags,
+    Fertility,
+    Greed,
+    HappinessMotive,
     HeadOfFamily,
+    Honor,
+    HonorMotive,
+    Intrigue,
+    Learning,
+    Lifespan,
+    Luck,
+    Martial,
+    MoneyMotive,
+    PowerMotive,
     Pregnancy,
+    Prowess,
+    Rationality,
+    RespectMotive,
+    RomancePropensity,
+    SexMotive,
+    Sociability,
+    Stewardship,
+    Vengefulness,
+    WantForChildren,
+    WantForMarriage,
+    WantForPower,
+    Zeal,
 )
+from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
-from minerva.ecs import Active
+from minerva.ecs import Active, GameObject
 from minerva.life_events.base_types import LifeEventHistory
-# from minerva.relationships.base_types import Attraction, Opinion, RelationshipManager
 from minerva.simulation import Simulation
+from minerva.stats.base_types import StatusEffectManager
 from minerva.traits.base_types import TraitManager
-from minerva.world_map.components import Territory
-
-
-# def _sign(num: Union[int, float]) -> str:
-#     """Get the sign of a number."""
-#     return "-" if num < 0 else "+"
+from minerva.world_map.components import PopulationHappiness, Territory
 
 
 class SimulationInspector:
@@ -60,29 +87,121 @@ class SimulationInspector:
 
         console = rich.console.Console()
 
-        status_markdown_text: str = (
-            "# Simulation Status\n"
-            "\n"
-            f"**World seed:** {self.sim.config.seed}\n\n"
-            f"**World Date:** {self.sim.date.to_iso_str()}\n\n"
-            f"**Simulation Version:** {__version__}\n\n"
-            f"**Num Active Families:** {total_families}\n\n"
-            f"**Num Active Characters:** {total_characters}\n\n"
-            f"**Current Ruler:** {current_ruler_name}\n\n"
-            f"**Num Active Territories:** {total_territories}\n\n"
-            f"**Num Active Wars:** {total_wars}\n\n"
-            f"**Num Active Alliances:** {total_alliances}\n\n"
-            "\n"
+        panel = rich.panel.Panel(
+            f"[orange1 bold]World seed:[/orange1 bold] {self.sim.config.seed}\n"
+            f"[orange1 bold]World Date:[/orange1 bold] {self.sim.date.to_iso_str()}\n"
+            f"[orange1 bold]Simulation Version:[/orange1 bold] {__version__}\n"
+            f"[orange1 bold]Num Active Families:[/orange1 bold] {total_families}\n"
+            f"[orange1 bold]Num Active Characters:[/orange1 bold] {total_characters}\n"
+            f"[orange1 bold]Current Ruler:[/orange1 bold] {current_ruler_name}\n"
+            f"[orange1 bold]Num Active Territories:[/orange1 bold] {total_territories}\n"
+            f"[orange1 bold]Num Active Wars:[/orange1 bold] {total_wars}\n"
+            f"[orange1 bold]Num Active Alliances:[/orange1 bold] {total_alliances}",
+            title="Simulation Info",
+            title_align="left",
+            expand=False,
+            highlight=True,
         )
-
-        status_markdown = rich.markdown.Markdown(status_markdown_text)
-
-        panel = rich.panel.Panel(status_markdown)
 
         console.print(panel)
 
+    def inspect(self, gameobject_id: int) -> None:
+        """Print information about a GameObject."""
+
+        if self.sim.world.gameobjects.has_gameobject(gameobject_id):
+            gameobject = self.sim.world.gameobjects.get_gameobject(gameobject_id)
+
+            if gameobject.has_component(Character):
+                self.inspect_character(gameobject_id)
+            elif gameobject.has_component(Family):
+                self.inspect_family(gameobject_id)
+            elif gameobject.has_component(Territory):
+                self.inspect_territory(gameobject_id)
+            elif gameobject.has_component(Dynasty):
+                self.inspect_dynasty(gameobject_id)
+            elif gameobject.has_component(War):
+                self.inspect_war(gameobject_id)
+            elif gameobject.has_component(Alliance):
+                self.inspect_alliance(gameobject_id)
+            else:
+                console = rich.console.Console()
+                console.print(rich.markdown.Markdown(f"# {gameobject.name_with_uid}"))
+                rich.inspect(gameobject)
+
+        else:
+            console = rich.console.Console()
+            console.print(
+                "[red bold]Error:[/red bold] No GameObject found with id: "
+                f"{gameobject_id}."
+            )
+
+    def inspect_war(self, war_id: int) -> None:
+        """Print information about a war."""
+        console = rich.console.Console()
+
+        war = self.sim.world.gameobjects.get_gameobject(war_id)
+
+        war_component = war.get_component(War)
+
+        aggressor = war_component.aggressor.name_with_uid
+        defender = war_component.defender.name_with_uid
+        aggressor_allies = ", ".join(
+            a.name_with_uid for a in war_component.aggressor_allies
+        )
+        defender_allies = ", ".join(
+            a.name_with_uid for a in war_component.defender_allies
+        )
+        contested_territory = war_component.contested_territory.name_with_uid
+        start_date = str(war_component.start_date)
+        end_date = str(war_component.end_date)
+
+        console.print(
+            rich.panel.Panel(
+                f"[orange1 bold]Aggressor[/orange1 bold]: {aggressor}\n"
+                f"[orange1 bold]Defender[/orange1 bold]: {defender}\n"
+                f"[orange1 bold]Aggressor Allies[/orange1 bold]: {aggressor_allies}\n"
+                f"[orange1 bold]Defender Allies[/orange1 bold]: {defender_allies}\n"
+                f"[orange1 bold]Contested Territory[/orange1 bold]: {contested_territory}\n"
+                f"[orange1 bold]Start Date[/orange1 bold]: {start_date}\n"
+                f"[orange1 bold]End Date[/orange1 bold]: {end_date}",
+                title=f"War ({war_id})",
+                title_align="left",
+                expand=False,
+                highlight=True,
+            )
+        )
+
+    def inspect_alliance(self, alliance_id: int) -> None:
+        """Print information about an alliance to the console."""
+        alliance = self.sim.world.gameobjects.get_gameobject(alliance_id)
+        alliance_component = alliance.get_component(Alliance)
+
+        founder = alliance_component.founder.name_with_uid
+        founder_family = alliance_component.founder_family.name_with_uid
+        members = ", ".join(m.name_with_uid for m in alliance_component.member_families)
+        start_date = str(alliance_component.start_date)
+        end_date = str(alliance_component.end_date)
+
+        console = rich.console.Console()
+        console.print(
+            rich.panel.Panel(
+                f"[orange1 bold]Founder[/orange1 bold]: {founder}\n"
+                f"[orange1 bold]Founder Family[/orange1 bold]: {founder_family}\n"
+                f"[orange1 bold]Members[/orange1 bold]: {members}\n"
+                f"[orange1 bold]Start Date[/orange1 bold]: {start_date}\n"
+                f"[orange1 bold]End Date[/orange1 bold]: {end_date}",
+                title=f"Alliance ({alliance_id})",
+                title_align="left",
+                expand=False,
+                highlight=True,
+            )
+        )
+
     def inspect_character(self, character_id: int) -> None:
         """Print information about a character to the console."""
+
+        renderable_objs: list[Any] = []
+
         character = self.sim.world.gameobjects.get_gameobject(character_id)
 
         character_component = character.get_component(Character)
@@ -151,100 +270,295 @@ class SimulationInspector:
                 f"Head of {head_of_family_comp.family.name_with_uid} family"
             )
 
-        titles = ", ".join(title_list)
+        titles = ", ".join(title_list) if title_list else "N/A"
 
-        output = [
-            f"# [Character] {character.name_with_uid}\n",
-            "\n",
-            f"First Name: {character_component.first_name}\n",
-            f"Surname: {character_component.surname}\n",
-            f"Surname at Birth: {character_component.birth_surname}\n",
-            f"Age: {int(character_component.age)} ({character_component.life_stage.name})\n",
-            f"Is Alive: {character_component.is_alive}\n",
-            f"Titles: {titles}\n",
-            f"Birth Date: {character_component.birth_date}\n",
-            f"Death Date: {character_component.death_date}\n",
-            f"Sex: {character_component.sex.name}\n",
-            f"Species: {character_component.species.name}\n",
-            f"Sexual Orientation: {character_component.sexual_orientation.name}\n",
-            f"Mother: {mother}\n",
-            f"Father: {father}\n",
-            f"Biological Father: {biological_father}\n",
-            f"Family: {family}\n",
-            f"Birth Family: {birth_family}\n",
-            f"Siblings: {siblings}\n",
-            f"Children: {children}\n",
-            f"Spouse: {spouse}\n",
-            f"Lover: {lover}\n",
-            f"Heir: {heir}\n",
-            f"Heir To: {heir_to}\n",
-            f"Family Roles: {family_roles}\n",
-            f"Influence Points: {int(character_component.influence_points)}\n",
-            f"Is Pregnant: {character.has_component(Pregnancy)}\n",
-        ]
+        trait_manager = character.get_component(TraitManager)
+        traits = ", ".join(entry.name for entry in trait_manager.traits.values())
 
-        console = rich.console.Console()
-        markdown_obj = rich.markdown.Markdown("\n".join(output))
-        console.print("[bold red]alert![/bold red] Something happened")
-        console.print(markdown_obj)
-        console.print("===\n")
-
-        traits = character.get_component(TraitManager)
-        trait_table = rich.table.Table(
-            "Name", "Description", title="Traits", title_justify="left"
+        demographic_info = (
+            "[orange1 bold]First Name[/orange1 bold]:"
+            f"{character_component.first_name}\n"
+            f"[orange1 bold]Surname[/orange1 bold]: {character_component.surname}\n"
+            "[orange1 bold]Surname at Birth[/orange1 bold]: "
+            f"{character_component.birth_surname}\n"
+            "[orange1 bold]Age[/orange1 bold]: "
+            f"{int(character_component.age)} ({character_component.life_stage.name})\n"
+            "[orange1 bold]Sex[/orange1 bold]: "
+            f"{character_component.sex.name.lower()}\n"
+            f"[orange1 bold]Is Alive[/orange1 bold]: {character_component.is_alive}\n"
+            f"[orange1 bold]Titles[/orange1 bold]: {titles}\n"
+            "[orange1 bold]Birth Date[/orange1 bold]: "
+            f"{character_component.birth_date}\n"
+            "[orange1 bold]Death Date[/orange1 bold]: "
+            f"{character_component.death_date}\n"
+            f"[orange1 bold]Traits[/orange1 bold]: {traits}\n"
+            f"[orange1 bold]Family[/orange1 bold]: {family}\n"
+            f"[orange1 bold]Family Roles[/orange1 bold]: {family_roles}\n"
+            f"[orange1 bold]Birth Family[/orange1 bold]: {birth_family}"
         )
-        for entry in traits.traits.values():
-            trait_table.add_row(
-                entry.name, entry.description if entry.description else "None"
+
+        general_info_panel = rich.panel.Panel(
+            demographic_info,
+            title="Demographic Info",
+            title_align="left",
+            expand=False,
+            highlight=True,
+        )
+
+        renderable_objs.append(general_info_panel)
+
+        if pregnancy := character.try_component(Pregnancy):
+            conception = str(pregnancy.conception_date)
+            due = str(pregnancy.due_date)
+            assumed_father = (
+                pregnancy.assumed_father.name_with_uid
+                if pregnancy.assumed_father
+                else "None"
             )
-        console.print(trait_table)
-        console.print("===\n")
+            actual_father = pregnancy.actual_father.name_with_uid
 
-        # relationships = character.get_component(RelationshipManager)
+            pregnancy_panel = rich.panel.Panel(
+                f"[bold]This character is pregnant[/bold]\n"
+                f"[orange1 bold]Conception Date[/orange1 bold]: {conception}\n"
+                f"[orange1 bold]Due Date[/orange1 bold]: {due}\n"
+                f"[orange1 bold]Assumed Father[/orange1 bold]: {assumed_father}\n"
+                f"[orange1 bold]Actual Father[/orange1 bold]: {actual_father}",
+                title="Pregnancy",
+                title_align="left",
+                expand=False,
+                highlight=True,
+            )
+            renderable_objs.append(pregnancy_panel)
 
-        # relationship_table = rich.table.Table(
-        #     "Active",
-        #     "Target",
-        #     "Opinion",
-        #     "Attraction",
-        #     "Traits",
-        #     title="Relationships",
-        #     title_justify="left",
-        # )
+        if character.has_component(Emperor):
+            dynasty_tracker = self.sim.world.resources.get_resource(DynastyTracker)
+            current_dynasty = dynasty_tracker.current_dynasty
+            assert current_dynasty
+            ruler_panel = rich.panel.Panel(
+                f"[bold]This character is the current ruler[/bold]\n"
+                f"[orange1 bold]Dynasty[/orange1 bold]: {current_dynasty.name_with_uid}",
+                title="Ruler",
+                title_align="left",
+                expand=False,
+                highlight=True,
+            )
+            renderable_objs.append(ruler_panel)
 
-        # for target, relationship in relationships.outgoing_relationships.items():
-        #     opinion = relationship.get_component(Opinion)
-        #     attraction = relationship.get_component(Attraction)
+        metrics = character.get_component(CharacterMetrics).data
+        metrics_str = (
+            f"[orange1 bold]Times Married[/orange1 bold]: {metrics.times_married}\n"
+            f"[orange1 bold]# Wars[/orange1 bold]: {metrics.num_wars}\n"
+            f"[orange1 bold]# Wars Started[/orange1 bold]: {metrics.num_wars_started}\n"
+            f"[orange1 bold]# Wars Won[/orange1 bold]: {metrics.num_wars_won}\n"
+            f"[orange1 bold]# Wars Lost[/orange1 bold]: {metrics.num_wars_lost}\n"
+            f"[orange1 bold]# Revolts Quelled[/orange1 bold]: {metrics.num_revolts_quelled}\n"
+            f"[orange1 bold]# Coups Planned[/orange1 bold]: {metrics.num_coups_planned}\n"
+            f"[orange1 bold]# Territories Taken[/orange1 bold]: {metrics.num_territories_taken}\n"
+            f"[orange1 bold]Times as Ruler[/orange1 bold]: {metrics.times_as_ruler}\n"
+            f"[orange1 bold]# Alliances Founded[/orange1 bold]: {metrics.num_alliances_founded}\n"
+            f"[orange1 bold]# Failed Alliance Schemes[/orange1 bold]: {metrics.num_failed_alliance_attempts}\n"
+            f"[orange1 bold]# Alliances Disbanded[/orange1 bold]: {metrics.num_alliances_disbanded}\n"
+            f"[orange1 bold]Inherited Throne?[/orange1 bold]: {metrics.directly_inherited_throne}\n"
+            f"[orange1 bold]Last Declared War[/orange1 bold]: {metrics.date_of_last_declared_war}"
+        )
 
-        #     traits = ", ".join(
-        #         t.name for t in relationship.get_component(TraitManager).traits.values()
-        #     )
+        metrics_panel = rich.panel.Panel(
+            metrics_str,
+            title="Character Metrics",
+            title_align="left",
+            expand=False,
+            highlight=True,
+        )
+        renderable_objs.append(metrics_panel)
 
-        #     op_base = int(opinion.base_value)
-        #     atr_base = int(attraction.base_value)
-        #     op_boost = int(opinion.value - opinion.base_value)
-        #     atr_boost = int(attraction.value - attraction.base_value)
+        relations_panel = rich.panel.Panel(
+            f"[orange1 bold]Mother[/orange1 bold]: {mother}\n"
+            f"[orange1 bold]Father[/orange1 bold]: {father}\n"
+            f"[orange1 bold]Biological Father[/orange1 bold]: {biological_father}\n"
+            f"[orange1 bold]Siblings[/orange1 bold]: {siblings}\n"
+            f"[orange1 bold]Children[/orange1 bold]: {children}\n"
+            f"[orange1 bold]Spouse[/orange1 bold]: {spouse}\n"
+            f"[orange1 bold]Lover[/orange1 bold]: {lover}\n"
+            f"[orange1 bold]Heir[/orange1 bold]: {heir}\n"
+            f"[orange1 bold]Heir To[/orange1 bold]: {heir_to}",
+            title="Relations",
+            title_align="left",
+            expand=False,
+            highlight=True,
+        )
+        renderable_objs.append(relations_panel)
 
-        #     relationship_table.add_row(
-        #         str(relationship.has_component(Active)),
-        #         target.name_with_uid,
-        #         f"{op_base}[{_sign(op_boost)}{abs(op_boost)}]",
-        #         f"{atr_base}[{_sign(atr_boost)}{abs(atr_boost)}]",
-        #         traits,
-        #     )
+        status_effect_manager = character.get_component(StatusEffectManager)
+        effect_names = ", ".join(e.name for e in status_effect_manager.status_effects)
+        status_effects_panel = rich.panel.Panel(
+            f"[orange1 bold]Active Effects[/orange1 bold]: {effect_names}",
+            title="Status Effects",
+            title_align="left",
+            expand=False,
+            highlight=True,
+        )
+        renderable_objs.append(status_effects_panel)
 
-        # console.print(relationship_table)
-        # console.print("===\n")
+        stat_columns: list[str] = []
+        stat_columns.append(
+            "[orange1 bold]Influence Points[/orange1 bold]: "
+            f"{int(character_component.influence_points)}"
+        )
+        money_motive = character.get_component(MoneyMotive).value
+        stat_columns.append(
+            "[orange1 bold]Money Motive[/orange1 bold]: " f"{money_motive:.2f}"
+        )
+        power_motive = character.get_component(PowerMotive).value
+        stat_columns.append(
+            "[orange1 bold]Power Motive[/orange1 bold]: " f"{power_motive:.2f}"
+        )
+        respect_motive = character.get_component(RespectMotive).value
+        stat_columns.append(
+            "[orange1 bold]Respect Motive[/orange1 bold]: " f"{respect_motive:.2f}"
+        )
+        happiness_motive = character.get_component(HappinessMotive).value
+        stat_columns.append(
+            "[orange1 bold]Happiness Motive[/orange1 bold]: " f"{happiness_motive:.2f}"
+        )
+        family_motive = character.get_component(FamilyMotive).value
+        stat_columns.append(
+            "[orange1 bold]Family Motive[/orange1 bold]: " f"{family_motive:.2f}"
+        )
+        honor_motive = character.get_component(HonorMotive).value
+        stat_columns.append(
+            "[orange1 bold]Honor Motive[/orange1 bold]: " f"{honor_motive:.2f}"
+        )
+        sex_motive = character.get_component(SexMotive).value
+        stat_columns.append(
+            "[orange1 bold]Sex Motive[/orange1 bold]: " f"{sex_motive:.2f}"
+        )
+        dread_motive = character.get_component(DreadMotive).value
+        stat_columns.append(
+            "[orange1 bold]Dread Motive[/orange1 bold]: " f"{dread_motive:.2f}"
+        )
+        lifespan = character.get_component(Lifespan).value
+        stat_columns.append("[orange1 bold]Lifespan[/orange1 bold]: " f"{lifespan:.2f}")
+        fertility = character.get_component(Fertility).value
+        stat_columns.append(
+            "[orange1 bold]Fertility[/orange1 bold]: " f"{fertility:.2f}"
+        )
+        stewardship = character.get_component(Stewardship).value
+        stat_columns.append(
+            "[orange1 bold]Stewardship[/orange1 bold]: " f"{stewardship:.2f}"
+        )
+        martial = character.get_component(Martial).value
+        stat_columns.append("[orange1 bold]Martial[/orange1 bold]: " f"{martial:.2f}")
+        intrigue = character.get_component(Intrigue).value
+        stat_columns.append("[orange1 bold]Intrigue[/orange1 bold]: " f"{intrigue:.2f}")
+        learning = character.get_component(Learning).value
+        stat_columns.append("[orange1 bold]Learning[/orange1 bold]: " f"{learning:.2f}")
+        prowess = character.get_component(Prowess).value
+        stat_columns.append("[orange1 bold]Prowess[/orange1 bold]: " f"{prowess:.2f}")
+        sociability = character.get_component(Sociability).value
+        stat_columns.append(
+            "[orange1 bold]Sociability[/orange1 bold]: " f"{sociability:.2f}"
+        )
+        honor = character.get_component(Honor).value
+        stat_columns.append("[orange1 bold]Honor[/orange1 bold]: " f"{honor:.2f}")
+        boldness = character.get_component(Boldness).value
+        stat_columns.append("[orange1 bold]Boldness[/orange1 bold]: " f"{boldness:.2f}")
+        compassion = character.get_component(Compassion).value
+        stat_columns.append(
+            "[orange1 bold]Compassion[/orange1 bold]: " f"{compassion:.2f}"
+        )
+        diplomacy = character.get_component(Diplomacy).value
+        stat_columns.append(
+            "[orange1 bold]Diplomacy[/orange1 bold]: " f"{diplomacy:.2f}"
+        )
+        greed = character.get_component(Greed).value
+        stat_columns.append("[orange1 bold]Greed[/orange1 bold]: " f"{greed:.2f}")
+        rationality = character.get_component(Rationality).value
+        stat_columns.append(
+            "[orange1 bold]Rationality[/orange1 bold]: " f"{rationality:.2f}"
+        )
+        vengefulness = character.get_component(Vengefulness).value
+        stat_columns.append(
+            "[orange1 bold]Vengefulness[/orange1 bold]: " f"{vengefulness:.2f}"
+        )
+        zeal = character.get_component(Zeal).value
+        stat_columns.append("[orange1 bold]Zeal[/orange1 bold]: " f"{zeal:.2f}")
+        romance_propensity = character.get_component(RomancePropensity).value
+        stat_columns.append(
+            "[orange1 bold]Romance Propensity[/orange1 bold]: "
+            f"{romance_propensity:.2f}"
+        )
+        want_for_power = character.get_component(WantForPower).value
+        stat_columns.append(
+            "[orange1 bold]Want for Power[/orange1 bold]: " f"{want_for_power:.2f}"
+        )
+        want_for_children = character.get_component(WantForChildren).value
+        stat_columns.append(
+            "[orange1 bold]Want For Children[/orange1 bold]: "
+            f"{want_for_children:.2f}"
+        )
+        luck = character.get_component(Luck).value
+        stat_columns.append("[orange1 bold]Luck[/orange1 bold]: " f"{luck:.2f}")
+        want_for_marriage = character.get_component(WantForMarriage).value
+        stat_columns.append(
+            "[orange1 bold]Want For Marriage[/orange1 bold]: "
+            f"{want_for_marriage:.2f}"
+        )
+
+        stats_panel = rich.panel.Panel(
+            rich.columns.Columns(stat_columns, expand=False, equal=True),
+            title="Stats",
+            title_align="left",
+            expand=False,
+        )
+        renderable_objs.append(stats_panel)
+
+        scheme_table = rich.table.Table(
+            "UID", "SchemeType", "Initiator", "members", highlight=True
+        )
+        scheme_manager = character.get_component(SchemeManager)
+        for scheme in scheme_manager.schemes:
+            scheme_component = scheme.get_component(Scheme)
+            scheme_table.add_row(
+                str(scheme.uid),
+                str(scheme_component.get_type()),
+                str(scheme_component.initiator.name_with_uid),
+                ", ".join(m.name_with_uid for m in scheme_component.members),
+            )
+
+        scheme_panel = rich.panel.Panel(
+            scheme_table,
+            title="Schemes",
+            title_align="left",
+            expand=False,
+        )
+        renderable_objs.append(scheme_panel)
 
         life_event_history = character.get_component(LifeEventHistory)
 
-        life_event_table = rich.table.Table(
-            "Timestamp", "Description", title="Life Events", title_justify="left"
-        )
+        life_event_table = rich.table.Table("Timestamp", "Description", highlight=True)
         for event in life_event_history.get_history():
             life_event_table.add_row(str(event.timestamp), event.get_description())
 
-        console.print(life_event_table)
+        life_event_panel = rich.panel.Panel(
+            life_event_table,
+            title="Life Events",
+            title_align="left",
+            expand=False,
+        )
+
+        renderable_objs.append(life_event_panel)
+
+        console = rich.console.Console()
+        console.print(
+            rich.panel.Panel(
+                rich.console.Group(*renderable_objs),
+                title=character.name_with_uid,
+                title_align="left",
+                expand=False,
+                highlight=True,
+                padding=(1, 1),
+            )
+        )
 
     def inspect_family(self, family_id: int) -> None:
         """Print information about a family."""
@@ -252,94 +566,118 @@ class SimulationInspector:
 
         family_component = family.get_component(Family)
 
-        output: list[str] = [
-            f"# [Family] {family.name_with_uid}\n",
-            "\n",
-            f"Name: {family_component.name}\n",
-        ]
-
         parent_family = (
             family_component.parent_family.name_with_uid
             if family_component.parent_family
             else "None"
         )
 
-        output.append(f"Parent Family: {parent_family}\n")
-
-        if len(family_component.branch_families) > 0:
-            output.append("Branch Families:\n")
-            for branch_family in family_component.branch_families:
-                output.append(f"- {branch_family.name_with_uid}")
-        else:
-            output.append("Branch Families: None\n")
+        branch_families = (
+            ", ".join(b.name_with_uid for b in family_component.branch_families)
+            if family_component.branch_families
+            else "None"
+        )
 
         head_name = (
             family_component.head.name_with_uid if family_component.head else "None"
         )
-        output.append(f"Current Head: {head_name}\n")
 
-        if len(family_component.former_heads) > 0:
-            output.append("Former Heads:\n")
-            for former_head in family_component.former_heads:
-                output.append(f"- {former_head.name_with_uid}\n")
-        else:
-            output.append("Former Heads: None\n")
+        former_heads = (
+            ", ".join(f.name_with_uid for f in family_component.former_heads)
+            if family_component.former_heads
+            else "None"
+        )
 
-        if len(family_component.active_members) > 0:
-            active_members = ", ".join(
-                m.name_with_uid for m in family_component.active_members
-            )
-            output.append(f"Active Members: {active_members}\n")
-        else:
-            output.append("Active Members: None")
+        active_members = (
+            ", ".join(m.name_with_uid for m in family_component.active_members)
+            if family_component.active_members
+            else "None"
+        )
 
-        if len(family_component.former_members) > 0:
-            former_members = ", ".join(
-                m.name_with_uid for m in family_component.former_members
-            )
-            output.append(f"Former Members: {former_members}\n")
-        else:
-            output.append("Former Members: None\n")
+        former_members = (
+            ", ".join(m.name_with_uid for m in family_component.former_members)
+            if family_component.former_members
+            else "None"
+        )
 
+        allies: str = "None"
         if family_component.alliance is not None:
             alliance_component = family_component.alliance.get_component(Alliance)
-            output.append("Alliance:")
+            allies_list: list[str] = []
             for alliance_member in alliance_component.member_families:
                 if alliance_member != family:
-                    output.append(f"- {alliance_member.name_with_uid}\n")
-        else:
-            output.append("Alliance: None\n")
+                    allies_list.append(alliance_member.name_with_uid)
+            allies = ", ".join(allies_list)
 
         home_base = (
             family_component.home_base.name_with_uid
             if family_component.home_base
             else "None"
         )
-        output.append(f"Home Base: {home_base}\n")
 
-        if len(family_component.territories) > 0:
-            territories = ", ".join(
-                t.name_with_uid for t in family_component.territories
-            )
-            output.append(f"Territories: {territories}\n")
-        else:
-            output.append("Territories: None\n")
+        territories = (
+            ", ".join(t.name_with_uid for t in family_component.territories)
+            if family_component.territories
+            else "None"
+        )
 
-        if len(family_component.warriors) > 0:
-            warriors = ", ".join(w.name_with_uid for w in family_component.warriors)
-            output.append(f"Warriors: {warriors}\n")
-        else:
-            output.append("Warriors: None\n")
+        controlled_territories_list: list[GameObject] = []
+        for t in family_component.territories:
+            territory_component = t.get_component(Territory)
+            if territory_component.controlling_family == family:
+                controlled_territories_list.append(t)
 
-        if len(family_component.advisors) > 0:
-            advisors = ", ".join(a.name_with_uid for a in family_component.advisors)
-            output.append(f"Advisors: {advisors}\n")
-        else:
-            output.append("Advisors: None\n")
+        controlled_territories = (
+            ", ".join(t.name_with_uid for t in controlled_territories_list)
+            if controlled_territories_list
+            else "None"
+        )
+
+        warriors = (
+            ", ".join(w.name_with_uid for w in family_component.warriors)
+            if family_component.warriors
+            else "None"
+        )
+        advisors = (
+            ", ".join(a.name_with_uid for a in family_component.advisors)
+            if family_component.advisors
+            else "None"
+        )
+
+        general_info_panel = rich.panel.Panel(
+            f"[orange1 bold]Name[/orange1 bold]: {family.name}\n"
+            f"[orange1 bold]Is Active[/orange1 bold]: {family.is_active}\n"
+            f"[orange1 bold]Parent Family[/orange1 bold]: {parent_family}\n"
+            f"[orange1 bold]Branch Families[/orange1 bold]: {branch_families}\n"
+            f"[orange1 bold]Family Head[/orange1 bold]: {head_name}\n"
+            f"[orange1 bold]Active Members[/orange1 bold]: {active_members}\n"
+            f"[orange1 bold]Former Heads[/orange1 bold]: {former_heads}\n"
+            f"[orange1 bold]Former Members[/orange1 bold]: {former_members}\n"
+            f"[orange1 bold]Home Base[/orange1 bold]: {home_base}\n"
+            f"[orange1 bold]Territories[/orange1 bold]: {territories}\n"
+            f"[orange1 bold]Controlled Territories[/orange1 bold]: {controlled_territories}\n"
+            f"[orange1 bold]Warriors[/orange1 bold]: {warriors}\n"
+            f"[orange1 bold]Advisors[/orange1 bold]: {advisors}\n"
+            f"[orange1 bold]Allied Families[/orange1 bold]: {allies}",
+            title="Family Info",
+            title_align="left",
+            highlight=True,
+            expand=False,
+        )
 
         console = rich.console.Console()
-        markdown_obj = rich.markdown.Markdown("\n".join(output))
-        console.print(markdown_obj)
+        console.print(
+            rich.panel.Panel(
+                rich.console.Group(
+                    general_info_panel,
+                ),
+                title=f"The {family.name} Family ({family.uid})",
+                title_align="left",
+                expand=False,
+                highlight=True,
+                padding=(1, 1),
+            )
+        )
 
     def inspect_territory(self, territory_id: int) -> None:
         """Print information about a territory."""
@@ -347,52 +685,80 @@ class SimulationInspector:
 
         territory_component = territory.get_component(Territory)
 
-        output = [
-            f"# [Territory] {territory.name_with_uid}",
-            "",
-            f"Name: {territory.name!r}\n",
-        ]
+        name = territory_component.name
 
         # Add controlling family information
-        if territory_component.controlling_family:
-            output.append(
-                f"Controlling Family: {territory_component.controlling_family.name_with_uid}\n"
-            )
-        else:
-            output.append("Controlling Family: None\n")
+        controlling_family = (
+            territory_component.controlling_family.name_with_uid
+            if territory_component.controlling_family
+            else "None"
+        )
 
         # Add neighbors
-        output.append("Neighboring Territories:\n")
-        for neighbor in territory_component.neighbors:
-            output.append(f"- {neighbor.name_with_uid}\n")
+        neighbors = ", ".join(n.name_with_uid for n in territory_component.neighbors)
 
         # Add families
-        output.append("Resident Families:\n")
-        for family in territory_component.families:
-            output.append(f"- {family.name_with_uid}\n")
+        resident_families = ", ".join(
+            f.name_with_uid for f in territory_component.families
+        )
 
-        table = rich.table.Table(
-            "Family", "Influence", title="Political Influences", title_justify="left"
+        political_influence_table = rich.table.Table(
+            "Family", "Influence", title_justify="left", highlight=True
         )
         for family, influence in territory_component.political_influence.items():
-            table.add_row(f"{family.name_with_uid}", f"{influence}")
+            political_influence_table.add_row(f"{family.name_with_uid}", f"{influence}")
 
         console = rich.console.Console()
-        markdown_obj = rich.markdown.Markdown("\n".join(output))
-        console.print(markdown_obj)
-        console.print("===\n")
-        console.print(table)
+
+        happiness = territory.get_component(PopulationHappiness).value
+
+        general_info_panel = rich.panel.Panel(
+            f"[orange1 bold]Name[/orange1 bold]: {name}\n"
+            f"[orange1 bold]Controlling Family[/orange1 bold]: {controlling_family}\n"
+            f"[orange1 bold]Neighboring Territories[/orange1 bold]: {neighbors}\n"
+            f"[orange1 bold]Resident Families[/orange1 bold]: {resident_families}",
+            title="Territory Info",
+            title_align="left",
+            expand=False,
+            highlight=True,
+        )
+
+        stats_panel = rich.panel.Panel(
+            "[orange1 bold]Population Happiness[/orange1 bold]: " f"{happiness:.2f}",
+            title="Stats",
+            title_align="left",
+            expand=False,
+            highlight=True,
+        )
+
+        political_influence_panel = rich.panel.Panel(
+            political_influence_table,
+            title="Political Influence",
+            title_align="left",
+            expand=False,
+            highlight=True,
+        )
+
+        console.print(
+            rich.panel.Panel(
+                rich.console.Group(
+                    general_info_panel,
+                    stats_panel,
+                    political_influence_panel,
+                ),
+                title=territory.name_with_uid,
+                title_align="left",
+                expand=False,
+                highlight=True,
+                padding=(1, 1),
+            )
+        )
 
     def inspect_dynasty(self, dynasty_id: int) -> None:
         """Print information about a dynasty."""
         dynasty = self.sim.world.gameobjects.get_gameobject(dynasty_id)
 
         dynasty_component = dynasty.get_component(Dynasty)
-
-        output: list[str] = [
-            f"# [Dynasty] {dynasty.name_with_uid}\n",
-            "",
-        ]
 
         current_ruler = (
             dynasty_component.current_ruler.name_with_uid
@@ -413,24 +779,37 @@ class SimulationInspector:
             else "None"
         )
 
-        output.append(f"Current Ruler: {current_ruler}\n")
-        output.append(f"Founder: {dynasty_component.founder.name_with_uid}\n")
-        output.append(f"Family: {dynasty_component.family.name_with_uid}\n")
-        output.append(f"Founding Date: {dynasty_component.founding_date}\n")
-        output.append(f"Ending Date: {dynasty_component.ending_date}\n")
-        output.append(f"Previous Rulers: {previous_rulers}\n")
-        output.append(f"Previous Dynasty: {previous_dynasty}\n")
-
         console = rich.console.Console()
-        markdown_obj = rich.markdown.Markdown("\n".join(output))
-        console.print(markdown_obj)
+
+        general_info_panel = rich.panel.Panel(
+            f"[orange1 bold]Current Ruler[/orange1 bold]: {current_ruler}\n"
+            f"[orange1 bold]Founder[/orange1 bold]: {dynasty_component.founder.name_with_uid}\n"
+            f"[orange1 bold]Family[/orange1 bold]: {dynasty_component.family.name_with_uid}\n"
+            f"[orange1 bold]Founding Date[/orange1 bold]: {dynasty_component.founding_date}\n"
+            f"[orange1 bold]Ending Date[/orange1 bold]: {dynasty_component.ending_date}\n"
+            f"[orange1 bold]Previous Rulers[/orange1 bold]: {previous_rulers}\n"
+            f"[orange1 bold]Previous Dynasty[/orange1 bold]: {previous_dynasty}",
+        )
+
+        console.print(
+            rich.panel.Panel(
+                rich.console.Group(
+                    general_info_panel,
+                ),
+                title=dynasty.name_with_uid,
+                title_align="left",
+                expand=False,
+                highlight=True,
+                padding=(1, 1),
+            )
+        )
 
     def list_dynasties(self) -> None:
         """Print information about the current dynasty."""
         dynasty_tracker = self.sim.world.resources.get_resource(DynastyTracker)
 
-        table = rich.table.Table(show_header=True, title="Dynasties")
-        table.add_column("Is Current", justify="right")
+        table = rich.table.Table(show_header=True, title="Dynasties", highlight=True)
+        table.add_column("Current Dynasty", justify="right")
         table.add_column("UID")
         table.add_column("Family")
         table.add_column("Start Date")
@@ -443,7 +822,7 @@ class SimulationInspector:
             family_name: str = dynasty.family.name_with_uid
 
             is_current_marker = (
-                "⭐️" if dynasty.gameobject == dynasty_tracker.current_dynasty else ""
+                "==>" if dynasty.gameobject == dynasty_tracker.current_dynasty else ""
             )
 
             table.add_row(
@@ -460,7 +839,7 @@ class SimulationInspector:
     def list_territories(self) -> None:
         """Print the list of territories in the simulation."""
 
-        table = rich.table.Table(show_header=True, title="Territories")
+        table = rich.table.Table(show_header=True, title="Territories", highlight=True)
         table.add_column("Name")
         table.add_column("Controlling Family")
 
@@ -482,7 +861,7 @@ class SimulationInspector:
 
     def list_characters(self, inactive_ok: bool = False) -> None:
         """Print a list of characters from the simulation."""
-        table = rich.table.Table(show_header=True, title="Characters")
+        table = rich.table.Table(show_header=True, title="Characters", highlight=True)
 
         table.add_column("Name")
         table.add_column("Age")
@@ -509,7 +888,7 @@ class SimulationInspector:
 
     def list_families(self, inactive_ok: bool = False) -> None:
         """Print all the families in the simulation."""
-        table = rich.table.Table(show_header=True, title="Families")
+        table = rich.table.Table(show_header=True, title="Families", highlight=True)
         table.add_column("Name")
         table.add_column("Family Head")
         table.add_column("Home Base")
@@ -526,6 +905,65 @@ class SimulationInspector:
 
             table.add_row(
                 f"{family.gameobject.name_with_uid}", f"{family_head}", f"{home_base}"
+            )
+
+        console = rich.console.Console()
+        console.print(table)
+
+    def list_alliances(self, inactive_ok: bool = False) -> None:
+        """Print all active alliances."""
+
+        if inactive_ok:
+            alliances = [
+                (uid, f) for uid, (f,) in self.sim.world.get_components((Alliance,))
+            ]
+        else:
+            alliances = [
+                (uid, f)
+                for uid, (f, _) in self.sim.world.get_components((Alliance, Active))
+            ]
+
+        table = rich.table.Table(show_header=True, title="Alliances", highlight=True)
+        table.add_column("UID")
+        table.add_column("Start Date")
+        table.add_column("Founder")
+        table.add_column("Members")
+
+        for uid, alliance in alliances:
+            table.add_row(
+                str(uid),
+                str(alliance.start_date),
+                str(alliance.founder.name_with_uid),
+                ", ".join(m.name_with_uid for m in alliance.member_families),
+            )
+
+        console = rich.console.Console()
+        console.print(table)
+
+    def list_wars(self, inactive_ok: bool = False) -> None:
+        """Print all active wars."""
+
+        if inactive_ok:
+            wars = [(uid, f) for uid, (f,) in self.sim.world.get_components((War,))]
+        else:
+            wars = [
+                (uid, f) for uid, (f, _) in self.sim.world.get_components((War, Active))
+            ]
+
+        table = rich.table.Table(show_header=True, title="Wars", highlight=True)
+        table.add_column("UID")
+        table.add_column("Start Date")
+        table.add_column("Aggressor")
+        table.add_column("Defender")
+        table.add_column("Territory")
+
+        for uid, war in wars:
+            table.add_row(
+                str(uid),
+                str(war.start_date),
+                str(war.aggressor.name_with_uid),
+                str(war.defender.name_with_uid),
+                str(war.contested_territory.name_with_uid),
             )
 
         console = rich.console.Console()
