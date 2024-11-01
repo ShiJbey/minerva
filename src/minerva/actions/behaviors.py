@@ -24,7 +24,13 @@ from minerva.actions.actions import (
     StartWarSchemeAction,
     TaxTerritoryAction,
 )
-from minerva.actions.base_types import AIAction, AIBehavior, AIBrain, Scheme
+from minerva.actions.base_types import (
+    AIAction,
+    AIBehavior,
+    AIBrain,
+    Scheme,
+    SchemeManager,
+)
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme
 from minerva.characters.components import Family, HeadOfFamily
 from minerva.characters.succession_helpers import get_current_ruler
@@ -153,7 +159,20 @@ class ExtortLocalFamiliesBehavior(AIBehavior):
     """A family head will extort families that live in their controlled territories."""
 
     def get_actions(self, character: GameObject) -> list[AIAction]:
-        return [ExtortLocalFamiliesAction(character)]
+
+        family_head_component = character.get_component(HeadOfFamily)
+        family_component = family_head_component.family.get_component(Family)
+
+        controlled_territory_count = 0
+        for territory in family_component.territories:
+            territory_component = territory.get_component(Territory)
+            if territory_component.controlling_family == family_component.gameobject:
+                controlled_territory_count += 1
+
+        if controlled_territory_count > 0:
+            return [ExtortLocalFamiliesAction(character)]
+        else:
+            return []
 
 
 class QuellRevolt(AIBehavior):
@@ -168,6 +187,11 @@ class QuellRevolt(AIBehavior):
         actions: list[AIAction] = []
 
         for territory in family_component.territories:
+            territory_component = territory.get_component(Territory)
+
+            if territory_component.controlling_family != family_component.gameobject:
+                continue
+
             if territory.has_component(InRevolt):
                 actions.append(
                     QuellRevoltAction(performer=character, territory=territory)
@@ -202,6 +226,12 @@ class JoinAllianceSchemeBehavior(AIBehavior):
 
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
+
+        scheme_manager = character.get_component(SchemeManager)
+        for scheme in scheme_manager.schemes:
+            scheme_type = scheme.get_component(Scheme).get_type()
+            if scheme_type == "alliance" or scheme_type == "war":
+                return []
 
         if family_component.alliance:
             return []
@@ -250,6 +280,10 @@ class DisbandAlliance(AIBehavior):
         family_component = family_head_component.family.get_component(Family)
 
         if family_component.alliance is None:
+            return []
+
+        alliance_component = family_component.alliance.get_component(Alliance)
+        if alliance_component.founder_family == family_component.gameobject:
             return []
 
         else:
@@ -309,6 +343,12 @@ class TaxTerritory(AIBehavior):
 
         actions: list[AIAction] = []
         for territory in family_component.territories:
+
+            territory_component = territory.get_component(Territory)
+
+            if territory_component.controlling_family != family_component.gameobject:
+                continue
+
             action = TaxTerritoryAction(character, territory)
             actions.append(action)
 

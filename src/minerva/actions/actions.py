@@ -32,6 +32,7 @@ from minerva.life_events.events import (
     JoinAllianceSchemeEvent,
     JoinCoupSchemeEvent,
     JoinedAllianceEvent,
+    LeftDisbandedAllianceEvent,
     QuellRevoltEvent,
     StartCoupSchemeEvent,
     StartWarSchemeEvent,
@@ -509,6 +510,11 @@ class DisbandAllianceAction(AIAction):
             member_family_component = member_family.get_component(Family)
 
             if member_family_component.head is not None:
+                LeftDisbandedAllianceEvent(
+                    subject=member_family_component.head,
+                    alliance=self.alliance,
+                ).log_event()
+
                 get_relationship(
                     member_family_component.head, self.performer
                 ).get_component(Opinion).base_value -= 20

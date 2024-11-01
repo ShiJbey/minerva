@@ -20,15 +20,33 @@ from minerva.actions.base_types import (
     ConstantUtilityConsideration,
 )
 from minerva.actions.considerations import (
-    OpinionOfRecipientCons,
-    OpinionOfSchemeInitiatorCons, StewardshipConsideration, RationalityConsideration, DiplomacyConsideration,
-    GreedConsideration, HonorConsideration, CompassionConsideration, BoldnessConsideration, MartialConsideration,
-    WantForPowerConsideration, IntrigueConsideration, InfluencePointGoalConsideration, OpinionOfRulerConsideration,
+    BoldnessConsideration,
+    CompassionConsideration,
+    DiplomacyConsideration,
+    GreedConsideration,
+    HonorConsideration,
+    InfluencePointGoalConsideration,
+    IntrigueConsideration,
+    MartialConsideration,
     OpinionOfAllianceLeader,
+    OpinionOfRecipientCons,
+    OpinionOfRulerConsideration,
+    OpinionOfSchemeInitiatorCons,
+    RationalityConsideration,
+    StewardshipConsideration,
+    WantForPowerConsideration,
 )
-from minerva.actions.preconditions import IsFamilyHeadPrecondition, FamilyInAlliancePrecondition, \
-    JoinedAllianceScheme, IsRulerPrecondition, AreCoupSchemesActive, IsAllianceMemberPlottingCoup, HasActiveSchemes, \
-    IsCurrentlyAtWar, Not
+from minerva.actions.preconditions import (
+    AreCoupSchemesActive,
+    FamilyInAlliancePrecondition,
+    HasActiveSchemes,
+    IsAllianceMemberPlottingCoup,
+    IsCurrentlyAtWar,
+    IsFamilyHeadPrecondition,
+    IsRulerPrecondition,
+    JoinedAllianceScheme,
+    Not,
+)
 from minerva.characters.components import (
     DynastyTracker,
     LifeStage,
@@ -288,7 +306,12 @@ class Simulation:
                 name="GiveBackToTerritory",
                 cost=100,
                 cooldown=4,
-                utility_consideration=ConstantUtilityConsideration(1.0),
+                utility_consideration=AIUtilityConsiderationGroup(
+                    CompassionConsideration(),
+                    GreedConsideration().invert(),
+                    StewardshipConsideration(),
+                    RationalityConsideration(),
+                ),
             )
         )
 
@@ -359,7 +382,7 @@ class Simulation:
                 utility_consideration=AIUtilityConsiderationGroup(
                     BoldnessConsideration(),
                     WantForPowerConsideration(),
-                    ConstantUtilityConsideration(0.5),
+                    ConstantUtilityConsideration(0.8),
                 ),
             )
         )
@@ -453,7 +476,7 @@ class Simulation:
         action_library.add_action(
             AIActionType(
                 name="JoinAllianceScheme",
-                cost=0,
+                cost=500,
                 cooldown=4,
                 utility_consideration=AIUtilityConsiderationGroup(
                     DiplomacyConsideration().pow(2),
@@ -478,11 +501,11 @@ class Simulation:
         action_library.add_action(
             AIActionType(
                 name="DisbandAlliance",
-                cost=500,
+                cost=1000,
                 cooldown=12,
                 utility_consideration=AIUtilityConsiderationGroup(
                     DiplomacyConsideration().invert().pow(2),
-                    StewardshipConsideration(),
+                    HonorConsideration().invert(),
                     OpinionOfAllianceLeader().invert().pow(2),
                 ),
             )

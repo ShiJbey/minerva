@@ -285,6 +285,8 @@ class SimulationInspector:
             f"{int(character_component.age)} ({character_component.life_stage.name})\n"
             "[orange1 bold]Sex[/orange1 bold]: "
             f"{character_component.sex.name.lower()}\n"
+            "[orange1 bold]Sexual Orientation[/orange1 bold]: "
+            f"{character_component.sexual_orientation.name.lower()}\n"
             f"[orange1 bold]Is Alive[/orange1 bold]: {character_component.is_alive}\n"
             f"[orange1 bold]Titles[/orange1 bold]: {titles}\n"
             "[orange1 bold]Birth Date[/orange1 bold]: "

@@ -256,6 +256,27 @@ class DisbandedAllianceEvent(LifeEvent):
         )
 
 
+class LeftDisbandedAllianceEvent(LifeEvent):
+    """Logs a family head leaving their alliance after it is disbanded."""
+
+    __slots__ = ("alliance",)
+
+    alliance: GameObject
+
+    def __init__(self, subject: GameObject, alliance: GameObject) -> None:
+        super().__init__(subject)
+        self.alliance = alliance
+
+    def get_event_type(self) -> str:
+        return "LeftDisbandedAllianceEvent"
+
+    def get_description(self) -> str:
+        return (
+            f"{self.subject.name_with_uid} left their Alliance ({self.alliance.uid}) "
+            "after it was disbanded."
+        )
+
+
 class FamilyLeftAllianceEvent(LifeEvent):
     """Logs a family leaving and alliance."""
 
@@ -275,10 +296,7 @@ class JoinedAllianceEvent(LifeEvent):
         return "JoinedAlliance"
 
     def get_description(self) -> str:
-        return (
-            f"{self.subject.name_with_uid} joined the "
-            f"{self.alliance.name_with_uid} alliance."
-        )
+        return f"{self.subject.name_with_uid} joined Alliance ({self.alliance.uid})."
 
 
 class FamilyJoinedAllianceEvent(LifeEvent):
