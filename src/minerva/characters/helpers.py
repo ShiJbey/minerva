@@ -20,11 +20,9 @@ from minerva.characters.components import (
     HeadOfFamily,
     LifeStage,
     Marriage,
-    MarriageTracker,
     Martial,
     Prowess,
     RomanticAffair,
-    RomanticAffairTracker,
     Sex,
     SexualOrientation,
     Stewardship,
@@ -800,7 +798,7 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
             Marriage(character_a, character_b, current_date),
         ]
     )
-    character_a.get_component(MarriageTracker).current_marriage = a_to_b
+    character_a_component.marriage = a_to_b
     cur.execute(
         """
         INSERT INTO marriages (uid, character_id, spouse_id, start_date)
@@ -814,7 +812,7 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
             Marriage(character_b, character_a, current_date),
         ]
     )
-    character_b.get_component(MarriageTracker).current_marriage = b_to_a
+    character_b_component.marriage = b_to_a
     cur.execute(
         """
         INSERT INTO marriages (uid, character_id, spouse_id, start_date)
@@ -868,37 +866,29 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
     )
 
     # Update marriage entries in the database
-    character_a_marriages = character_a.get_component(MarriageTracker)
-    assert character_a_marriages.current_marriage
+    assert character_a_component.marriage
 
     cur.execute(
         """
         UPDATE marriages SET end_date=?
         WHERE uid=?;
         """,
-        (current_date, character_a_marriages.current_marriage.uid),
+        (current_date, character_a_component.marriage.uid),
     )
-    character_a_marriages.past_marriage_ids.append(
-        character_a_marriages.current_marriage.uid
-    )
-    character_a_marriages.current_marriage.destroy()
-    character_a_marriages.current_marriage = None
+    character_a_component.past_marriages.append(character_a_component.marriage)
+    character_a_component.marriage = None
 
-    character_b_marriages = character_b.get_component(MarriageTracker)
-    assert character_b_marriages.current_marriage
+    assert character_b_component.marriage
 
     cur.execute(
         """
         UPDATE marriages SET end_date=?
         WHERE uid=?;
         """,
-        (current_date, character_b_marriages.current_marriage.uid),
+        (current_date, character_b_component.marriage.uid),
     )
-    character_b_marriages.past_marriage_ids.append(
-        character_b_marriages.current_marriage.uid
-    )
-    character_b_marriages.current_marriage.destroy()
-    character_b_marriages.current_marriage = None
+    character_b_component.past_marriages.append(character_b_component.marriage)
+    character_b_component.marriage = None
 
     db.commit()
 
@@ -940,7 +930,7 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
             RomanticAffair(character_a, character_b, current_date),
         ]
     )
-    character_a.get_component(RomanticAffairTracker).current_affair = a_to_b
+    character_a_component.love_affair = a_to_b
     cur.execute(
         """
         INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
@@ -954,7 +944,7 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
             RomanticAffair(character_b, character_a, current_date),
         ]
     )
-    character_b.get_component(RomanticAffairTracker).current_affair = b_to_a
+    character_b_component.love_affair = b_to_a
     cur.execute(
         """
         INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
@@ -1004,33 +994,29 @@ def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> Non
     )
 
     # Update romantic affair entries in the database
-    character_a_lovers = character_a.get_component(RomanticAffairTracker)
-    assert character_a_lovers.current_affair
+    assert character_a_component.love_affair
 
     cur.execute(
         """
         UPDATE romantic_affairs SET end_date=?
         WHERE uid=?;
         """,
-        (current_date, character_a_lovers.current_affair.uid),
+        (current_date, character_a_component.love_affair.uid),
     )
-    character_a_lovers.past_affair_ids.append(character_a_lovers.current_affair.uid)
-    character_a_lovers.current_affair.destroy()
-    character_a_lovers.current_affair = None
+    character_a_component.past_love_affairs.append(character_a_component.love_affair)
+    character_a_component.love_affair = None
 
-    character_b_lovers = character_b.get_component(RomanticAffairTracker)
-    assert character_b_lovers.current_affair
+    assert character_b_component.love_affair
 
     cur.execute(
         """
         UPDATE romantic_affairs SET end_date=?
         WHERE uid=?;
         """,
-        (current_date, character_b_lovers.current_affair.uid),
+        (current_date, character_b_component.love_affair.uid),
     )
-    character_b_lovers.past_affair_ids.append(character_b_lovers.current_affair.uid)
-    character_b_lovers.current_affair.destroy()
-    character_b_lovers.current_affair = None
+    character_b_component.past_love_affairs.append(character_b_component.love_affair)
+    character_b_component.love_affair = None
 
     db.commit()
 

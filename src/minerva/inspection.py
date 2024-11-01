@@ -15,6 +15,7 @@ import rich.table
 from minerva import __version__
 from minerva.actions.base_types import Scheme, SchemeManager
 from minerva.characters.components import (
+    Betrothal,
     Boldness,
     Character,
     Compassion,
@@ -36,6 +37,7 @@ from minerva.characters.components import (
     Learning,
     Lifespan,
     Luck,
+    Marriage,
     Martial,
     MoneyMotive,
     PowerMotive,
@@ -44,6 +46,7 @@ from minerva.characters.components import (
     Rationality,
     RespectMotive,
     RomancePropensity,
+    RomanticAffair,
     SexMotive,
     Sociability,
     Stewardship,
@@ -221,10 +224,39 @@ class SimulationInspector:
             if character_component.spouse
             else "None"
         )
+        former_spouses = (
+            ", ".join(
+                x.get_component(Marriage).spouse.name_with_uid
+                for x in character_component.past_marriages
+            )
+            if character_component.past_marriages
+            else None
+        )
+        betrothed_to = (
+            character_component.betrothed_to.name_with_uid
+            if character_component.betrothed_to
+            else "None"
+        )
+        former_betrothals = (
+            ", ".join(
+                x.get_component(Betrothal).betrothed.name_with_uid
+                for x in character_component.past_betrothals
+            )
+            if character_component.past_betrothals
+            else None
+        )
         lover = (
             character_component.lover.name_with_uid
             if character_component.lover
             else "None"
+        )
+        former_lovers = (
+            ", ".join(
+                x.get_component(RomanticAffair).lover.name_with_uid
+                for x in character_component.past_love_affairs
+            )
+            if character_component.past_love_affairs
+            else None
         )
         heir = (
             character_component.heir.name_with_uid
@@ -252,8 +284,16 @@ class SimulationInspector:
             if character_component.birth_family
             else "None"
         )
-        siblings = ", ".join(s.name_with_uid for s in character_component.siblings)
-        children = ", ".join(s.name_with_uid for s in character_component.children)
+        siblings = (
+            ", ".join(s.name_with_uid for s in character_component.siblings)
+            if character_component.siblings
+            else None
+        )
+        children = (
+            ", ".join(s.name_with_uid for s in character_component.children)
+            if character_component.children
+            else None
+        )
         family_roles = ", ".join(
             str(r.name)
             for r in FamilyRoleFlags
@@ -380,7 +420,11 @@ class SimulationInspector:
             f"[orange1 bold]Siblings[/orange1 bold]: {siblings}\n"
             f"[orange1 bold]Children[/orange1 bold]: {children}\n"
             f"[orange1 bold]Spouse[/orange1 bold]: {spouse}\n"
+            f"[orange1 bold]Former Spouses[/orange1 bold]: {former_spouses}\n"
+            f"[orange1 bold]Betrothed To[/orange1 bold]: {betrothed_to}\n"
+            f"[orange1 bold]Former Betrothals[/orange1 bold]: {former_betrothals}\n"
             f"[orange1 bold]Lover[/orange1 bold]: {lover}\n"
+            f"[orange1 bold]Former Lovers[/orange1 bold]: {former_lovers}\n"
             f"[orange1 bold]Heir[/orange1 bold]: {heir}\n"
             f"[orange1 bold]Heir To[/orange1 bold]: {heir_to}",
             title="Relations",

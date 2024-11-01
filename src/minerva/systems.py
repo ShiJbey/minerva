@@ -1265,6 +1265,8 @@ class CoupSchemeUpdateSystem(System):
 
                     ruler_family = current_ruler.get_component(Character).family
 
+                    current_ruler.get_component(Character).killed_by = scheme.initiator
+
                     DieAction(
                         current_ruler, pass_crown=False, cause_of_death="assassination"
                     ).execute()
@@ -1296,6 +1298,7 @@ class CoupSchemeUpdateSystem(System):
 
                 # They are discovered and put to death
                 for member in scheme.members:
+                    member.get_component(Character).killed_by = coup_scheme.target
                     SentencedToDeathEvent(member, "treason").log_event()
                     DieAction(member, "treason").execute()
 

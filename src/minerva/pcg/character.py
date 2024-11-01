@@ -10,12 +10,11 @@ from ordered_set import OrderedSet
 from minerva.actions.base_types import AIBrain, AIContext, SchemeManager
 from minerva.actions.selection_strategies import MaxUtilActionSelectStrategy
 from minerva.actions.sensors import (
-    TerritoriesInRevoltSensor,
-    UnexpandedTerritoriesSensor,
-    UnControlledTerritoriesSensor,
     TerritoriesControlledByOpps,
+    TerritoriesInRevoltSensor,
+    UnControlledTerritoriesSensor,
+    UnexpandedTerritoriesSensor,
 )
-from minerva.characters.betrothal_data import BetrothalTracker
 from minerva.characters.components import (
     Boldness,
     Character,
@@ -35,7 +34,6 @@ from minerva.characters.components import (
     Lifespan,
     LifeStage,
     Luck,
-    MarriageTracker,
     Martial,
     MoneyMotive,
     PowerMotive,
@@ -43,7 +41,6 @@ from minerva.characters.components import (
     Rationality,
     RespectMotive,
     RomancePropensity,
-    RomanticAffairTracker,
     Sex,
     SexMotive,
     SexualOrientation,
@@ -260,9 +257,6 @@ class DefaultCharacterFactory(CharacterFactory):
         obj.add_component(CharacterMetrics())
         obj.add_component(RelationshipManager())
         obj.add_component(LifeEventHistory())
-        obj.add_component(MarriageTracker())
-        obj.add_component(RomanticAffairTracker())
-        obj.add_component(BetrothalTracker())
         obj.add_component(
             AIBrain(
                 context=AIContext(

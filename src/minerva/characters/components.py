@@ -188,6 +188,14 @@ class Character(Component):
         "grandparents",
         "grandchildren",
         "spouse",
+        "former_spouses",
+        "marriage",
+        "past_marriages",
+        "betrothed_to",
+        "betrothal",
+        "past_betrothals",
+        "love_affair",
+        "past_love_affairs",
         "lover",
         "is_alive",
         "family",
@@ -196,6 +204,7 @@ class Character(Component):
         "heir",
         "heir_to",
         "influence_points",
+        "killed_by",
     )
 
     first_name: str
@@ -216,6 +225,14 @@ class Character(Component):
     grandparents: OrderedSet[GameObject]
     grandchildren: OrderedSet[GameObject]
     spouse: Optional[GameObject]
+    former_spouses: OrderedSet[GameObject]
+    marriage: Optional[GameObject]
+    past_marriages: OrderedSet[GameObject]
+    betrothed_to: Optional[GameObject]
+    betrothal: Optional[GameObject]
+    past_betrothals: OrderedSet[GameObject]
+    love_affair: Optional[GameObject]
+    past_love_affairs: OrderedSet[GameObject]
     lover: Optional[GameObject]
     is_alive: bool
     family: Optional[GameObject]
@@ -224,6 +241,7 @@ class Character(Component):
     heir_to: Optional[GameObject]
     family_roles: FamilyRoleFlags
     influence_points: int
+    killed_by: Optional[GameObject]
 
     def __init__(
         self,
@@ -269,6 +287,14 @@ class Character(Component):
         self.grandparents = OrderedSet([])
         self.grandchildren = OrderedSet([])
         self.spouse = spouse
+        self.former_spouses = OrderedSet([])
+        self.marriage = None
+        self.past_marriages = OrderedSet([])
+        self.betrothed_to = None
+        self.betrothal = None
+        self.past_betrothals = OrderedSet([])
+        self.love_affair = None
+        self.past_love_affairs = OrderedSet([])
         self.lover = lover
         self.is_alive = is_alive
         self.family = family
@@ -277,6 +303,7 @@ class Character(Component):
         self.heir_to = heir_to
         self.family_roles = FamilyRoleFlags.NONE
         self.influence_points = influence_points
+        self.killed_by = None
 
     @property
     def full_name(self) -> str:
@@ -337,6 +364,24 @@ class Pregnancy(Component):
         )
 
 
+class Betrothal(Component):
+    """Information about one character betrothal to another."""
+
+    __slots__ = ("character", "betrothed", "start_date")
+
+    character: GameObject
+    betrothed: GameObject
+    start_date: SimDate
+
+    def __init__(
+        self, character: GameObject, betrothed: GameObject, start_date: SimDate
+    ) -> None:
+        super().__init__()
+        self.character = character
+        self.betrothed = betrothed
+        self.start_date = start_date.copy()
+
+
 class Marriage(Component):
     """Marriage information from one character to another.
 
@@ -359,20 +404,6 @@ class Marriage(Component):
         self.start_date = start_date.copy()
 
 
-class MarriageTracker(Component):
-    """Tracks a character's current and past marriages."""
-
-    __slots__ = ("current_marriage", "past_marriage_ids")
-
-    current_marriage: Optional[GameObject]
-    past_marriage_ids: list[int]
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.current_marriage = None
-        self.past_marriage_ids = []
-
-
 class RomanticAffair(Component):
     """Information about a character's lover.
 
@@ -392,20 +423,6 @@ class RomanticAffair(Component):
         self.character = character
         self.lover = lover
         self.start_date = start_date
-
-
-class RomanticAffairTracker(Component):
-    """Tracks character's current and past love affairs."""
-
-    __slots__ = ("current_affair", "past_affair_ids")
-
-    current_affair: Optional[GameObject]
-    past_affair_ids: list[int]
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.current_affair = None
-        self.past_affair_ids = []
 
 
 class FamilyRoleFlags(enum.IntFlag):
