@@ -6,7 +6,7 @@ from __future__ import annotations
 import logging
 import math
 import random
-from typing import Optional
+from typing import Iterable, Optional
 
 from minerva.actions.base_types import Scheme, SchemeManager
 from minerva.actions.scheme_helpers import remove_member_from_scheme
@@ -1079,3 +1079,28 @@ def set_relation_child(character: GameObject, child: GameObject) -> None:
     )
 
     db.commit()
+
+
+def update_grandparent_relations(
+    child: GameObject, grandparents: Iterable[Optional[GameObject]]
+) -> None:
+    """Update child's grandparent references and grandparent's grandchild references.
+
+    Parameters
+    ----------
+    child
+        The child to update.
+    grandparents
+        The child's grandparents.
+    """
+
+    child_character_component = child.get_component(Character)
+
+    for grandparent in grandparents:
+        if grandparent is None:
+            continue
+
+        grandparent_character_component = grandparent.get_component(Character)
+
+        child_character_component.grandparents.add(grandparent)
+        grandparent_character_component.grandchildren.add(child)

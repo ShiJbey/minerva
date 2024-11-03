@@ -793,5 +793,6 @@ def _generate_initial_families(world: World) -> list[GameObject]:
 
         # Set the family head
         set_family_head(family, household_heads[0])
+        family.get_component(Family).founder = household_heads[0]
 
     return families

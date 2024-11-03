@@ -220,8 +220,8 @@ class Character(Component):
     mother: Optional[GameObject]
     father: Optional[GameObject]
     biological_father: Optional[GameObject]
-    siblings: list[GameObject]
-    children: list[GameObject]
+    siblings: OrderedSet[GameObject]
+    children: OrderedSet[GameObject]
     grandparents: OrderedSet[GameObject]
     grandchildren: OrderedSet[GameObject]
     spouse: Optional[GameObject]
@@ -253,20 +253,6 @@ class Character(Component):
         sexual_orientation: SexualOrientation = SexualOrientation.HETEROSEXUAL,
         life_stage: LifeStage = LifeStage.CHILD,
         age: float = 0,
-        birth_date: Optional[SimDate] = None,
-        death_date: Optional[SimDate] = None,
-        mother: Optional[GameObject] = None,
-        father: Optional[GameObject] = None,
-        biological_father: Optional[GameObject] = None,
-        siblings: Optional[list[GameObject]] = None,
-        spouse: Optional[GameObject] = None,
-        lover: Optional[GameObject] = None,
-        is_alive: bool = True,
-        family: Optional[GameObject] = None,
-        birth_family: Optional[GameObject] = None,
-        heir: Optional[GameObject] = None,
-        heir_to: Optional[GameObject] = None,
-        influence_points: int = 0,
     ) -> None:
         super().__init__()
         self.first_name = first_name
@@ -277,16 +263,16 @@ class Character(Component):
         self.species = species
         self.life_stage = life_stage
         self.age = age
-        self.birth_date = birth_date
-        self.death_date = death_date
-        self.mother = mother
-        self.father = father
-        self.biological_father = biological_father
-        self.siblings = siblings if siblings is not None else []
-        self.children = []
+        self.birth_date = None
+        self.death_date = None
+        self.mother = None
+        self.father = None
+        self.biological_father = None
+        self.siblings = OrderedSet([])
+        self.children = OrderedSet([])
         self.grandparents = OrderedSet([])
         self.grandchildren = OrderedSet([])
-        self.spouse = spouse
+        self.spouse = None
         self.former_spouses = OrderedSet([])
         self.marriage = None
         self.past_marriages = OrderedSet([])
@@ -295,14 +281,14 @@ class Character(Component):
         self.past_betrothals = OrderedSet([])
         self.love_affair = None
         self.past_love_affairs = OrderedSet([])
-        self.lover = lover
-        self.is_alive = is_alive
-        self.family = family
-        self.birth_family = birth_family
-        self.heir = heir
-        self.heir_to = heir_to
+        self.lover = None
+        self.is_alive = True
+        self.family = None
+        self.birth_family = None
+        self.heir = None
+        self.heir_to = None
         self.family_roles = FamilyRoleFlags.NONE
-        self.influence_points = influence_points
+        self.influence_points = 0
         self.killed_by = None
 
     @property
@@ -443,6 +429,7 @@ class Family(Component):
 
     __slots__ = (
         "name",
+        "founder",
         "parent_family",
         "branch_families",
         "head",
@@ -462,6 +449,8 @@ class Family(Component):
 
     name: str
     """The name of the family."""
+    founder: Optional[GameObject]
+    """The character that founded the family."""
     parent_family: Optional[GameObject]
     """The family that this family branched from."""
     branch_families: OrderedSet[GameObject]
@@ -503,6 +492,7 @@ class Family(Component):
     ) -> None:
         super().__init__()
         self.name = name
+        self.founder = None
         self.parent_family = None
         self.branch_families = OrderedSet([])
         self.head = None

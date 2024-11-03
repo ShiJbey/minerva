@@ -43,6 +43,7 @@ from minerva.characters.helpers import (
     set_relation_child,
     set_relation_sibling,
     start_marriage,
+    update_grandparent_relations,
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import (
@@ -696,10 +697,10 @@ class PlaceholderMarriageSystem(System):
             if character.spouse:
                 continue
 
-            if character.life_stage < LifeStage.YOUNG_ADULT:
-                continue
-
-            if character.sexual_orientation == SexualOrientation.ASEXUAL:
+            if (
+                character.life_stage < LifeStage.YOUNG_ADULT
+                or character.life_stage == LifeStage.SENIOR
+            ):
                 continue
 
             if not rng.random() < chance_get_married:
@@ -711,7 +712,7 @@ class PlaceholderMarriageSystem(System):
                 character.sexual_orientation == SexualOrientation.HETEROSEXUAL
                 and character.sex == Sex.MALE
             ):
-                # Looking for heterosexual or bisexual women
+                # Looking for heterosexual, bisexual, or asexual women
                 eligible_singles = [
                     c
                     for _, (c, _) in world.get_components((Character, Active))
@@ -722,12 +723,16 @@ class PlaceholderMarriageSystem(System):
                     and (
                         c.sexual_orientation == SexualOrientation.HETEROSEXUAL
                         or c.sexual_orientation == SexualOrientation.BISEXUAL
+                        or c.sexual_orientation == SexualOrientation.ASEXUAL
                     )
                     and c.gameobject not in character.siblings
                     and c.gameobject != character.mother
                     and c.gameobject != character.father
                     and c.gameobject != character.biological_father
                     and c.gameobject not in character.children
+                    and c.gameobject not in character.grandchildren
+                    and c.gameobject not in character.grandparents
+                    and len(c.grandparents.intersection(character.grandparents)) < 2
                     and c != character
                 ]
 
@@ -735,7 +740,7 @@ class PlaceholderMarriageSystem(System):
                 character.sexual_orientation == SexualOrientation.HETEROSEXUAL
                 and character.sex == Sex.FEMALE
             ):
-                # Looking for heterosexual or bisexual men
+                # Looking for heterosexual, bisexual, or asexual men
                 eligible_singles = [
                     c
                     for _, (c, _) in world.get_components((Character, Active))
@@ -746,12 +751,16 @@ class PlaceholderMarriageSystem(System):
                     and (
                         c.sexual_orientation == SexualOrientation.HETEROSEXUAL
                         or c.sexual_orientation == SexualOrientation.BISEXUAL
+                        or c.sexual_orientation == SexualOrientation.ASEXUAL
                     )
                     and c.gameobject not in character.siblings
                     and c.gameobject != character.mother
                     and c.gameobject != character.father
                     and c.gameobject != character.biological_father
                     and c.gameobject not in character.children
+                    and c.gameobject not in character.grandchildren
+                    and c.gameobject not in character.grandparents
+                    and len(c.grandparents.intersection(character.grandparents)) < 2
                     and c != character
                 ]
 
@@ -759,7 +768,7 @@ class PlaceholderMarriageSystem(System):
                 character.sexual_orientation == SexualOrientation.HOMOSEXUAL
                 and character.sex == Sex.MALE
             ):
-                # Looking for homosexual or bisexual men
+                # Looking for homosexual, asexual, or bisexual men
                 eligible_singles = [
                     c
                     for _, (c, _) in world.get_components((Character, Active))
@@ -770,12 +779,16 @@ class PlaceholderMarriageSystem(System):
                     and (
                         c.sexual_orientation == SexualOrientation.HOMOSEXUAL
                         or c.sexual_orientation == SexualOrientation.BISEXUAL
+                        or c.sexual_orientation == SexualOrientation.ASEXUAL
                     )
                     and c.gameobject not in character.siblings
                     and c.gameobject != character.mother
                     and c.gameobject != character.father
                     and c.gameobject != character.biological_father
                     and c.gameobject not in character.children
+                    and c.gameobject not in character.grandchildren
+                    and c.gameobject not in character.grandparents
+                    and len(c.grandparents.intersection(character.grandparents)) < 2
                     and c != character
                 ]
 
@@ -794,12 +807,16 @@ class PlaceholderMarriageSystem(System):
                     and (
                         c.sexual_orientation == SexualOrientation.HOMOSEXUAL
                         or c.sexual_orientation == SexualOrientation.BISEXUAL
+                        or c.sexual_orientation == SexualOrientation.ASEXUAL
                     )
                     and c.gameobject not in character.siblings
                     and c.gameobject != character.mother
                     and c.gameobject != character.father
                     and c.gameobject != character.biological_father
                     and c.gameobject not in character.children
+                    and c.gameobject not in character.grandchildren
+                    and c.gameobject not in character.grandparents
+                    and len(c.grandparents.intersection(character.grandparents)) < 2
                     and c != character
                 ]
 
@@ -841,6 +858,29 @@ class PlaceholderMarriageSystem(System):
                     and c.sex == Sex.FEMALE
                     and (
                         c.sexual_orientation == SexualOrientation.HOMOSEXUAL
+                        or c.sexual_orientation == SexualOrientation.BISEXUAL
+                    )
+                    and c.gameobject not in character.siblings
+                    and c.gameobject != character.mother
+                    and c.gameobject != character.father
+                    and c.gameobject != character.biological_father
+                    and c.gameobject not in character.children
+                    and c != character
+                ]
+
+            if (
+                character.sexual_orientation == SexualOrientation.ASEXUAL
+                and character.sex == Sex.FEMALE
+            ):
+                # Looking for anyone asexual
+                eligible_singles = [
+                    c
+                    for _, (c, _) in world.get_components((Character, Active))
+                    if c.spouse is None
+                    and c.life_stage >= LifeStage.YOUNG_ADULT
+                    and c.life_stage != LifeStage.SENIOR
+                    and (
+                        c.sexual_orientation == SexualOrientation.ASEXUAL
                         or c.sexual_orientation == SexualOrientation.BISEXUAL
                     )
                     and c.gameobject not in character.siblings
@@ -933,6 +973,9 @@ class PregnancyPlaceHolderSystem(System):
             spouse_fertility_comp = marriage.spouse.get_component(Fertility)
             spouse_fertility = spouse_fertility_comp.normalized
 
+            if character_fertility <= 0 or spouse_fertility <= 0:
+                continue
+
             chance_have_child = (character_fertility + spouse_fertility) / 2
 
             if not rng.random() < chance_have_child:
@@ -977,6 +1020,21 @@ class ChildBirthSystem(System):
             set_character_mother(baby, character.gameobject)
             set_character_father(baby, pregnancy.assumed_father)
             set_character_biological_father(baby, pregnancy.actual_father)
+
+            # Set grandparent/child relationships
+            update_grandparent_relations(baby, [character.mother, character.father])
+
+            if pregnancy.assumed_father is not None:
+                assumed_father_character_comp = pregnancy.assumed_father.get_component(
+                    Character
+                )
+                update_grandparent_relations(
+                    baby,
+                    [
+                        assumed_father_character_comp.mother,
+                        assumed_father_character_comp.father,
+                    ],
+                )
 
             # Add to mothers family
             set_character_family(baby, character.family)
