@@ -1,24 +1,20 @@
 """Action Considerations."""
 
-import numpy as np
-
 from minerva.actions.base_types import AIContext, AIUtilityConsideration, Scheme
 from minerva.characters.components import (
-    Stewardship,
-    Rationality,
+    Boldness,
+    Character,
+    Compassion,
     Diplomacy,
+    Dynasty,
+    DynastyTracker,
     Greed,
     Honor,
-    Compassion,
-    Boldness,
-    Martial,
-    WantForPower,
     Intrigue,
-    Character,
-    DynastyTracker,
-    Dynasty,
+    Martial,
+    Rationality,
+    Stewardship,
 )
-from minerva.characters.motive_helpers import MotiveVector, get_character_motives
 from minerva.ecs import GameObject
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
@@ -54,19 +50,6 @@ class OpinionOfSchemeInitiatorCons(AIUtilityConsideration):
             .get_component(Opinion)
             .normalized
         )
-
-
-class BehaviorMotiveConsideration(AIUtilityConsideration):
-    """A consideration of the behavior's motives against a character's"""
-
-    def evaluate(self, context: AIContext) -> float:
-        behavior_motives: MotiveVector = context["behavior_motives"]
-        character_motives = get_character_motives(context.character)
-
-        utility_vect = behavior_motives.vect * (character_motives.vect * 2)
-        utility_score = float(np.sum(utility_vect) / 9)  # total of 9 motives
-
-        return utility_score
 
 
 class StewardshipConsideration(AIUtilityConsideration):
@@ -123,13 +106,6 @@ class MartialConsideration(AIUtilityConsideration):
 
     def evaluate(self, context: AIContext) -> float:
         return context.character.get_component(Martial).normalized
-
-
-class WantForPowerConsideration(AIUtilityConsideration):
-    """A consideration of a character's WantForPower stat."""
-
-    def evaluate(self, context: AIContext) -> float:
-        return context.character.get_component(WantForPower).normalized
 
 
 class IntrigueConsideration(AIUtilityConsideration):

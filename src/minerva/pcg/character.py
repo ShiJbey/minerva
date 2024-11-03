@@ -20,40 +20,28 @@ from minerva.characters.components import (
     Character,
     Compassion,
     Diplomacy,
-    DreadMotive,
     Family,
-    FamilyMotive,
+    FamilyPrestige,
     Fertility,
     Greed,
-    HappinessMotive,
     HeadOfFamily,
     Honor,
-    HonorMotive,
+    Intelligence,
     Intrigue,
-    Learning,
     Lifespan,
     LifeStage,
     Luck,
     Martial,
-    MoneyMotive,
-    PowerMotive,
     Prowess,
     Rationality,
-    RespectMotive,
     RomancePropensity,
     Sex,
-    SexMotive,
     SexualOrientation,
     Sociability,
     Species,
     SpeciesLibrary,
     Stewardship,
     Vengefulness,
-    ViolencePropensity,
-    WantForChildren,
-    WantForMarriage,
-    WantForPower,
-    Zeal,
 )
 from minerva.characters.helpers import (
     set_character_biological_father,
@@ -320,7 +308,7 @@ class DefaultCharacterFactory(CharacterFactory):
             )
         )
         obj.add_component(
-            Learning(
+            Intelligence(
                 default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if randomize_stats else 0,
             )
@@ -374,12 +362,6 @@ class DefaultCharacterFactory(CharacterFactory):
             )
         )
         obj.add_component(
-            Zeal(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if randomize_stats else 0,
-            )
-        )
-        obj.add_component(
             Luck(
                 default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if randomize_stats else 0,
@@ -391,38 +373,6 @@ class DefaultCharacterFactory(CharacterFactory):
                 base_value=rng.randint(0, 80) if randomize_stats else 0,
             )
         )
-        obj.add_component(
-            ViolencePropensity(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            WantForPower(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            WantForChildren(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            WantForMarriage(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if randomize_stats else 0,
-            )
-        )
-        obj.add_component(MoneyMotive(default_stat_calc_strategy))
-        obj.add_component(PowerMotive(default_stat_calc_strategy))
-        obj.add_component(RespectMotive(default_stat_calc_strategy))
-        obj.add_component(HappinessMotive(default_stat_calc_strategy))
-        obj.add_component(FamilyMotive(default_stat_calc_strategy))
-        obj.add_component(HonorMotive(default_stat_calc_strategy))
-        obj.add_component(SexMotive(default_stat_calc_strategy))
-        obj.add_component(DreadMotive(default_stat_calc_strategy))
 
         db = world.resources.get_resource(SimDB).db
 
@@ -644,6 +594,7 @@ class DefaultFamilyFactory(FamilyFactory):
         )
         family.add_component(LifeEventHistory())
         family.add_component(WarTracker())
+        family.add_component(FamilyPrestige(default_stat_calc_strategy))
         family.name = f"{family_name}"
 
         db.execute(

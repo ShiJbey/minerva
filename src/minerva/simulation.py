@@ -34,7 +34,6 @@ from minerva.actions.considerations import (
     OpinionOfSchemeInitiatorCons,
     RationalityConsideration,
     StewardshipConsideration,
-    WantForPowerConsideration,
 )
 from minerva.actions.preconditions import (
     AreCoupSchemesActive,
@@ -264,7 +263,7 @@ class Simulation:
                 cooldown=4,
                 utility_consideration=AIUtilityConsiderationGroup(
                     GreedConsideration().pow(2),
-                    WantForPowerConsideration().pow(2),
+                    BoldnessConsideration().pow(2),
                     CompassionConsideration().invert(),
                 ),
             )
@@ -277,7 +276,7 @@ class Simulation:
                 cooldown=4,
                 utility_consideration=AIUtilityConsiderationGroup(
                     GreedConsideration().pow(2),
-                    WantForPowerConsideration().pow(2),
+                    BoldnessConsideration().pow(2),
                     CompassionConsideration().invert(),
                 ),
             )
@@ -335,7 +334,7 @@ class Simulation:
                 cooldown=4,
                 utility_consideration=AIUtilityConsiderationGroup(
                     GreedConsideration(),
-                    WantForPowerConsideration(),
+                    BoldnessConsideration(),
                     DiplomacyConsideration(),
                 ),
             )
@@ -350,7 +349,7 @@ class Simulation:
                     ConstantUtilityConsideration(0.5),
                     AIUtilityConsiderationGroup(
                         GreedConsideration(),
-                        WantForPowerConsideration(),
+                        BoldnessConsideration(),
                         op="max",
                     ),
                 ),
@@ -364,7 +363,7 @@ class Simulation:
                 cost=500,
                 utility_consideration=AIUtilityConsiderationGroup(
                     ConstantUtilityConsideration(0.5),
-                    WantForPowerConsideration(),
+                    BoldnessConsideration(),
                     AIUtilityConsiderationGroup(
                         GreedConsideration(),
                         MartialConsideration(),
@@ -381,7 +380,6 @@ class Simulation:
                 cost=300,
                 utility_consideration=AIUtilityConsiderationGroup(
                     BoldnessConsideration(),
-                    WantForPowerConsideration(),
                     ConstantUtilityConsideration(0.8),
                 ),
             )
@@ -396,7 +394,6 @@ class Simulation:
                     HonorConsideration().invert().pow(2),
                     DiplomacyConsideration().invert().pow(2),
                     BoldnessConsideration().pow(2),
-                    WantForPowerConsideration().pow(2),
                     OpinionOfRulerConsideration().invert().pow(2),
                     IntrigueConsideration().pow(2),
                 ),
@@ -413,7 +410,6 @@ class Simulation:
                     HonorConsideration().invert().pow(2),
                     IntrigueConsideration().pow(2),
                     BoldnessConsideration(),
-                    WantForPowerConsideration(),
                     OpinionOfRulerConsideration().invert(),
                 ),
             )
@@ -429,7 +425,6 @@ class Simulation:
                     HonorConsideration().invert().pow(2),
                     IntrigueConsideration().pow(2),
                     BoldnessConsideration(),
-                    WantForPowerConsideration(),
                     OpinionOfRulerConsideration().invert(),
                     OpinionOfSchemeInitiatorCons().pow(2),
                 ),

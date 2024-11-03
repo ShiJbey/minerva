@@ -13,11 +13,6 @@ from minerva.datetime import SimDate
 from minerva.ecs import Component, GameObject, TagComponent
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
-CHARACTER_MOTIVE_MAX = 100
-"""The max score for character motives."""
-CHARACTER_MOTIVE_BASE = 50
-"""The starting score for character motives."""
-
 
 class LifeStage(enum.IntEnum):
     """All the age ranges characters can pass through."""
@@ -636,102 +631,6 @@ class DynastyTracker:
         return None
 
 
-class MoneyMotive(StatComponent):
-    """Tracks a character's want for money."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
-class PowerMotive(StatComponent):
-    """Tracks a character's want for power."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
-class RespectMotive(StatComponent):
-    """Tracks a character's want for respect."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
-class HappinessMotive(StatComponent):
-    """Tracks a character's want for happiness."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
-class FamilyMotive(StatComponent):
-    """Tracks a character's want for family."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
-class HonorMotive(StatComponent):
-    """Tracks a character's want for honor."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
-class SexMotive(StatComponent):
-    """Tracks a character's want for sex."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
-class DreadMotive(StatComponent):
-    """Tracks a character's want for dread."""
-
-    def __init__(self, calculation_strategy: IStatCalculationStrategy) -> None:
-        super().__init__(
-            calculation_strategy,
-            CHARACTER_MOTIVE_BASE,
-            (0, CHARACTER_MOTIVE_MAX),
-            True,
-        )
-
-
 class Lifespan(StatComponent):
     """Tracks a GameObject's lifespan."""
 
@@ -795,8 +694,8 @@ class Intrigue(StatComponent):
         super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
-class Learning(StatComponent):
-    """Tracks a GameObject's learning."""
+class Intelligence(StatComponent):
+    """Tracks a character's intelligence stat."""
 
     MAX_VALUE: int = 100
 
@@ -925,60 +824,8 @@ class Vengefulness(StatComponent):
         super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
-class Zeal(StatComponent):
-    """Tracks a GameObject's zeal."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
 class RomancePropensity(StatComponent):
     """Tracks a GameObject's propensity for romantic actions."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class ViolencePropensity(StatComponent):
-    """Tracks a GameObject's propensity for violent actions."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class WantForPower(StatComponent):
-    """Tracks a GameObject's propensity to take actions that increase social power."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class WantForChildren(StatComponent):
-    """Tracks a GameObject's propensity to have children."""
 
     MAX_VALUE: int = 100
 
@@ -1003,10 +850,10 @@ class Luck(StatComponent):
         super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
 
 
-class WantForMarriage(StatComponent):
-    """Tracks a GameObject's propensity to be married."""
+class FamilyPrestige(StatComponent):
+    """Tracks the prestige level of a family."""
 
-    MAX_VALUE: int = 100
+    MAX_VALUE = 999_999
 
     def __init__(
         self,

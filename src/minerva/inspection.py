@@ -20,41 +20,29 @@ from minerva.characters.components import (
     Character,
     Compassion,
     Diplomacy,
-    DreadMotive,
     Dynasty,
     DynastyTracker,
     Emperor,
     Family,
-    FamilyMotive,
     FamilyRoleFlags,
     Fertility,
     Greed,
-    HappinessMotive,
     HeadOfFamily,
     Honor,
-    HonorMotive,
+    Intelligence,
     Intrigue,
-    Learning,
     Lifespan,
     Luck,
     Marriage,
     Martial,
-    MoneyMotive,
-    PowerMotive,
     Pregnancy,
     Prowess,
     Rationality,
-    RespectMotive,
     RomancePropensity,
     RomanticAffair,
-    SexMotive,
     Sociability,
     Stewardship,
     Vengefulness,
-    WantForChildren,
-    WantForMarriage,
-    WantForPower,
-    Zeal,
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
@@ -450,38 +438,6 @@ class SimulationInspector:
             "[orange1 bold]Influence Points[/orange1 bold]: "
             f"{int(character_component.influence_points)}"
         )
-        money_motive = character.get_component(MoneyMotive).value
-        stat_columns.append(
-            "[orange1 bold]Money Motive[/orange1 bold]: " f"{money_motive:.2f}"
-        )
-        power_motive = character.get_component(PowerMotive).value
-        stat_columns.append(
-            "[orange1 bold]Power Motive[/orange1 bold]: " f"{power_motive:.2f}"
-        )
-        respect_motive = character.get_component(RespectMotive).value
-        stat_columns.append(
-            "[orange1 bold]Respect Motive[/orange1 bold]: " f"{respect_motive:.2f}"
-        )
-        happiness_motive = character.get_component(HappinessMotive).value
-        stat_columns.append(
-            "[orange1 bold]Happiness Motive[/orange1 bold]: " f"{happiness_motive:.2f}"
-        )
-        family_motive = character.get_component(FamilyMotive).value
-        stat_columns.append(
-            "[orange1 bold]Family Motive[/orange1 bold]: " f"{family_motive:.2f}"
-        )
-        honor_motive = character.get_component(HonorMotive).value
-        stat_columns.append(
-            "[orange1 bold]Honor Motive[/orange1 bold]: " f"{honor_motive:.2f}"
-        )
-        sex_motive = character.get_component(SexMotive).value
-        stat_columns.append(
-            "[orange1 bold]Sex Motive[/orange1 bold]: " f"{sex_motive:.2f}"
-        )
-        dread_motive = character.get_component(DreadMotive).value
-        stat_columns.append(
-            "[orange1 bold]Dread Motive[/orange1 bold]: " f"{dread_motive:.2f}"
-        )
         lifespan = character.get_component(Lifespan).value
         stat_columns.append("[orange1 bold]Lifespan[/orange1 bold]: " f"{lifespan:.2f}")
         fertility = character.get_component(Fertility).value
@@ -496,8 +452,10 @@ class SimulationInspector:
         stat_columns.append("[orange1 bold]Martial[/orange1 bold]: " f"{martial:.2f}")
         intrigue = character.get_component(Intrigue).value
         stat_columns.append("[orange1 bold]Intrigue[/orange1 bold]: " f"{intrigue:.2f}")
-        learning = character.get_component(Learning).value
-        stat_columns.append("[orange1 bold]Learning[/orange1 bold]: " f"{learning:.2f}")
+        intelligence = character.get_component(Intelligence).value
+        stat_columns.append(
+            "[orange1 bold]intelligence[/orange1 bold]: " f"{intelligence:.2f}"
+        )
         prowess = character.get_component(Prowess).value
         stat_columns.append("[orange1 bold]Prowess[/orange1 bold]: " f"{prowess:.2f}")
         sociability = character.get_component(Sociability).value
@@ -526,29 +484,13 @@ class SimulationInspector:
         stat_columns.append(
             "[orange1 bold]Vengefulness[/orange1 bold]: " f"{vengefulness:.2f}"
         )
-        zeal = character.get_component(Zeal).value
-        stat_columns.append("[orange1 bold]Zeal[/orange1 bold]: " f"{zeal:.2f}")
         romance_propensity = character.get_component(RomancePropensity).value
         stat_columns.append(
             "[orange1 bold]Romance Propensity[/orange1 bold]: "
             f"{romance_propensity:.2f}"
         )
-        want_for_power = character.get_component(WantForPower).value
-        stat_columns.append(
-            "[orange1 bold]Want for Power[/orange1 bold]: " f"{want_for_power:.2f}"
-        )
-        want_for_children = character.get_component(WantForChildren).value
-        stat_columns.append(
-            "[orange1 bold]Want For Children[/orange1 bold]: "
-            f"{want_for_children:.2f}"
-        )
         luck = character.get_component(Luck).value
         stat_columns.append("[orange1 bold]Luck[/orange1 bold]: " f"{luck:.2f}")
-        want_for_marriage = character.get_component(WantForMarriage).value
-        stat_columns.append(
-            "[orange1 bold]Want For Marriage[/orange1 bold]: "
-            f"{want_for_marriage:.2f}"
-        )
 
         stats_panel = rich.panel.Panel(
             rich.columns.Columns(stat_columns, expand=False, equal=True),

@@ -16,6 +16,7 @@ from minerva.traits.effects import (
     AddCompassionModifier,
     AddDiplomacyModifier,
     AddFertilityModifier,
+    AddGreedModifier,
     AddHonorModifier,
     AddIncomingRelationshipModifier,
     AddIntrigueModifier,
@@ -24,11 +25,9 @@ from minerva.traits.effects import (
     AddOutgoingRelationshipModifier,
     AddProwessModifier,
     AddRationalityModifier,
-    AddSexMotiveModifier,
     AddSociabilityModifier,
     AddStewardshipModifier,
     AddVengefulnessModifier,
-    AddWantForPowerModifier,
 )
 
 
@@ -187,7 +186,8 @@ def load_traits(world: World) -> None:
             spawn_frequency=1,
             effects=[
                 AddSociabilityModifier(StatModifier(35)),
-                AddSexMotiveModifier(StatModifier(35)),
+                AddGreedModifier(StatModifier(20)),
+                AddHonorModifier(StatModifier(-20)),
                 AddFertilityModifier(StatModifier(0.25, StatModifierType.PERCENT)),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(
@@ -234,7 +234,7 @@ def load_traits(world: World) -> None:
             effects=[
                 AddSociabilityModifier(StatModifier(20)),
                 AddStewardshipModifier(StatModifier(10)),
-                AddWantForPowerModifier(StatModifier(20)),
+                AddBoldnessModifier(StatModifier(20)),
                 AddDiplomacyModifier(StatModifier(10)),
                 AddOutgoingRelationshipModifier(
                     RelationshipModifier(

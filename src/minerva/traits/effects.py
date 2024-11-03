@@ -6,182 +6,25 @@ from minerva.characters.components import (
     Boldness,
     Compassion,
     Diplomacy,
-    DreadMotive,
-    FamilyMotive,
     Fertility,
     Greed,
-    HappinessMotive,
     Honor,
-    HonorMotive,
+    Intelligence,
     Intrigue,
-    Learning,
     Lifespan,
     Luck,
     Martial,
-    MoneyMotive,
-    PowerMotive,
     Prowess,
     Rationality,
-    RespectMotive,
     RomancePropensity,
-    SexMotive,
     Sociability,
     Stewardship,
     Vengefulness,
-    ViolencePropensity,
-    WantForChildren,
-    WantForMarriage,
-    WantForPower,
-    Zeal,
 )
 from minerva.ecs import GameObject
 from minerva.relationships.base_types import RelationshipManager, RelationshipModifier
 from minerva.stats.base_types import StatModifier
 from minerva.traits.base_types import TraitEffect
-
-
-class AddMoneyMotiveModifier(TraitEffect):
-    """Add a modifier the money motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(MoneyMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(MoneyMotive).remove_modifier(self.modifier)
-
-
-class AddPowerMotiveModifier(TraitEffect):
-    """Add a modifier the power motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(PowerMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(PowerMotive).remove_modifier(self.modifier)
-
-
-class AddRespectMotiveModifier(TraitEffect):
-    """Add a modifier the respect motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(RespectMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(RespectMotive).remove_modifier(self.modifier)
-
-
-class AddHappinessMotiveModifier(TraitEffect):
-    """Add a modifier the happiness motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(HappinessMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(HappinessMotive).remove_modifier(self.modifier)
-
-
-class AddFamilyMotiveModifier(TraitEffect):
-    """Add a modifier the family motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(FamilyMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(FamilyMotive).remove_modifier(self.modifier)
-
-
-class AddHonorMotiveModifier(TraitEffect):
-    """Add a modifier the honor motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(HonorMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(HonorMotive).remove_modifier(self.modifier)
-
-
-class AddSexMotiveModifier(TraitEffect):
-    """Add a modifier the sex motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(SexMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(SexMotive).remove_modifier(self.modifier)
-
-
-class AddDreadMotiveModifier(TraitEffect):
-    """Add a modifier the dread motive stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(DreadMotive).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(DreadMotive).remove_modifier(self.modifier)
 
 
 class AddLifespanModifier(TraitEffect):
@@ -274,8 +117,8 @@ class AddIntrigueModifier(TraitEffect):
         target.get_component(Intrigue).remove_modifier(self.modifier)
 
 
-class AddLearningModifier(TraitEffect):
-    """Add a modifier the learning stat."""
+class AddIntelligenceModifier(TraitEffect):
+    """Add a modifier the intelligence stat."""
 
     __slots__ = ("modifier",)
 
@@ -286,10 +129,10 @@ class AddLearningModifier(TraitEffect):
         self.modifier = modifier
 
     def apply(self, target: GameObject) -> None:
-        target.get_component(Learning).add_modifier(self.modifier)
+        target.get_component(Intelligence).add_modifier(self.modifier)
 
     def remove(self, target: GameObject) -> None:
-        target.get_component(Learning).remove_modifier(self.modifier)
+        target.get_component(Intelligence).remove_modifier(self.modifier)
 
 
 class AddProwessModifier(TraitEffect):
@@ -454,24 +297,6 @@ class AddVengefulnessModifier(TraitEffect):
         target.get_component(Vengefulness).remove_modifier(self.modifier)
 
 
-class AddZealModifier(TraitEffect):
-    """Add a modifier the zeal stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(Zeal).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(Zeal).remove_modifier(self.modifier)
-
-
 class AddRomancePropensityModifier(TraitEffect):
     """Add a modifier the romance propensity stat."""
 
@@ -490,60 +315,6 @@ class AddRomancePropensityModifier(TraitEffect):
         target.get_component(RomancePropensity).remove_modifier(self.modifier)
 
 
-class AddViolencePropensityModifier(TraitEffect):
-    """Add a modifier the violence propensity stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(ViolencePropensity).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(ViolencePropensity).remove_modifier(self.modifier)
-
-
-class AddWantForPowerModifier(TraitEffect):
-    """Add a modifier the want for power stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(WantForPower).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(WantForPower).remove_modifier(self.modifier)
-
-
-class AddWantForChildrenModifier(TraitEffect):
-    """Add a modifier the want for children stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(WantForChildren).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(WantForChildren).remove_modifier(self.modifier)
-
-
 class AddLuckModifier(TraitEffect):
     """Add a modifier the luck stat."""
 
@@ -560,24 +331,6 @@ class AddLuckModifier(TraitEffect):
 
     def remove(self, target: GameObject) -> None:
         target.get_component(Luck).remove_modifier(self.modifier)
-
-
-class AddWantForMarriageModifier(TraitEffect):
-    """Add a modifier the want for marriage stat."""
-
-    __slots__ = ("modifier",)
-
-    modifier: StatModifier
-
-    def __init__(self, modifier: StatModifier) -> None:
-        super().__init__()
-        self.modifier = modifier
-
-    def apply(self, target: GameObject) -> None:
-        target.get_component(WantForMarriage).add_modifier(self.modifier)
-
-    def remove(self, target: GameObject) -> None:
-        target.get_component(WantForMarriage).remove_modifier(self.modifier)
 
 
 class AddIncomingRelationshipModifier(TraitEffect):
