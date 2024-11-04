@@ -1,7 +1,6 @@
 """Minerva Base Systems."""
 
 import logging
-import math
 import random
 from typing import Callable, ClassVar, Optional
 
@@ -25,6 +24,7 @@ from minerva.characters.components import (
     LifeStage,
     Marriage,
     Pregnancy,
+    Prowess,
     Sex,
     SexualOrientation,
 )
@@ -48,6 +48,7 @@ from minerva.characters.helpers import (
     update_grandparent_relations,
 )
 from minerva.characters.metric_data import CharacterMetrics
+from minerva.characters.stat_helpers import StatLevel, get_luck_level
 from minerva.characters.succession_helpers import (
     SuccessionChartCache,
     get_current_ruler,
@@ -56,11 +57,14 @@ from minerva.characters.succession_helpers import (
 )
 from minerva.characters.war_data import Alliance, War, WarRole
 from minerva.characters.war_helpers import (
-    calculate_alliance_martial,
+    calculate_aggressor_win_probability,
+    calculate_war_score,
+    calculate_warrior_prowess_dist,
     destroy_alliance_scheme,
     destroy_coup_scheme,
     destroy_war_scheme,
     end_war,
+    get_casualty_chance,
     join_war_as,
     start_alliance,
     start_war,
@@ -227,7 +231,7 @@ class CharacterLifespanSystem(System):
             (Character, Lifespan, Active)
         ):
             if character.age >= life_span.value:
-                DieAction(character.gameobject).execute()
+                DieAction(character.gameobject, cause_of_death="old age").execute()
 
 
 class SuccessionDepthChartUpdateSystem(System):
@@ -1407,19 +1411,139 @@ class WarUpdateSystem(System):
         rng = world.resources.get_resource(random.Random)
 
         for _, (war, _) in world.get_components((War, Active)):
-            aggressor_martial = calculate_alliance_martial(
-                war.aggressor, *war.aggressor_allies
-            )
 
-            defender_martial = calculate_alliance_martial(
-                war.defender, *war.defender_allies
-            )
+            # Check that the family heads are alive
+            aggressor_family_head = war.aggressor.get_component(Family).head
+            defender_family_head = war.defender.get_component(Family).head
 
-            aggressor_success_chance = self.calculate_probability_of_winning(
-                aggressor_martial, defender_martial
-            )
+            if aggressor_family_head is None or defender_family_head is None:
+                war.gameobject.deactivate()
+                end_war(war.gameobject, None)
+                continue
 
-            if rng.random() < aggressor_success_chance:
+            prowess_mean, prowess_stdev = calculate_warrior_prowess_dist(war)
+            aggressor_score = calculate_war_score(
+                war.aggressor, list(war.aggressor_allies)
+            )
+            defender_score = calculate_war_score(
+                war.defender, list(war.defender_allies)
+            )
+            base_aggressor_win_probability = calculate_aggressor_win_probability(
+                aggressor_score, defender_score
+            )
+            aggressor_win_probability = base_aggressor_win_probability
+
+            assert aggressor_family_head
+            assert defender_family_head
+
+            # Adjust win probability based on aggressor luck
+            aggressor_luck_level = get_luck_level(aggressor_family_head)
+            if aggressor_luck_level == StatLevel.TERRIBLE:
+                aggressor_win_probability -= 0.1
+            elif aggressor_luck_level == StatLevel.EXCELLENT:
+                aggressor_win_probability += 0.1
+
+            # Adjust win probability based on defender luck
+            defender_luck_level = get_luck_level(defender_family_head)
+            if defender_luck_level == StatLevel.TERRIBLE:
+                aggressor_win_probability += 0.1
+            elif defender_luck_level == StatLevel.EXCELLENT:
+                aggressor_win_probability -= 0.1
+
+            # Random roll to see who wins
+            if rng.random() < aggressor_win_probability:
+                winner = war.aggressor
+                winner_allies = war.aggressor_allies
+                loser = war.defender
+                loser_allies = war.defender_allies
+            else:
+                winner = war.defender
+                winner_allies = war.defender_allies
+                loser = war.aggressor
+                loser_allies = war.aggressor_allies
+
+            # Determine casualties
+            casualties: list[GameObject] = []
+
+            for warrior in winner.get_component(Family).warriors:
+                casualty_chance = get_casualty_chance(
+                    prowess_mean,
+                    prowess_stdev,
+                    warrior.get_component(Prowess).value,
+                )
+
+                # Adjust Casualty Chance based on luck
+                warrior_luck_level = get_luck_level(warrior)
+                if warrior_luck_level == StatLevel.TERRIBLE:
+                    casualty_chance += 0.1
+                elif warrior_luck_level == StatLevel.EXCELLENT:
+                    casualty_chance -= 0.1
+
+                # Roll for casualty
+                if random.random() < casualty_chance:
+                    casualties.append(warrior)
+
+            for family in winner_allies:
+                for warrior in family.get_component(Family).warriors:
+                    casualty_chance = get_casualty_chance(
+                        prowess_mean,
+                        prowess_stdev,
+                        warrior.get_component(Prowess).value,
+                    )
+
+                    # Adjust Casualty Chance based on luck
+                    warrior_luck_level = get_luck_level(warrior)
+                    if warrior_luck_level == StatLevel.TERRIBLE:
+                        casualty_chance += 0.1
+                    elif warrior_luck_level == StatLevel.EXCELLENT:
+                        casualty_chance -= 0.1
+
+                    # Roll for casualty
+                    if random.random() < casualty_chance:
+                        casualties.append(warrior)
+
+            for warrior in loser.get_component(Family).warriors:
+                casualty_chance = get_casualty_chance(
+                    prowess_mean, prowess_stdev, warrior.get_component(Prowess).value
+                )
+
+                # Adjust because they lost
+                casualty_chance += 0.15
+
+                # Adjust Casualty Chance based on luck
+                warrior_luck_level = get_luck_level(warrior)
+                if warrior_luck_level == StatLevel.TERRIBLE:
+                    casualty_chance += 0.1
+                elif warrior_luck_level == StatLevel.EXCELLENT:
+                    casualty_chance -= 0.1
+
+                # Roll for casualty
+                if random.random() < casualty_chance:
+                    casualties.append(warrior)
+
+            for family in loser_allies:
+                for warrior in family.get_component(Family).warriors:
+                    casualty_chance = get_casualty_chance(
+                        prowess_mean,
+                        prowess_stdev,
+                        warrior.get_component(Prowess).value,
+                    )
+
+                    # Adjust because they lost
+                    casualty_chance += 0.15
+
+                    # Adjust Casualty Chance based on luck
+                    warrior_luck_level = get_luck_level(warrior)
+                    if warrior_luck_level == StatLevel.TERRIBLE:
+                        casualty_chance += 0.1
+                    elif warrior_luck_level == StatLevel.EXCELLENT:
+                        casualty_chance -= 0.1
+
+                    # Roll for casualty
+                    if random.random() < casualty_chance:
+                        casualties.append(warrior)
+
+            if winner == war.aggressor:
                 # Aggressor wins the battle
 
                 # Remove the defender from controlling the territory and instate the
@@ -1487,25 +1611,6 @@ class WarUpdateSystem(System):
 
                 end_war(war.gameobject, war.defender)
 
-    @staticmethod
-    def update_power_level(
-        winner_rating: float,
-        loser_rating: float,
-        winner_expectation: float,
-        loser_expectation: float,
-        k: int = 16,
-    ) -> tuple[float, float]:
-        """Perform ELO calculation for martial scores."""
-        winner_martial_value: int = round(winner_rating + k * (1 - winner_expectation))
-        winner_martial_value = min(100, max(0, winner_martial_value))
-        loser_martial_value: int = round(loser_rating + k * (0 - loser_expectation))
-        loser_martial_value = min(100, max(0, loser_martial_value))
-
-        return winner_martial_value, loser_martial_value
-
-    @staticmethod
-    def calculate_probability_of_winning(
-        martial_score_a: float, martial_score_b: float
-    ) -> float:
-        """Return the probability of a defeating b."""
-        return 1.0 / (1 + math.pow(10, (martial_score_a - martial_score_b) / 100))
+            # Kill off the casualties
+            for character in casualties:
+                DieAction(character, cause_of_death="war").execute()

@@ -69,4 +69,4 @@ class DeathEvent(LifeEvent):
         db.commit()
 
     def get_description(self) -> str:
-        return f"{self.subject.name_with_uid} died."
+        return f"{self.subject.name_with_uid} died (cause: {self.cause})."

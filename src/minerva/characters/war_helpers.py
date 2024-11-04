@@ -1,8 +1,16 @@
 """Helper functions for wrs and alliances."""
 
+import statistics
+from typing import Optional
+
 from minerva.actions.scheme_helpers import create_scheme, destroy_scheme
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
-from minerva.characters.components import Family, Martial
+from minerva.characters.components import Family, Martial, Prowess
+from minerva.characters.stat_helpers import (
+    StatLevel,
+    get_martial_level,
+    get_stewardship_level,
+)
 from minerva.characters.war_data import Alliance, War, WarRole, WarTracker
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject
@@ -198,7 +206,7 @@ def start_war(
     return war_obj
 
 
-def end_war(war: GameObject, winner: GameObject) -> None:
+def end_war(war: GameObject, winner: Optional[GameObject]) -> None:
     """End a war between families."""
 
     world = war.world
@@ -229,7 +237,7 @@ def end_war(war: GameObject, winner: GameObject) -> None:
         """
         UPDATE wars SET end_date=?, winner_id=? WHERE uid=?;
         """,
-        (current_date.to_iso_str(), winner.uid, war.uid),
+        (current_date.to_iso_str(), winner, war.uid),
     )
 
     db.commit()
@@ -355,3 +363,105 @@ def calculate_alliance_martial(*families: GameObject) -> float:
         return 0
 
     return martial_sum / total_warriors
+
+
+def calculate_warrior_prowess_dist(war: War) -> tuple[float, float]:
+    """Calculate the mean and std deviation of prowess scores for all warriors."""
+    prowess_scores: list[float] = []
+
+    for warrior in war.aggressor.get_component(Family).warriors:
+        prowess_scores.append(warrior.get_component(Prowess).value)
+
+    for warrior in war.defender.get_component(Family).warriors:
+        prowess_scores.append(warrior.get_component(Prowess).value)
+
+    for family in war.aggressor_allies:
+        for warrior in family.get_component(Family).warriors:
+            prowess_scores.append(warrior.get_component(Prowess).value)
+
+    for family in war.defender_allies:
+        for warrior in family.get_component(Family).warriors:
+            prowess_scores.append(warrior.get_component(Prowess).value)
+
+    if len(prowess_scores) == 0:
+        return 0, 0
+    elif len(prowess_scores) == 1:
+        return prowess_scores[0], 0
+
+    score_mean = statistics.mean(prowess_scores)
+    score_stdev = statistics.stdev(prowess_scores)
+
+    return score_mean, score_stdev
+
+
+def calculate_war_score(lead_family: GameObject, allies: list[GameObject]) -> int:
+    """Calculate a strength score for a family and their allies in a war."""
+
+    total_prowess: float = 0
+
+    for warrior in lead_family.get_component(Family).warriors:
+        total_prowess += warrior.get_component(Prowess).value
+
+    for family in allies:
+        for warrior in family.get_component(Family).warriors:
+            total_prowess += warrior.get_component(Prowess).value
+
+    final_score = total_prowess
+
+    # Apply changes for lead family head martial skill
+    lead_family_head = lead_family.get_component(Family).head
+    assert lead_family_head is not None
+    martial_skill_level = get_martial_level(lead_family_head)
+
+    if martial_skill_level == StatLevel.TERRIBLE:
+        final_score = final_score * 0.6  # Final score - 40%
+
+    elif martial_skill_level == StatLevel.BAD:
+        final_score = final_score * 0.9  # Final score - 10%
+
+    elif martial_skill_level == StatLevel.GOOD:
+        final_score = final_score * 1.1  # Final score + 10%
+
+    elif martial_skill_level == StatLevel.EXCELLENT:
+        final_score = final_score * 1.4  # Final score + 40%
+
+    # Apply changes for lead family head stewardship
+    if allies:
+        lead_family_head = lead_family.get_component(Family).head
+        assert lead_family_head is not None
+        stewardship_skill_level = get_stewardship_level(lead_family_head)
+
+        if stewardship_skill_level == StatLevel.TERRIBLE:
+            final_score = final_score * 0.5  # Final score - 50%
+        elif stewardship_skill_level == StatLevel.BAD:
+            final_score = final_score * 0.6  # Final score - 40%
+
+    return int(final_score)
+
+
+def calculate_aggressor_win_probability(
+    aggressor_score: int, defender_score: float
+) -> float:
+    """Return the probability of the aggressor defeating the defender."""
+    return aggressor_score / (aggressor_score + defender_score + 1e-10)
+
+
+def get_casualty_chance(
+    prowess_mean: float, prowess_stdev: float, prowess: float
+) -> float:
+    """Get the probability of a character dying in a war."""
+
+    normalized_prowess = (prowess - prowess_mean) / (prowess_stdev + 1e-10)
+
+    if normalized_prowess >= 2:
+        return 0.0
+    elif normalized_prowess >= 1:
+        return 0.1
+    elif normalized_prowess >= 0:
+        return 0.12
+    elif normalized_prowess >= -1:
+        return 0.25
+    elif normalized_prowess >= -2:
+        return 0.4
+    else:
+        return 0.8
