@@ -16,6 +16,7 @@ from minerva.characters.components import (
     DynastyTracker,
     Emperor,
     Family,
+    FamilyPrestige,
     FamilyRoleFlags,
     Fertility,
     HeadOfFamily,
@@ -30,6 +31,7 @@ from minerva.characters.components import (
 from minerva.characters.helpers import (
     assign_family_member_to_roles,
     get_advisor_candidates,
+    get_family_of,
     get_warrior_candidates,
     merge_family_with,
     remove_family_from_play,
@@ -513,6 +515,8 @@ class RevoltUpdateSystem(System):
                 subject=territory.controlling_family,
                 territory=territory.gameobject,
             ).log_event()
+
+            territory.controlling_family.get_component(FamilyPrestige).base_value -= 20
 
             # Remove the current family from power
             set_territory_controlling_family(territory.gameobject, None)
@@ -1134,6 +1138,10 @@ class AllianceSchemeUpdateSystem(System):
                                 Opinion
                             ).base_value += 20
 
+                    get_family_of(scheme.initiator).get_component(
+                        FamilyPrestige
+                    ).base_value += 30
+
                     scheme.initiator.get_component(
                         CharacterMetrics
                     ).data.num_alliances_founded += 1
@@ -1339,6 +1347,22 @@ class CoupSchemeUpdateSystem(System):
                             if territory_component.controlling_family == ruler_family:
                                 set_territory_controlling_family(territory, None)
 
+                    # They are discovered and put to death
+                    for member in scheme.members:
+                        member_character_comp = member.get_component(Character)
+
+                        # Reduce traitor family prestige
+                        assert member_character_comp.family
+
+                        member_character_comp.family.get_component(
+                            FamilyPrestige
+                        ).base_value += 50
+
+                        if member != scheme.initiator:
+                            get_relationship(scheme.initiator, member).get_component(
+                                Opinion
+                            ).base_value += 30
+
                     set_current_ruler(world, scheme.initiator)
 
                 scheme.is_valid = False
@@ -1356,7 +1380,17 @@ class CoupSchemeUpdateSystem(System):
 
                 # They are discovered and put to death
                 for member in scheme.members:
-                    member.get_component(Character).killed_by = coup_scheme.target
+                    member_character_comp = member.get_component(Character)
+
+                    # Reduce traitor family prestige
+                    assert member_character_comp.family
+
+                    member_character_comp.family.get_component(
+                        FamilyPrestige
+                    ).base_value -= 50
+
+                    # Execute traitor
+                    member_character_comp.killed_by = coup_scheme.target
                     SentencedToDeathEvent(member, "treason").log_event()
                     DieAction(member, "treason").execute()
 
@@ -1417,6 +1451,9 @@ class WarUpdateSystem(System):
                         CharacterMetrics
                     ).data.num_wars_lost += 1
 
+                war.aggressor.get_component(FamilyPrestige).base_value += 40
+                war.defender.get_component(FamilyPrestige).base_value -= 20
+
                 end_war(war.gameobject, war.aggressor)
 
             else:
@@ -1444,6 +1481,9 @@ class WarUpdateSystem(System):
                     defending_family_head.get_component(
                         CharacterMetrics
                     ).data.num_wars_won += 1
+
+                war.aggressor.get_component(FamilyPrestige).base_value -= 50
+                war.defender.get_component(FamilyPrestige).base_value += 35
 
                 end_war(war.gameobject, war.defender)
 

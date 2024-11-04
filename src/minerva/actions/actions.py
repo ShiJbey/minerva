@@ -6,7 +6,12 @@ import logging
 
 from minerva.actions.base_types import AIAction, Scheme
 from minerva.actions.scheme_helpers import add_member_to_scheme
-from minerva.characters.components import Character, Family, HeadOfFamily
+from minerva.characters.components import (
+    Character,
+    Family,
+    FamilyPrestige,
+    HeadOfFamily,
+)
 from minerva.characters.helpers import remove_character_from_play, set_character_alive
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.war_data import Alliance
@@ -204,6 +209,13 @@ class SendAidAction(AIAction):
         world = self.context.world
         current_date = world.resources.get_resource(SimDate)
 
+        performer_character_comp = self.performer.get_component(Character)
+
+        if performer_character_comp.family:
+            performer_character_comp.family.get_component(
+                FamilyPrestige
+            ).base_value += 10
+
         self.recipient.get_component(Character).influence_points += 50
 
         get_relationship(self.recipient, self.performer).get_component(
@@ -302,6 +314,12 @@ class QuellRevoltAction(AIAction):
         config = self.context.world.resources.get_resource(Config)
 
         self.territory.remove_component(InRevolt)
+
+        performer_character_comp = self.performer.get_component(Character)
+        if performer_character_comp.family:
+            performer_character_comp.family.get_component(
+                FamilyPrestige
+            ).base_value += 10
 
         population_happiness = self.territory.get_component(PopulationHappiness)
 

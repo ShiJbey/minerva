@@ -1104,3 +1104,13 @@ def update_grandparent_relations(
 
         child_character_component.grandparents.add(grandparent)
         grandparent_character_component.grandchildren.add(child)
+
+
+def get_family_of(character: GameObject) -> GameObject:
+    """Get the family a character belongs to."""
+    character_component = character.get_component(Character)
+
+    if character_component.family is not None:
+        return character_component.family
+
+    raise TypeError(f"{character.name_with_uid} is missing a family.")
