@@ -217,6 +217,9 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.ActionCooldownSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.FamilyRefillSystem(),
+        )
 
     def initialize_actions(self) -> None:
         """Initialize actions."""

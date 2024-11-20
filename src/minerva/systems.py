@@ -42,6 +42,7 @@ from minerva.characters.helpers import (
     set_character_father,
     set_character_mother,
     set_family_head,
+    set_family_home_base,
     set_relation_child,
     set_relation_sibling,
     start_marriage,
@@ -92,6 +93,7 @@ from minerva.life_events.events import (
 )
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.character import generate_family
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
@@ -1614,3 +1616,23 @@ class WarUpdateSystem(System):
             # Kill off the casualties
             for character in casualties:
                 DieAction(character, cause_of_death="war").execute()
+
+
+class FamilyRefillSystem(System):
+    """Spawns new families in territories that have too few families."""
+
+    __system_group__ = "UpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate)
+        for _, (territory, _) in world.get_components((Territory, Active)):
+            if len(territory.families) < 3:
+                family = generate_family(world)
+                family_component = family.get_component(Family)
+                set_family_home_base(family, territory.gameobject)
+                _logger.info(
+                    "[%s] The %s family has risen to prominence in the %s territory.",
+                    current_date.to_iso_str(),
+                    family_component.name,
+                    territory.name,
+                )

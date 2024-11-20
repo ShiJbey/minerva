@@ -747,3 +747,86 @@ def _generate_initial_families(world: World) -> list[GameObject]:
         family.get_component(Family).founder = household_heads[0]
 
     return families
+
+
+def generate_family(world: World) -> GameObject:
+    """Generates a family and its initial members."""
+
+    rng = world.resources.get_resource(random.Random)
+    config = world.resources.get_resource(Config)
+
+    family_factory = world.resources.get_resource(PCGFactories).family_factory
+    character_factory = world.resources.get_resource(PCGFactories).character_factory
+    baby_factory = world.resources.get_resource(PCGFactories).baby_factory
+
+    # Create a new family
+    family = family_factory.generate_family(world)
+    family_surname = family.get_component(Family).name
+
+    # Track the household heads that are generated. The head of the first
+    # household will become the family head.
+    household_heads: list[GameObject] = []
+
+    n_household_to_generate: int = rng.randint(1, config.max_households_per_family)
+
+    for _ in range(n_household_to_generate):
+        # Create a new household head
+        household_head = character_factory.generate_character(
+            world,
+            life_stage=LifeStage.ADULT,
+            sex=Sex.MALE,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            n_max_personality_traits=config.max_personality_traits,
+        )
+
+        set_character_surname(household_head, family_surname)
+        set_character_birth_surname(household_head, family_surname)
+
+        household_heads.append(household_head)
+
+        set_character_family(household_head, family)
+
+        # Generate a spouse for the household head
+        spouse = generate_spouse_for(household_head)
+
+        set_character_surname(spouse, family_surname)
+        set_character_family(spouse, family)
+
+        # Update the relationship between the household head and spouse
+        start_marriage(household_head, spouse)
+
+        n_children = rng.randint(0, config.max_children_per_household)
+
+        generated_children: list[GameObject] = []
+
+        for _ in range(n_children):
+            child = baby_factory.generate_child(spouse, household_head)
+
+            set_character_surname(child, family_surname)
+
+            set_character_family(child, family)
+            set_character_birth_family(child, family)
+
+            set_relation_child(household_head, child)
+            set_relation_child(spouse, child)
+            set_character_father(child, household_head)
+            set_character_mother(child, spouse)
+            set_character_biological_father(child, household_head)
+
+            generated_children.append(child)
+
+        for i, c1 in enumerate(generated_children):
+            if i + 1 >= len(generated_children):
+                continue
+
+            c2 = generated_children[i + 1]
+
+            if c1 != c2:
+                set_relation_sibling(c1, c2)
+                set_relation_sibling(c2, c1)
+
+    # Set the family head
+    set_family_head(family, household_heads[0])
+    family.get_component(Family).founder = household_heads[0]
+
+    return family
