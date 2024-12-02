@@ -1,3 +1,4 @@
+# pylint: disable=C0302
 """Minerva Base Systems."""
 
 import logging
@@ -54,6 +55,7 @@ from minerva.characters.succession_helpers import (
     SuccessionChartCache,
     get_current_ruler,
     get_succession_depth_chart,
+    remove_heir,
     set_current_ruler,
 )
 from minerva.characters.war_data import Alliance, War, WarRole
@@ -260,26 +262,15 @@ class FallbackFamilySuccessionSystem(System):
             if family.head is not None:
                 continue
 
-            eligible_members: list[Character] = []
+            former_head = family.former_heads[-1]
 
-            for m in family.active_members:
-                character_component = m.get_component(Character)
-                if (
-                    character_component.is_alive
-                    and character_component.birth_family == family.gameobject
-                    and character_component.life_stage > LifeStage.CHILD
-                ):
-                    eligible_members.append(character_component)
+            depth_chart = get_succession_depth_chart(former_head)
 
-            eligible_members.sort(key=lambda _m: _m.age)
-
-            if eligible_members:
-                oldest_member = eligible_members[-1]
-                set_family_head(family.gameobject, oldest_member.gameobject)
-                BecameFamilyHeadEvent(
-                    oldest_member.gameobject, family.gameobject
-                ).log_event()
-
+            if len(depth_chart) > 0:
+                heir_id = depth_chart[-1].character_id
+                heir = world.gameobjects.get_gameobject(heir_id)
+                set_family_head(family.gameobject, heir)
+                BecameFamilyHeadEvent(heir, family.gameobject).log_event()
             else:
                 remove_family_from_play(family.gameobject)
 
@@ -925,6 +916,10 @@ class PlaceholderMarriageSystem(System):
                 set_family_head(family_b, None)
                 merge_family_with(family_b, family_a)
 
+                # new spouse loses all their heirs
+                if new_spouse.heir is not None:
+                    remove_heir(new_spouse.gameobject)
+
             # Case 2: The character is head of their family and their spouse is not
             if character.gameobject.has_component(
                 HeadOfFamily
@@ -932,6 +927,10 @@ class PlaceholderMarriageSystem(System):
                 family_a = character.family
                 assert family_a is not None
                 set_character_family(new_spouse.gameobject, family_a)
+
+                # new spouse loses heir eligibility
+                if new_spouse.heir_to is not None:
+                    remove_heir(new_spouse.heir_to)
 
             # Case 3: The character is not head of their family and their spouse is
             if not character.gameobject.has_component(
@@ -944,6 +943,10 @@ class PlaceholderMarriageSystem(System):
                 set_family_head(family_b, None)
                 set_character_family(new_spouse.gameobject, family_a)
 
+                # character loses heir eligibility
+                if new_spouse.heir_to is not None:
+                    remove_heir(new_spouse.heir_to)
+
             # Case 4: Neither character is head of their family.
             if not character.gameobject.has_component(
                 HeadOfFamily
@@ -951,6 +954,10 @@ class PlaceholderMarriageSystem(System):
                 family_a = character.family
                 assert family_a is not None
                 set_character_family(new_spouse.gameobject, family_a)
+
+                # new spouse loses heir eligibility
+                if new_spouse.heir_to is not None:
+                    remove_heir(new_spouse.heir_to)
 
             MarriageEvent(character.gameobject, new_spouse.gameobject).log_event()
             MarriageEvent(new_spouse.gameobject, character.gameobject).log_event()
@@ -1635,4 +1642,54 @@ class FamilyRefillSystem(System):
                     current_date.to_iso_str(),
                     family_component.name,
                     territory.name,
+                )
+
+
+class HeirDeclarationSystem(System):
+    """Family heads missing an heir will try to name an heir."""
+
+    __system_group__ = "UpdateSystems"
+
+    @staticmethod
+    def get_oldest_child(character: Character) -> Optional[GameObject]:
+        """Get the oldest living child of the character who is in the same family."""
+
+        child_list: list[tuple[GameObject, float]] = []
+
+        for child in character.children:
+            child_character_component = child.get_component(Character)
+
+            if not child.has_component(Active):
+                continue
+
+            if child_character_component.family == character.family:
+                child_list.append((child, child_character_component.age))
+
+            child_list.sort(key=lambda e: e[1])
+
+            if child_list:
+                return child_list[-1][0]
+
+            return None
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate)
+
+        for _, (character, _, _) in world.get_components(
+            (Character, HeadOfFamily, Active)
+        ):
+            if character.heir is not None:
+                continue
+
+            oldest_child = HeirDeclarationSystem.get_oldest_child(character)
+
+            if oldest_child:
+                oldest_child_character_comp = oldest_child.get_component(Character)
+                character.heir = oldest_child
+                oldest_child_character_comp.heir_to = character.gameobject
+                _logger.info(
+                    "[%s]: %s declared %s their heir.",
+                    current_date.to_iso_str(),
+                    character.gameobject.name_with_uid,
+                    oldest_child,
                 )

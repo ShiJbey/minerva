@@ -220,6 +220,9 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.FamilyRefillSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.HeirDeclarationSystem(),
+        )
 
     def initialize_actions(self) -> None:
         """Initialize actions."""

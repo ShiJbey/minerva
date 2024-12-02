@@ -92,6 +92,12 @@ class SuccessionDepthChart:
     def __iter__(self) -> Iterator[DepthChartRow]:
         return iter(self._rows)
 
+    def __len__(self) -> int:
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> DepthChartRow:
+        return self._rows[index]
+
 
 class SuccessionChartCache:
     """Singleton class that manages depth charts for all current family heads."""
@@ -123,6 +129,33 @@ class SuccessionChartCache:
             return True
 
         return False
+
+
+def set_heir(character: GameObject, heir: GameObject) -> None:
+    """Set a character's heir."""
+    character_component = character.get_component(Character)
+    heir_character = heir.get_component(Character)
+
+    if character_component.heir is not None:
+        raise TypeError("Character already has a heir declared.")
+
+    character_component.heir = heir
+    heir_character.heir_to = character
+
+
+def remove_heir(character: GameObject) -> None:
+    """Remove the declared heir from this character."""
+
+    character_component = character.get_component(Character)
+
+    if character_component.heir is None:
+        return
+
+    heir = character_component.heir
+    heir_character = heir.get_component(Character)
+
+    character_component.heir = None
+    heir_character.heir_to = None
 
 
 def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:

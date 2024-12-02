@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import logging
 import math
-import random
 from typing import Iterable, Optional
 
 from minerva.actions.base_types import Scheme, SchemeManager
@@ -28,10 +27,7 @@ from minerva.characters.components import (
     Stewardship,
 )
 from minerva.characters.metric_data import CharacterMetrics
-from minerva.characters.succession_helpers import (
-    get_succession_depth_chart,
-    set_current_ruler,
-)
+from minerva.characters.succession_helpers import set_current_ruler
 from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.datetime import SimDate
@@ -254,29 +250,30 @@ def remove_character_from_play(character: GameObject, pass_crown: bool = True) -
     """Remove a character from play."""
     world = character.world
     current_date = world.resources.get_resource(SimDate).copy()
-    rng = world.resources.get_resource(random.Random)
+    # rng = world.resources.get_resource(random.Random)
+    character_component = character.get_component(Character)
 
     character.deactivate()
 
-    heir: Optional[GameObject] = None
+    heir: Optional[GameObject] = character_component.heir
 
-    depth_chart = get_succession_depth_chart(character)
+    # depth_chart = get_succession_depth_chart(character)
 
     # Get top 3 the eligible heirs
-    eligible_heirs = [entry.character_id for entry in depth_chart if entry.is_eligible][
-        :3
-    ]
+    # eligible_heirs = [entry.character_id for entry in depth_chart if entry.is_eligible][
+    #     :3
+    # ]
 
-    if eligible_heirs:
-        # Add selection weights to heirs
-        # The second bracket slices the proceeding list to the number of
-        # eligible heirs
-        heir_weights = [0.8, 0.15, 0.5][: len(eligible_heirs)]
+    # if eligible_heirs:
+    #     # Add selection weights to heirs
+    #     # The second bracket slices the proceeding list to the number of
+    #     # eligible heirs
+    #     heir_weights = [0.8, 0.15, 0.5][: len(eligible_heirs)]
 
-        # Select a random heir from the top 3 with most emphasis on the first
-        heir_id = rng.choices(eligible_heirs, heir_weights, k=1)[0]
+    #     # Select a random heir from the top 3 with most emphasis on the first
+    #     heir_id = rng.choices(eligible_heirs, heir_weights, k=1)[0]
 
-        heir = world.gameobjects.get_gameobject(heir_id)
+    #     heir = world.gameobjects.get_gameobject(heir_id)
 
     if family_head_component := character.try_component(HeadOfFamily):
         # Perform succession
@@ -291,8 +288,6 @@ def remove_character_from_play(character: GameObject, pass_crown: bool = True) -
             heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
         else:
             set_current_ruler(world, None)
-
-    character_component = character.get_component(Character)
 
     if character_component.family:
         unassign_family_member_from_all_roles(character_component.family, character)
