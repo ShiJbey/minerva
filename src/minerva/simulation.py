@@ -223,6 +223,12 @@ class Simulation:
         self.world.systems.add_system(
             minerva.systems.HeirDeclarationSystem(),
         )
+        self.world.systems.add_system(
+            minerva.systems.OrphanIdentificationSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.OrphanAdoptionSystem(),
+        )
 
     def initialize_actions(self) -> None:
         """Initialize actions."""
@@ -726,7 +732,7 @@ class Simulation:
                 description="A plain ol' human being.",
                 adolescent_age=13,
                 young_adult_age=20,
-                adult_age=30,
+                adult_age=40,
                 senior_age=65,
                 adolescent_male_fertility=100,
                 young_adult_male_fertility=100,
@@ -734,7 +740,7 @@ class Simulation:
                 senior_male_fertility=80,
                 adolescent_female_fertility=100,
                 young_adult_female_fertility=100,
-                adult_female_fertility=50,
+                adult_female_fertility=0,
                 senior_female_fertility=0,
                 fertility_cost_per_child=20,
                 lifespan=(70, 80),

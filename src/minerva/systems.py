@@ -1693,3 +1693,85 @@ class HeirDeclarationSystem(System):
                     character.gameobject.name_with_uid,
                     oldest_child,
                 )
+
+
+class OrphanIdentificationSystem(System):
+    """Identifies orphans in a family."""
+
+    def on_update(self, world: World) -> None:
+        current_date = world.resources.get_resource(SimDate)
+
+        for _, (character, _) in world.get_components((Character, Active)):
+            mother = character.mother
+            father = character.father
+
+            missing_mother = mother is None or not mother.has_component(Active)
+            missing_father = father is None or not father.has_component(Active)
+            is_not_adult = character.life_stage <= LifeStage.ADOLESCENT
+
+            if missing_father and missing_mother and is_not_adult:
+                _logger.info(
+                    "[%s]: %s is an orphan.",
+                    current_date.to_iso_str(),
+                    character.gameobject.name_with_uid,
+                )
+
+
+class OrphanAdoptionSystem(System):
+    """Identify family heads without children."""
+
+    @staticmethod
+    def is_orphan(character: Character) -> bool:
+        """Check if a character is an orphan."""
+        mother = character.mother
+        father = character.father
+
+        missing_mother = mother is None or not mother.has_component(Active)
+        missing_father = father is None or not father.has_component(Active)
+        is_not_adult = character.life_stage <= LifeStage.ADOLESCENT
+
+        return missing_father and missing_mother and is_not_adult
+
+    @staticmethod
+    def get_orphans_in_family(character_component: Character) -> list[GameObject]:
+        """Get all orphans in the family."""
+
+        family = character_component.family
+        if family is None:
+            return []
+
+        orphans: list[GameObject] = []
+        family_component = family.get_component(Family)
+        for member in family_component.active_members:
+            member_character = member.get_component(Character)
+            if OrphanAdoptionSystem.is_orphan(member_character):
+                orphans.append(member)
+
+        return orphans
+
+    def on_update(self, world: World) -> None:
+        rng = world.resources.get_resource(random.Random)
+        current_date = world.resources.get_resource(SimDate)
+
+        for _, (character, _, _) in world.get_components(
+            (Character, HeadOfFamily, Active)
+        ):
+            if character.life_stage < LifeStage.ADULT:
+                continue
+
+            if character.heir is not None:
+                continue
+
+            # Adopt orphan
+            orphans = OrphanAdoptionSystem.get_orphans_in_family(character)
+
+            if orphans:
+
+                chosen_orphan = rng.choice(orphans)
+                character.children.add(chosen_orphan)
+                _logger.info(
+                    "[%s]: %s adopted %s.",
+                    current_date.to_iso_str(),
+                    character.gameobject.name_with_uid,
+                    chosen_orphan.name_with_uid,
+                )

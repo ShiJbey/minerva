@@ -460,6 +460,7 @@ def generate_spouse_for(character: GameObject) -> GameObject:
         world=character.world,
         sex=spouse_sex,
         n_max_personality_traits=config.max_personality_traits,
+        life_stage=character_component.life_stage,
     )
 
 
@@ -690,7 +691,7 @@ def _generate_initial_families(world: World) -> list[GameObject]:
             # Create a new household head
             household_head = character_factory.generate_character(
                 world,
-                life_stage=LifeStage.ADULT,
+                life_stage=LifeStage.YOUNG_ADULT,
                 sex=Sex.MALE,
                 sexual_orientation=SexualOrientation.HETEROSEXUAL,
                 n_max_personality_traits=config.max_personality_traits,
@@ -712,7 +713,15 @@ def _generate_initial_families(world: World) -> list[GameObject]:
             # Update the relationship between the household head and spouse
             start_marriage(household_head, spouse)
 
-            n_children = rng.randint(0, config.max_children_per_household)
+            max_children_per_life_stage = {
+                LifeStage.ADOLESCENT: 1,
+                LifeStage.YOUNG_ADULT: 2,
+                LifeStage.ADULT: 4,
+            }
+
+            spouse_life_stage = spouse.get_component(Character).life_stage
+
+            n_children = rng.randint(0, max_children_per_life_stage[spouse_life_stage])
 
             generated_children: list[GameObject] = []
 
@@ -773,7 +782,7 @@ def generate_family(world: World) -> GameObject:
         # Create a new household head
         household_head = character_factory.generate_character(
             world,
-            life_stage=LifeStage.ADULT,
+            life_stage=LifeStage.YOUNG_ADULT,
             sex=Sex.MALE,
             sexual_orientation=SexualOrientation.HETEROSEXUAL,
             n_max_personality_traits=config.max_personality_traits,
