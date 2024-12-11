@@ -1,10 +1,241 @@
 """Simulation Database."""
 
+from __future__ import annotations
+
+import json
 import sqlite3
+from ctypes import ArgumentError
+from typing import Any, Literal
+
+import pydantic
+
+
+class DbColumnConfig(pydantic.BaseModel):
+    """Configuration settings for a column of a SQLite table."""
+
+    name: str
+    data_type: Literal["INTEGER", "TEXT", "FLOAT", "BLOB", "BOOLEAN"]
+    is_primary_key: bool = False
+    is_not_null: bool = False
+    auto_increment: bool = False
+
+    def to_sqlite_str(self) -> str:
+        """Convert to valid SQLite string."""
+        output_arr: list[str] = [
+            self.name,
+            self.data_type,
+        ]
+
+        if self.is_not_null:
+            output_arr.append("NOT NULL")
+
+        if self.is_primary_key:
+            output_arr.append("PRIMARY KEY")
+
+        if self.auto_increment:
+            output_arr.append("AUTOINCREMENT")
+
+        output_str = " ".join(output_arr)
+
+        return output_str
+
+
+class DbForeignKey(pydantic.BaseModel):
+    """Configuration settings for a foreign key in a SQLite table."""
+
+    column: str
+    foreign_table: str
+    foreign_column: str
+
+    def to_sqlite_str(self) -> str:
+        """Convert to valid SQLite string."""
+        return (
+            f"FOREIGN KEY ({self.column}) REFERENCES "
+            f"{self.foreign_table}({self.foreign_column})"
+        )
+
+
+class DbTable:
+    """Configuration settings for a SQLite Table."""
+
+    table_name: str
+    columns: list[DbColumnConfig]
+    foreign_keys: list[DbForeignKey] = pydantic.Field(default_factory=lambda: [])
+
+    def __init__(self, name: str) -> None:
+        self.table_name = name
+        self.columns = []
+        self.foreign_keys = []
+
+    def _add_column(
+        self,
+        name: str,
+        data_type: Literal["INTEGER", "TEXT", "FLOAT", "BLOB", "BOOLEAN"],
+        *,
+        is_primary_key: bool = False,
+        is_not_null: bool = False,
+        auto_increment: bool = False,
+        foreign_key: str = "",
+    ) -> None:
+        """Add a column to the configuration."""
+
+        self.columns.append(
+            DbColumnConfig(
+                name=name,
+                data_type=data_type,
+                is_not_null=is_not_null,
+                is_primary_key=is_primary_key,
+                auto_increment=auto_increment,
+            )
+        )
+
+        if foreign_key:
+            foreign_key_parts = foreign_key.split(".")
+
+            assert len(foreign_key_parts) == 2
+
+            self.foreign_keys.append(
+                DbForeignKey(
+                    column=name,
+                    foreign_table=foreign_key_parts[0],
+                    foreign_column=foreign_key_parts[1],
+                )
+            )
+
+    def with_int_column(
+        self,
+        name: str,
+        *,
+        is_primary_key: bool = False,
+        is_not_null: bool = False,
+        auto_increment: bool = False,
+        foreign_key: str = "",
+    ) -> DbTable:
+        """Adds a column to the configuration."""
+        self._add_column(
+            name,
+            "INTEGER",
+            is_primary_key=is_primary_key,
+            is_not_null=is_not_null,
+            auto_increment=auto_increment,
+            foreign_key=foreign_key,
+        )
+
+        return self
+
+    def with_text_column(
+        self,
+        name: str,
+        *,
+        is_primary_key: bool = False,
+        is_not_null: bool = False,
+        auto_increment: bool = False,
+        foreign_key: str = "",
+    ) -> DbTable:
+        """Adds a column to the configuration."""
+
+        self._add_column(
+            name,
+            "TEXT",
+            is_primary_key=is_primary_key,
+            is_not_null=is_not_null,
+            auto_increment=auto_increment,
+            foreign_key=foreign_key,
+        )
+
+        return self
+
+    def with_float_column(
+        self,
+        name: str,
+        *,
+        is_primary_key: bool = False,
+        is_not_null: bool = False,
+        auto_increment: bool = False,
+        foreign_key: str = "",
+    ) -> DbTable:
+        """Adds a column to the configuration."""
+
+        self._add_column(
+            name,
+            "FLOAT",
+            is_primary_key=is_primary_key,
+            is_not_null=is_not_null,
+            auto_increment=auto_increment,
+            foreign_key=foreign_key,
+        )
+
+        return self
+
+    def with_bool_column(
+        self,
+        name: str,
+        *,
+        is_primary_key: bool = False,
+        is_not_null: bool = False,
+        auto_increment: bool = False,
+        foreign_key: str = "",
+    ) -> DbTable:
+        """Adds a column to the configuration."""
+
+        self._add_column(
+            name,
+            "BOOLEAN",
+            is_primary_key=is_primary_key,
+            is_not_null=is_not_null,
+            auto_increment=auto_increment,
+            foreign_key=foreign_key,
+        )
+
+        return self
+
+    def to_dict(self) -> dict[str, Any]:
+        """Dump data to a dictionary"""
+        output: dict[str, Any] = {
+            "table_name": self.table_name,
+            "columns": [column.model_dump() for column in self.columns],
+            "foreign_keys": [
+                foreign_key.model_dump() for foreign_key in self.foreign_keys
+            ],
+        }
+
+        return output
+
+    def to_sqlite_str(self, indent: int = 2) -> str:
+        """Convert to valid SQLite string."""
+
+        output_arr: list[str] = [f"CREATE TABLE {self.table_name} ("]
+        indent_spaces: str = " " * indent
+        n_columns = len(self.columns)
+        n_foreign_keys = len(self.foreign_keys)
+
+        for i, column in enumerate(self.columns):
+            line: str = indent_spaces + column.to_sqlite_str()
+
+            if not (i == n_columns - 1 and n_foreign_keys == 0):
+                line = line + ","
+
+            output_arr.append(line)
+
+        for i, foreign_key in enumerate(self.foreign_keys):
+            line: str = indent_spaces + foreign_key.to_sqlite_str()
+
+            if i != n_foreign_keys - 1:
+                line = line + ","
+
+            output_arr.append(line)
+
+        output_arr.append(");")
+
+        output_str = "\n".join(output_arr)
+
+        return output_str
+
 
 DB_CONFIG = """
 DROP TABLE IF EXISTS characters;
 DROP TABLE IF EXISTS character_traits;
+DROP TABLE IF EXISTS relations;
 DROP TABLE IF EXISTS territories;
 DROP TABLE IF EXISTS families;
 DROP TABLE IF EXISTS family_heads;
@@ -286,7 +517,7 @@ CREATE TABLE wars (
 );
 
 CREATE TABLE war_participants (
-    row_id INT AUTO INCREMENT PRIMARY KEY,
+    row_id INTEGER PRIMARY KEY AUTOINCREMENT,
     family_id INT NOT NULL,
     war_id INT NOT NULL,
     role INT NOT NULL,
@@ -327,10 +558,58 @@ class SimDB:
 
     db: sqlite3.Connection
     """Connection to the SQLite instance."""
+    table_configs: dict[str, DbTable]
+    """Configuration settings for SQLite tables."""
 
     def __init__(self, db_path: str) -> None:
         self.db = sqlite3.connect(db_path)
+        self.table_configs = {}
 
+        # Initialize the database.
         cur = self.db.cursor()
         cur.executescript(DB_CONFIG)
         self.db.commit()
+
+    def register_table(self, table_config: DbTable) -> None:
+        """Register a table configuration."""
+        self.table_configs[table_config.table_name] = table_config
+        table_sql_str = table_config.to_sqlite_str()
+        cur = self.db.cursor()
+
+        try:
+            cur.execute(f"DROP TABLE IF EXISTS {table_config.table_name};")
+            cur.execute(table_sql_str)
+            self.db.commit()
+        except sqlite3.Error as ex:
+            raise ArgumentError(
+                f"There was an error processing '{table_config.table_name}' table."
+                f"\nGiven:\n{table_sql_str}"
+            ) from ex
+
+    def dump_config_json(self) -> str:
+        """Dumps the table configuration as a JSON string."""
+        table_config_dicts = [
+            table_config.to_dict() for table_config in self.table_configs.values()
+        ]
+
+        json_str = json.dumps(table_config_dicts, indent=2)
+
+        return json_str
+
+    def dump_config_sql(self) -> str:
+        """Dumps the table configurations as a SQLite config script."""
+
+        table_drop_lines: list[str] = []
+        table_create_lines: list[str] = []
+
+        for _, table_config in self.table_configs.items():
+            table_drop_lines.append(f"DROP TABLE IF EXISTS {table_config.table_name};")
+            table_create_lines.append(table_config.to_sqlite_str())
+
+        # Add two blank lines between table deletions and creation.
+        table_drop_lines.append("")
+        table_drop_lines.append("")
+
+        output_str = "\n".join([*table_drop_lines, *table_create_lines])
+
+        return output_str

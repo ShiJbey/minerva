@@ -71,7 +71,7 @@ from minerva.pcg.territory_pcg import DefaultTerritoryFactory
 from minerva.pcg.text_gen import Tracery, TraceryNameFactory
 from minerva.relationships import social_rules
 from minerva.relationships.base_types import SocialRuleLibrary
-from minerva.sim_db import SimDB
+from minerva.sim_db import DbTable, SimDB
 from minerva.simulation_events import SimulationEvents
 from minerva.traits.base_types import TraitLibrary
 
@@ -144,6 +144,7 @@ class Simulation:
         self._world.resources.add_resource(AIActionLibrary())
         self._world.resources.add_resource(Tracery(self.config.seed))
         self._world.resources.add_resource(SimulationEvents())
+        self._world.resources.add_resource(SimDB(self._config.db_path))
 
     def initialize_systems(self) -> None:
         """Initialize built-in systems."""
@@ -827,7 +828,28 @@ class Simulation:
     def initialize_database(self) -> None:
         """Initialize the simulation database."""
 
-        self._world.resources.add_resource(SimDB(self._config.db_path))
+        sim_db = self._world.resources.get_resource(SimDB)
+
+        sim_db.register_table(
+            DbTable("relations")
+            .with_int_column(
+                "uid",
+                is_primary_key=True,
+                is_not_null=True,
+            )
+            .with_int_column(
+                "character_id",
+                is_not_null=True,
+                foreign_key="characters.uid",
+            )
+            .with_int_column(
+                "target_id",
+                is_not_null=True,
+                foreign_key="characters.uid",
+            )
+            .with_text_column("familial_relation")
+            .with_text_column("relationship_status")
+        )
 
         def adapt_gameobject(obj: GameObject) -> int:
             return obj.uid
@@ -887,3 +909,11 @@ class Simulation:
         """Export db to file on disk."""
         out = sqlite3.Connection(export_path)
         self.world.resources.get_resource(SimDB).db.backup(out)
+
+    def dump_db_config_json(self) -> str:
+        """Dumps the SQLite table configuration as a JSON string."""
+        return self._world.resources.get_resource(SimDB).dump_config_json()
+
+    def dump_db_config_sql(self) -> str:
+        """Dumps the SQLite table configurations as a SQLite config script."""
+        return self._world.resources.get_resource(SimDB).dump_config_sql()
