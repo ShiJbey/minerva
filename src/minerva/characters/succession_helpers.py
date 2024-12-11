@@ -142,6 +142,20 @@ def set_heir(character: GameObject, heir: GameObject) -> None:
     character_component.heir = heir
     heir_character.heir_to = character
 
+    db = character.world.resources.get_resource(SimDB).db
+
+    db.execute(
+        """UPDATE characters SET heir=? WHERE uid=?;""",
+        (heir, character),
+    )
+
+    db.execute(
+        """UPDATE characters SET heir_to=? WHERE uid=?;""",
+        (character, heir),
+    )
+
+    db.commit()
+
 
 def remove_heir(character: GameObject) -> None:
     """Remove the declared heir from this character."""
@@ -156,6 +170,20 @@ def remove_heir(character: GameObject) -> None:
 
     character_component.heir = None
     heir_character.heir_to = None
+
+    db = character.world.resources.get_resource(SimDB).db
+
+    db.execute(
+        """UPDATE characters SET heir=? WHERE uid=?;""",
+        (None, character),
+    )
+
+    db.execute(
+        """UPDATE characters SET heir_to=? WHERE uid=?;""",
+        (None, heir),
+    )
+
+    db.commit()
 
 
 def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:

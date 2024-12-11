@@ -8,11 +8,11 @@ from minerva.characters.helpers import (
     set_character_alive,
     set_character_biological_father,
     set_character_father,
-    set_character_heir,
     set_character_mother,
     set_relation_sibling,
     start_marriage,
 )
+from minerva.characters.succession_helpers import set_heir
 from minerva.config import Config
 from minerva.pcg.base_types import PCGFactories
 from minerva.simulation import Simulation
@@ -251,9 +251,9 @@ if __name__ == "__main__":
     set_character_mother(aegon_2, alicent)
     set_character_father(alicent, otto)
     set_character_biological_father(alicent, otto)
-    set_character_heir(rhaenyra, jace)
-    set_character_heir(corlys, addam)
-    set_character_heir(viserys, rhaenyra)
+    set_heir(rhaenyra, jace)
+    set_heir(corlys, addam)
+    set_heir(viserys, rhaenyra)
     set_relation_sibling(rhaenyra, aegon_2)
     set_relation_sibling(aegon_2, rhaenyra)
     set_relation_sibling(baela, leanor)

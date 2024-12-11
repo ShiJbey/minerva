@@ -703,27 +703,6 @@ def set_character_mother(character: GameObject, mother: Optional[GameObject]) ->
     db.commit()
 
 
-def set_character_heir(character: GameObject, heir: Optional[GameObject]) -> None:
-    """Set the heir of a character."""
-
-    character_component = character.get_component(Character)
-
-    if character_component.heir is not None:
-        character_component.heir = None
-
-    if heir is not None:
-        character_component.heir = heir
-
-    db = character.world.resources.get_resource(SimDB).db
-
-    db.execute(
-        """UPDATE characters SET heir=? WHERE uid=?;""",
-        (heir, character),
-    )
-
-    db.commit()
-
-
 def set_character_father(character: GameObject, father: Optional[GameObject]) -> None:
     """Set the father of a character."""
 

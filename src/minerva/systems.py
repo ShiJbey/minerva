@@ -53,8 +53,7 @@ from minerva.characters.helpers import (
     set_relation_child,
     set_relation_sibling,
     start_marriage,
-    update_grandparent_relations, set_character_life_stage,
-)
+    update_grandparent_relations, set_character_life_stage, )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.stat_helpers import StatLevel, get_luck_level
 from minerva.characters.succession_helpers import (
@@ -62,7 +61,7 @@ from minerva.characters.succession_helpers import (
     get_current_ruler,
     get_succession_depth_chart,
     remove_heir,
-    set_current_ruler,
+    set_current_ruler, set_heir,
 )
 from minerva.characters.war_data import Alliance, War, WarRole
 from minerva.characters.war_helpers import (
@@ -1697,7 +1696,7 @@ class HeirDeclarationSystem(System):
 
             if oldest_child:
                 oldest_child_character_comp = oldest_child.get_component(Character)
-                character.heir = oldest_child
+                set_heir(character.gameobject, oldest_child)
                 oldest_child_character_comp.heir_to = character.gameobject
                 _logger.info(
                     "[%s]: %s declared %s their heir.",
