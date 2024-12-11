@@ -293,11 +293,11 @@ CREATE TABLE characters (
 );
 
 CREATE TABLE character_traits (
-    character_id INT,
-    trait_id TEXT,
+    character_id INT NOT NULL,
+    trait_id TEXT NOT NULL,
     PRIMARY KEY(character_id, trait_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE territories (
     uid INT NOT NULL PRIMARY KEY,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from minerva.ecs import GameObject
+from minerva.sim_db import SimDB
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
 
 
@@ -39,6 +40,15 @@ def add_trait(gameobject: GameObject, trait_id: str) -> bool:
     for effect in trait.effects:
         effect.apply(gameobject)
 
+    db = gameobject.world.resources.get_resource(SimDB).db
+
+    db.execute(
+        """INSERT INTO character_traits (character_id, trait_id) VALUES (?, ?);""",
+        (gameobject.uid, trait.trait_id),
+    )
+
+    db.commit()
+
     return True
 
 
@@ -68,6 +78,15 @@ def remove_trait(gameobject: GameObject, trait_id: str) -> bool:
 
         for effect in trait.effects:
             effect.remove(gameobject)
+
+        db = gameobject.world.resources.get_resource(SimDB).db
+
+        db.execute(
+            """DELETE FROM characters_traits WHERE character_id=? AND trait_id=?;""",
+            (gameobject.uid, trait.trait_id),
+        )
+
+        db.commit()
 
         return True
 
