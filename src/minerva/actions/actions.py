@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import logging
+import random
 
 from minerva.actions.base_types import AIAction, Scheme
-from minerva.actions.scheme_helpers import add_member_to_scheme
+from minerva.actions.scheme_helpers import add_member_to_scheme, create_scheme
+from minerva.actions.scheme_types import CheatingScheme
 from minerva.characters.components import (
     Character,
     Family,
     FamilyPrestige,
+    Fertility,
     HeadOfFamily,
+    Pregnancy,
+    Sex,
 )
 from minerva.characters.helpers import remove_character_from_play, set_character_alive
 from minerva.characters.metric_data import CharacterMetrics
@@ -28,6 +33,7 @@ from minerva.ecs import Active, GameObject
 from minerva.life_events.aging import DeathEvent
 from minerva.life_events.events import (
     AttemptingFormAllianceEvent,
+    CheatOnSpouseEvent,
     DisbandedAllianceEvent,
     ExpandedFamilyTerritoryEvent,
     ExpandedTerritoryEvent,
@@ -38,6 +44,7 @@ from minerva.life_events.events import (
     JoinCoupSchemeEvent,
     JoinedAllianceEvent,
     LeftDisbandedAllianceEvent,
+    PregnancyEvent,
     QuellRevoltEvent,
     StartCoupSchemeEvent,
     StartWarSchemeEvent,
@@ -603,5 +610,109 @@ class SeizeTerritoryAction(AIAction):
             territory=territory,
             family=family_head_component.family,
         ).log_event()
+
+        return True
+
+
+class TryCheatOnSpouseAction(AIAction):
+    """A character starts a scheme to cheat on their spouse."""
+
+    __slots__ = ("accomplice",)
+
+    accomplice: GameObject
+
+    def __init__(self, performer: GameObject, accomplice: GameObject) -> None:
+        super().__init__(performer, "TryCheatOnSpouse")
+        self.accomplice = accomplice
+        self.context["accomplice"] = accomplice
+
+    def execute(self) -> bool:
+        create_scheme(
+            world=self.world,
+            scheme_type="cheat",
+            required_time=1,
+            initiator=self.performer,
+            data=CheatingScheme(self.accomplice),
+        )
+        return True
+
+
+class CheatOnSpouseAction(AIAction):
+    """A character cheats on their spouse."""
+
+    __slots__ = ("accomplice",)
+
+    accomplice: GameObject
+
+    def __init__(self, performer: GameObject, accomplice: GameObject) -> None:
+        super().__init__(performer, "CheatOnSpouse")
+        self.accomplice = accomplice
+        self.context["accomplice"] = accomplice
+
+    def execute(self) -> bool:
+        CheatOnSpouseEvent(self.performer, self.accomplice).log_event()
+        performing_character = self.performer.get_component(Character)
+
+        if performing_character.sex == Sex.FEMALE:
+            SexAction(self.performer, self.accomplice).execute()
+
+        return True
+
+
+class SexAction(AIAction):
+    """A character has sex with another.
+
+    If the character is female and their partner is male, calculate
+    the chance of getting pregnant.
+    """
+
+    __slots__ = ("partner",)
+
+    partner: GameObject
+
+    def __init__(self, performer: GameObject, partner: GameObject) -> None:
+        super().__init__(performer, "Sex")
+        self.partner = partner
+        self.context["partner"] = partner
+
+    def execute(self) -> bool:
+        rng = self.world.resources.get_resource(random.Random)
+
+        performing_character = self.performer.get_component(Character)
+        partner_character = self.partner.get_component(Character)
+
+        if performing_character.sex == Sex.FEMALE and partner_character.sex == Sex.MALE:
+            # Calculate the probability of getting pregnant if not already
+
+            if self.performer.has_component(Pregnancy):
+                return True
+
+            performer_fertility = self.performer.get_component(Fertility).normalized
+
+            partner_fertility = self.partner.get_component(Fertility).normalized
+
+            if performer_fertility <= 0 or partner_fertility <= 0:
+                return True
+
+            chance_have_child = (performer_fertility + partner_fertility) / 2
+
+            if rng.random() < chance_have_child:
+                current_date = self.world.resources.get_resource(SimDate).copy()
+                due_date = current_date.copy()
+                due_date.increment(months=9)
+
+                # Add pregnancy component to character
+                self.performer.add_component(
+                    Pregnancy(
+                        assumed_father=performing_character.spouse,
+                        actual_father=self.partner,
+                        conception_date=current_date,
+                        due_date=due_date,
+                    )
+                )
+
+                self.performer.get_component(Fertility).base_value -= 25
+
+                PregnancyEvent(self.performer).log_event()
 
         return True

@@ -770,3 +770,24 @@ class UsurpEvent(LifeEvent):
             f"{self.subject.name_with_uid} usurped "
             f"{self.former_ruler.name_with_uid} for the thrown."
         )
+
+
+class CheatOnSpouseEvent(LifeEvent):
+    """Logs when a character cheats on their spouse."""
+
+    __slots__ = ("accomplice",)
+
+    accomplice: GameObject
+
+    def __init__(self, subject: GameObject, accomplice: GameObject) -> None:
+        super().__init__(subject)
+        self.accomplice = accomplice
+
+    def get_event_type(self) -> str:
+        return "CheatOnSpouse"
+
+    def get_description(self) -> str:
+        return (
+            f"{self.subject.name_with_uid} cheated on their spouse with "
+            f"{self.accomplice.name_with_uid}."
+        )

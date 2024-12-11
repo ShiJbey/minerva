@@ -7,9 +7,15 @@ from typing import Callable, ClassVar, Optional
 
 from ordered_set import OrderedSet
 
-from minerva.actions.actions import DieAction
+from minerva.actions.actions import CheatOnSpouseAction, DieAction, SexAction
 from minerva.actions.base_types import AIAction, AIBehaviorLibrary, AIBrain, Scheme
-from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
+from minerva.actions.scheme_helpers import destroy_scheme
+from minerva.actions.scheme_types import (
+    AllianceScheme,
+    CheatingScheme,
+    CoupScheme,
+    WarScheme,
+)
 from minerva.characters.components import (
     Character,
     Diplomacy,
@@ -96,7 +102,7 @@ from minerva.life_events.events import (
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.base_types import PCGFactories
 from minerva.pcg.character import generate_family
-from minerva.relationships.base_types import Opinion
+from minerva.relationships.base_types import Attraction, Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
@@ -1775,3 +1781,108 @@ class OrphanAdoptionSystem(System):
                     character.gameobject.name_with_uid,
                     chosen_orphan.name_with_uid,
                 )
+
+
+class CheatSchemeUpdateSystem(System):
+    """Updates active cheating schemes."""
+
+    __system_group__ = "SchemeUpdateSystems"
+
+    def on_update(self, world: World) -> None:
+        rng = world.resources.get_resource(random.Random)
+
+        for _, (scheme, cheating_scheme) in world.get_components(
+            (Scheme, CheatingScheme)
+        ):
+            # Destroy invalid schemes
+            if scheme.is_valid is False:
+                destroy_scheme(scheme.gameobject)
+                continue
+
+            # Destroy the scheme if the accomplice is no longer active
+            if not cheating_scheme.accomplice.is_active:
+                destroy_scheme(scheme.gameobject)
+                continue
+
+            # Destroy the scheme if the initiator is no longer active
+            if not scheme.initiator.is_active:
+                destroy_scheme(scheme.gameobject)
+                continue
+
+            # Destroy the scheme if the initiator is no longer married
+            initiator_character = scheme.initiator.get_component(Character)
+            if initiator_character.spouse is None:
+                destroy_scheme(scheme.gameobject)
+                continue
+
+            # Evaluate the accomplices willingness to participate in
+            # this activity if they are married
+            accomplice_character = cheating_scheme.accomplice.get_component(Character)
+            if accomplice_character.spouse is not None:
+                accomplice_cheating_action = CheatOnSpouseAction(
+                    cheating_scheme.accomplice, scheme.initiator
+                )
+
+                action_utility = accomplice_cheating_action.calculate_utility()
+
+                if rng.random() < action_utility:
+                    # Have to create an instance of the cheating action for the
+                    # initiator
+                    CheatOnSpouseAction(
+                        scheme.initiator, cheating_scheme.accomplice
+                    ).execute()
+
+                    accomplice_cheating_action.execute()
+
+                else:
+                    # Invalidate the scheme because the accomplice is not willing to
+                    # cheat
+                    scheme.is_valid = False
+
+                    # Lower the attraction between the characters
+                    get_relationship(
+                        scheme.initiator, cheating_scheme.accomplice
+                    ).get_component(Attraction).base_value -= 10
+
+                    get_relationship(
+                        cheating_scheme.accomplice, scheme.initiator
+                    ).get_component(Attraction).base_value -= 10
+
+                    get_relationship(
+                        cheating_scheme.accomplice, scheme.initiator
+                    ).get_component(Opinion).base_value -= 15
+
+            # The accomplice is not married and so this is only sex
+            else:
+                accomplice_sex_action = SexAction(
+                    cheating_scheme.accomplice, scheme.initiator
+                )
+
+                action_utility = accomplice_sex_action.calculate_utility()
+
+                if rng.random() < action_utility:
+                    # Have to create an instance of the cheating action for the
+                    # initiator
+                    CheatOnSpouseAction(
+                        scheme.initiator, cheating_scheme.accomplice
+                    ).execute()
+
+                    accomplice_sex_action.execute()
+
+                else:
+                    # Invalidate the scheme because the accomplice is not willing to
+                    # have sex
+                    scheme.is_valid = False
+
+                    # Lower the attraction between the characters
+                    get_relationship(
+                        scheme.initiator, cheating_scheme.accomplice
+                    ).get_component(Attraction).base_value -= 10
+
+                    get_relationship(
+                        cheating_scheme.accomplice, scheme.initiator
+                    ).get_component(Attraction).base_value -= 10
+
+                    get_relationship(
+                        cheating_scheme.accomplice, scheme.initiator
+                    ).get_component(Opinion).base_value -= 15

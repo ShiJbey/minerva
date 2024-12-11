@@ -23,6 +23,7 @@ from minerva.actions.actions import (
     StartCoupSchemeAction,
     StartWarSchemeAction,
     TaxTerritoryAction,
+    TryCheatOnSpouseAction,
 )
 from minerva.actions.base_types import (
     AIAction,
@@ -32,10 +33,19 @@ from minerva.actions.base_types import (
     SchemeManager,
 )
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme
-from minerva.characters.components import Family, HeadOfFamily
+from minerva.characters.components import (
+    Character,
+    Family,
+    HeadOfFamily,
+    LifeStage,
+    Sex,
+    SexualOrientation,
+)
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance
 from minerva.ecs import Active, GameObject
+from minerva.relationships.base_types import Attraction
+from minerva.relationships.helpers import get_relationship
 from minerva.world_map.components import InRevolt, Territory
 
 
@@ -435,3 +445,252 @@ class SeizeControlOfTerritory(AIBehavior):
                 actions.append(action)
 
         return actions
+
+
+class CheatOnSpouseBehavior(AIBehavior):
+    """."""
+
+    def get_actions(self, character: GameObject) -> list[AIAction]:
+        # Loop through the people that this character is attracted to and are adults
+        world = character.world
+
+        character_component = character.get_component(Character)
+        character_spouse = character_component.spouse
+
+        if character_component.family is None:
+            return []
+
+        character_family = character_component.family.get_component(Family)
+        family_home_base = character_family.home_base
+
+        if family_home_base is None:
+            return []
+
+        if character_spouse is None:
+            return []
+
+        if (
+            character_component.life_stage < LifeStage.YOUNG_ADULT
+            or character_component.life_stage == LifeStage.SENIOR
+        ):
+            return []
+
+        eligible_accomplices: list[Character] = []
+
+        if (
+            character_component.sexual_orientation == SexualOrientation.HETEROSEXUAL
+            and character_component.sex == Sex.MALE
+        ):
+            # Looking for heterosexual, bisexual, or asexual women
+            eligible_accomplices = [
+                c
+                for _, (c, _) in world.get_components((Character, Active))
+                if c.spouse != character
+                and c.life_stage >= LifeStage.YOUNG_ADULT
+                and c.life_stage != LifeStage.SENIOR
+                and c.sex == Sex.FEMALE
+                and (
+                    c.sexual_orientation == SexualOrientation.HETEROSEXUAL
+                    or c.sexual_orientation == SexualOrientation.BISEXUAL
+                    or c.sexual_orientation == SexualOrientation.ASEXUAL
+                )
+                and c.gameobject not in character_component.siblings
+                and c.gameobject != character_component.mother
+                and c.gameobject != character_component.father
+                and c.gameobject != character_component.biological_father
+                and c.gameobject not in character_component.children
+                and c.gameobject not in character_component.grandchildren
+                and c.gameobject not in character_component.grandparents
+                and len(c.grandparents.intersection(character_component.grandparents))
+                < 2
+                and c != character_component
+            ]
+
+        if (
+            character_component.sexual_orientation == SexualOrientation.HETEROSEXUAL
+            and character_component.sex == Sex.FEMALE
+        ):
+            # Looking for heterosexual, bisexual, or asexual men
+            eligible_accomplices = [
+                c
+                for _, (c, _) in world.get_components((Character, Active))
+                if c.spouse != character
+                and c.life_stage >= LifeStage.YOUNG_ADULT
+                and c.life_stage != LifeStage.SENIOR
+                and c.sex == Sex.MALE
+                and (
+                    c.sexual_orientation == SexualOrientation.HETEROSEXUAL
+                    or c.sexual_orientation == SexualOrientation.BISEXUAL
+                    or c.sexual_orientation == SexualOrientation.ASEXUAL
+                )
+                and c.gameobject not in character_component.siblings
+                and c.gameobject != character_component.mother
+                and c.gameobject != character_component.father
+                and c.gameobject != character_component.biological_father
+                and c.gameobject not in character_component.children
+                and c.gameobject not in character_component.grandchildren
+                and c.gameobject not in character_component.grandparents
+                and len(c.grandparents.intersection(character_component.grandparents))
+                < 2
+                and c != character_component
+            ]
+
+        if (
+            character_component.sexual_orientation == SexualOrientation.HOMOSEXUAL
+            and character_component.sex == Sex.MALE
+        ):
+            # Looking for homosexual, asexual, or bisexual men
+            eligible_accomplices = [
+                c
+                for _, (c, _) in world.get_components((Character, Active))
+                if c.spouse != character_component
+                and c.life_stage >= LifeStage.YOUNG_ADULT
+                and c.life_stage != LifeStage.SENIOR
+                and c.sex == Sex.MALE
+                and (
+                    c.sexual_orientation == SexualOrientation.HOMOSEXUAL
+                    or c.sexual_orientation == SexualOrientation.BISEXUAL
+                    or c.sexual_orientation == SexualOrientation.ASEXUAL
+                )
+                and c.gameobject not in character_component.siblings
+                and c.gameobject != character_component.mother
+                and c.gameobject != character_component.father
+                and c.gameobject != character_component.biological_father
+                and c.gameobject not in character_component.children
+                and c.gameobject not in character_component.grandchildren
+                and c.gameobject not in character_component.grandparents
+                and len(c.grandparents.intersection(character_component.grandparents))
+                < 2
+                and c != character_component
+            ]
+
+        if (
+            character_component.sexual_orientation == SexualOrientation.HOMOSEXUAL
+            and character_component.sex == Sex.FEMALE
+        ):
+            # Looking for homosexual or bisexual women
+            eligible_accomplices = [
+                c
+                for _, (c, _) in world.get_components((Character, Active))
+                if c.spouse != character_component
+                and c.life_stage >= LifeStage.YOUNG_ADULT
+                and c.life_stage != LifeStage.SENIOR
+                and c.sex == Sex.FEMALE
+                and (
+                    c.sexual_orientation == SexualOrientation.HOMOSEXUAL
+                    or c.sexual_orientation == SexualOrientation.BISEXUAL
+                    or c.sexual_orientation == SexualOrientation.ASEXUAL
+                )
+                and c.gameobject not in character_component.siblings
+                and c.gameobject != character_component.mother
+                and c.gameobject != character_component.father
+                and c.gameobject != character_component.biological_father
+                and c.gameobject not in character_component.children
+                and c.gameobject not in character_component.grandchildren
+                and c.gameobject not in character_component.grandparents
+                and len(c.grandparents.intersection(character_component.grandparents))
+                < 2
+                and c != character_component
+            ]
+
+        if (
+            character_component.sexual_orientation == SexualOrientation.BISEXUAL
+            and character_component.sex == Sex.MALE
+        ):
+            # Looking for homosexual or bisexual men
+            eligible_accomplices = [
+                c
+                for _, (c, _) in world.get_components((Character, Active))
+                if c.spouse != character
+                and c.life_stage >= LifeStage.YOUNG_ADULT
+                and c.life_stage != LifeStage.SENIOR
+                and c.sex == Sex.MALE
+                and (
+                    c.sexual_orientation == SexualOrientation.HOMOSEXUAL
+                    or c.sexual_orientation == SexualOrientation.BISEXUAL
+                )
+                and c.gameobject not in character_component.siblings
+                and c.gameobject != character_component.mother
+                and c.gameobject != character_component.father
+                and c.gameobject != character_component.biological_father
+                and c.gameobject not in character_component.children
+                and c != character_component
+            ]
+
+        if (
+            character_component.sexual_orientation == SexualOrientation.BISEXUAL
+            and character_component.sex == Sex.FEMALE
+        ):
+            # Looking for homosexual or bisexual women
+            eligible_accomplices = [
+                c
+                for _, (c, _) in world.get_components((Character, Active))
+                if c.spouse != character
+                and c.life_stage >= LifeStage.YOUNG_ADULT
+                and c.life_stage != LifeStage.SENIOR
+                and c.sex == Sex.FEMALE
+                and (
+                    c.sexual_orientation == SexualOrientation.HOMOSEXUAL
+                    or c.sexual_orientation == SexualOrientation.BISEXUAL
+                )
+                and c.gameobject not in character_component.siblings
+                and c.gameobject != character_component.mother
+                and c.gameobject != character_component.father
+                and c.gameobject != character_component.biological_father
+                and c.gameobject not in character_component.children
+                and c != character_component
+            ]
+
+        if (
+            character_component.sexual_orientation == SexualOrientation.ASEXUAL
+            and character_component.sex == Sex.FEMALE
+        ):
+            # Looking for anyone asexual
+            eligible_accomplices = [
+                c
+                for _, (c, _) in world.get_components((Character, Active))
+                if c.spouse != character
+                and c.life_stage >= LifeStage.YOUNG_ADULT
+                and c.life_stage != LifeStage.SENIOR
+                and (
+                    c.sexual_orientation == SexualOrientation.ASEXUAL
+                    or c.sexual_orientation == SexualOrientation.BISEXUAL
+                )
+                and c.gameobject not in character_component.siblings
+                and c.gameobject != character_component.mother
+                and c.gameobject != character_component.father
+                and c.gameobject != character_component.biological_father
+                and c.gameobject not in character_component.children
+                and c != character_component
+            ]
+
+        # Filter for characters that belong to the same home base
+        accomplices_in_territory: list[tuple[Character, float]] = []
+        for c in eligible_accomplices:
+            if c.family is None:
+                continue
+
+            c_family_component = c.family.get_component(Family)
+
+            if c_family_component.home_base is None:
+                continue
+
+            if c_family_component.home_base == family_home_base:
+                attraction = (
+                    get_relationship(character, c.gameobject)
+                    .get_component(Attraction)
+                    .value
+                )
+                accomplices_in_territory.append((c, attraction))
+
+        accomplices_in_territory.sort(key=lambda e: e[1])
+
+        if accomplices_in_territory:
+            actions: list[AIAction] = []
+
+            for accomplice, _ in accomplices_in_territory[:3]:
+                actions.append(TryCheatOnSpouseAction(character, accomplice.gameobject))
+
+            return actions
+
+        return []

@@ -20,6 +20,8 @@ from minerva.actions.base_types import (
     ConstantUtilityConsideration,
 )
 from minerva.actions.considerations import (
+    AttractionToSpouse,
+    AttractionToTarget,
     BoldnessConsideration,
     CompassionConsideration,
     DiplomacyConsideration,
@@ -32,6 +34,7 @@ from minerva.actions.considerations import (
     OpinionOfRecipientCons,
     OpinionOfRulerConsideration,
     OpinionOfSchemeInitiatorCons,
+    OpinionOfSpouse,
     RationalityConsideration,
     StewardshipConsideration,
 )
@@ -228,6 +231,9 @@ class Simulation:
         )
         self.world.systems.add_system(
             minerva.systems.OrphanAdoptionSystem(),
+        )
+        self.world.systems.add_system(
+            minerva.systems.CheatSchemeUpdateSystem(),
         )
 
     def initialize_actions(self) -> None:
@@ -518,6 +524,43 @@ class Simulation:
             )
         )
 
+        action_library.add_action(
+            AIActionType(
+                name="Sex",
+                cost=400,
+                cooldown=3,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    AttractionToTarget("partner")
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="CheatOnSpouse",
+                cost=400,
+                cooldown=3,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    HonorConsideration().invert().pow(2),
+                    OpinionOfSpouse().invert().pow(2),
+                    AttractionToSpouse().invert().pow(2),
+                ),
+            )
+        )
+
+        action_library.add_action(
+            AIActionType(
+                name="TryCheatOnSpouse",
+                cost=400,
+                cooldown=3,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    HonorConsideration().invert().pow(2),
+                    OpinionOfSpouse().invert().pow(2),
+                    AttractionToSpouse().invert().pow(2),
+                ),
+            )
+        )
+
     def initialize_behaviors(self) -> None:
         """Initialize behaviors."""
         behavior_library = self.world.resources.get_resource(AIBehaviorLibrary)
@@ -703,6 +746,13 @@ class Simulation:
                     Not(HasActiveSchemes()),
                     Not(IsCurrentlyAtWar()),
                 ),
+            )
+        )
+
+        behavior_library.add_behavior(
+            behaviors.CheatOnSpouseBehavior(
+                name="CheatOnSpouse",
+                precondition=AIPreconditionGroup(ConstantPrecondition(True)),
             )
         )
 

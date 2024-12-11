@@ -60,3 +60,22 @@ class AllianceScheme(SchemeData):
     def get_description(self, scheme: Scheme) -> str:
         """Get a string description of the scheme."""
         return f"{scheme.initiator.name_with_uid} is trying to start an alliance."
+
+
+class CheatingScheme(SchemeData):
+    """A scheme to cheat on ones spouse."""
+
+    __slots__ = ("accomplice",)
+
+    accomplice: GameObject
+
+    def __init__(self, accomplice: GameObject) -> None:
+        super().__init__()
+        self.accomplice = accomplice
+
+    def get_description(self, scheme: Scheme) -> str:
+        """Get a string description of the scheme."""
+        return (
+            f"{scheme.initiator.name_with_uid} is planning cheat on their spouse with "
+            f"{self.accomplice.name_with_uid}."
+        )

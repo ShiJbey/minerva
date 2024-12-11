@@ -8,6 +8,7 @@ from minerva.characters.components import (
     Diplomacy,
     Dynasty,
     DynastyTracker,
+    Family,
     Greed,
     Honor,
     Intrigue,
@@ -15,8 +16,9 @@ from minerva.characters.components import (
     Rationality,
     Stewardship,
 )
+from minerva.characters.war_data import Alliance
 from minerva.ecs import GameObject
-from minerva.relationships.base_types import Opinion
+from minerva.relationships.base_types import Attraction, Opinion
 from minerva.relationships.helpers import get_relationship
 
 
@@ -165,4 +167,110 @@ class OpinionOfAllianceLeader(AIUtilityConsideration):
     """A consideration for how characters feel about the leader of their alliance."""
 
     def evaluate(self, context: AIContext) -> float:
-        return 1.0
+        character_component = context.character.get_component(Character)
+
+        family = character_component.family
+
+        if family is None:
+            return -1
+
+        family_component = family.get_component(Family)
+
+        alliance = family_component.alliance
+
+        if alliance is None:
+            return -1
+
+        alliance_component = alliance.get_component(Alliance)
+
+        alliance_family_head = alliance_component.founder_family.get_component(
+            Family
+        ).head
+
+        if alliance_family_head is not None:
+            return (
+                get_relationship(context.character, alliance_family_head)
+                .get_component(Opinion)
+                .normalized
+            )
+
+        else:
+            return -1
+
+
+class OpinionOfSpouse(AIUtilityConsideration):
+    """A consideration of how a character feels about their spouse."""
+
+    def evaluate(self, context: AIContext) -> float:
+        character_component = context.character.get_component(Character)
+
+        spouse = character_component.spouse
+
+        if spouse is None:
+            return -1
+
+        return (
+            get_relationship(context.character, spouse)
+            .get_component(Opinion)
+            .normalized
+        )
+
+
+class AttractionToSpouse(AIUtilityConsideration):
+    """A consideration of how attracted a character is to their spouse."""
+
+    def evaluate(self, context: AIContext) -> float:
+        character_component = context.character.get_component(Character)
+
+        spouse = character_component.spouse
+
+        if spouse is None:
+            return -1
+
+        return (
+            get_relationship(context.character, spouse)
+            .get_component(Attraction)
+            .normalized
+        )
+
+
+class AttractionToTarget(AIUtilityConsideration):
+    """A consideration of how attracted a character is to a character."""
+
+    __slots__ = ("context_key",)
+
+    context_key: str
+
+    def __init__(self, context_key: str) -> None:
+        super().__init__()
+        self.context_key = context_key
+
+    def evaluate(self, context: AIContext) -> float:
+        target: GameObject = context[self.context_key]
+
+        return (
+            get_relationship(context.character, target)
+            .get_component(Attraction)
+            .normalized
+        )
+
+
+class OpinionOfTarget(AIUtilityConsideration):
+    """A consideration of a character's opinion of another."""
+
+    __slots__ = ("context_key",)
+
+    context_key: str
+
+    def __init__(self, context_key: str) -> None:
+        super().__init__()
+        self.context_key = context_key
+
+    def evaluate(self, context: AIContext) -> float:
+        target: GameObject = context[self.context_key]
+
+        return (
+            get_relationship(context.character, target)
+            .get_component(Opinion)
+            .normalized
+        )

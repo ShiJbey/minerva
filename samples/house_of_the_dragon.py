@@ -1,5 +1,6 @@
 """Minerva Sample: House of the Dragon/Game of Thrones."""
 
+import argparse
 import pathlib
 
 from minerva.characters.components import LifeStage, Sex, SexualOrientation
@@ -14,20 +15,31 @@ from minerva.characters.helpers import (
 )
 from minerva.config import Config
 from minerva.pcg.base_types import PCGFactories
-from minerva.pcg.text_gen import load_tracery_file
 from minerva.simulation import Simulation
 
-DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
-DB_OUTPUT_PATH = str(pathlib.Path(__file__).parent / "HotD.db")
+
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+
+    parser = argparse.ArgumentParser(
+        prog="House of the Dragon Minerva Sample",
+        description="Minerva House of the Dragon Social Modeling Sample.",
+    )
+
+    parser.add_argument(
+        "--db-out",
+        type=str,
+        default=str(pathlib.Path(__file__).parent / "HotD.db"),
+        help="The output location for the simulation database.",
+    )
+
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    sim = Simulation(Config(n_initial_families=0))
+    args = parse_args()
 
-    load_tracery_file(sim.world, DATA_DIR / "masculine_japanese_names.txt")
-    load_tracery_file(sim.world, DATA_DIR / "feminine_japanese_names.txt")
-    load_tracery_file(sim.world, DATA_DIR / "japanese_surnames.txt")
-    load_tracery_file(sim.world, DATA_DIR / "japanese_city_names.txt")
+    sim = Simulation(Config(n_initial_families=0))
 
     character_factory = sim.world.resources.get_resource(PCGFactories).character_factory
 
@@ -247,4 +259,4 @@ if __name__ == "__main__":
     set_relation_sibling(baela, leanor)
     set_relation_sibling(leanor, baela)
 
-    sim.export_db(DB_OUTPUT_PATH)
+    sim.export_db(args.db_out)
