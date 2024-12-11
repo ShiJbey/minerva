@@ -522,7 +522,7 @@ CREATE TABLE war_participants (
     row_id INTEGER PRIMARY KEY AUTOINCREMENT,
     family_id INT NOT NULL,
     war_id INT NOT NULL,
-    role INT NOT NULL,
+    role TEXT NOT NULL,
     date_joined TEXT,
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (war_id) REFERENCES wars(uid)

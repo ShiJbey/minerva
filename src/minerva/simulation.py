@@ -58,6 +58,7 @@ from minerva.characters.components import (
     SpeciesLibrary,
 )
 from minerva.characters.succession_helpers import SuccessionChartCache
+from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import GameObject, World
@@ -750,12 +751,12 @@ class Simulation:
             )
         )
 
-        behavior_library.add_behavior(
-            behaviors.CheatOnSpouseBehavior(
-                name="CheatOnSpouse",
-                precondition=AIPreconditionGroup(ConstantPrecondition(True)),
-            )
-        )
+        # behavior_library.add_behavior(
+        #     behaviors.CheatOnSpouseBehavior(
+        #         name="CheatOnSpouse",
+        #         precondition=AIPreconditionGroup(ConstantPrecondition(True)),
+        #     )
+        # )
 
     def initialize_social_rules(self) -> None:
         """Initialize social rules"""
@@ -877,6 +878,12 @@ class Simulation:
         def convert_sexual_orientation(s: bytes):
             return SexualOrientation(str(s))
 
+        def adapt_war_role(war_role: WarRole) -> str:
+            return war_role.name
+
+        def convert_war_role(s: bytes):
+            return WarRole(str(s))
+
         sqlite3.register_adapter(GameObject, adapt_gameobject)
         sqlite3.register_converter("GameObject", convert_gameobject)
         sqlite3.register_adapter(Sex, adapt_sex)
@@ -885,6 +892,8 @@ class Simulation:
         sqlite3.register_converter("LifeStage", convert_life_stage)
         sqlite3.register_adapter(SexualOrientation, adapt_sexual_orientation)
         sqlite3.register_converter("SexualOrientation", convert_sexual_orientation)
+        sqlite3.register_adapter(WarRole, adapt_war_role)
+        sqlite3.register_converter("WarRole", convert_war_role)
 
     @property
     def date(self) -> SimDate:
