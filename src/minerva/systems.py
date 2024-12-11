@@ -53,7 +53,7 @@ from minerva.characters.helpers import (
     set_relation_child,
     set_relation_sibling,
     start_marriage,
-    update_grandparent_relations,
+    update_grandparent_relations, set_character_life_stage,
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.stat_helpers import StatLevel, get_luck_level
@@ -173,7 +173,8 @@ class CharacterAgingSystem(System):
 
                         fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        character.life_stage = LifeStage.SENIOR
+                        set_character_life_stage(character.gameobject, LifeStage.SENIOR)
+
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.SENIOR
                         ).log_event()
@@ -187,7 +188,8 @@ class CharacterAgingSystem(System):
                         )
                         fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        character.life_stage = LifeStage.ADULT
+                        set_character_life_stage(character.gameobject, LifeStage.ADULT)
+
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.ADULT
                         ).log_event()
@@ -202,7 +204,8 @@ class CharacterAgingSystem(System):
 
                         fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        character.life_stage = LifeStage.YOUNG_ADULT
+                        set_character_life_stage(character.gameobject, LifeStage.YOUNG_ADULT)
+
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.YOUNG_ADULT
                         ).log_event()
@@ -217,7 +220,8 @@ class CharacterAgingSystem(System):
 
                         fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        character.life_stage = LifeStage.ADOLESCENT
+                        set_character_life_stage(character.gameobject, LifeStage.ADOLESCENT)
+
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.ADOLESCENT
                         ).log_event()
@@ -225,6 +229,8 @@ class CharacterAgingSystem(System):
                 else:
                     if character.life_stage != LifeStage.CHILD:
                         character.life_stage = LifeStage.CHILD
+
+                        set_character_life_stage(character.gameobject, LifeStage.CHILD)
 
                         LifeStageChangeEvent(
                             character.gameobject, LifeStage.CHILD
