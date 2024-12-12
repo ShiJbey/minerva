@@ -1648,6 +1648,7 @@ class FamilyRefillSystem(System):
                 family = generate_family(world)
                 family_component = family.get_component(Family)
                 set_family_home_base(family, territory.gameobject)
+                family_component.territories.add(territory.gameobject)
                 _logger.info(
                     "[%s] The %s family has risen to prominence in the %s territory.",
                     current_date.to_iso_str(),

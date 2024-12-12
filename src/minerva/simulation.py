@@ -364,9 +364,9 @@ class Simulation:
             AIActionType(
                 name="SeizeTerritory",
                 cooldown=3,
-                cost=500,
+                cost=200,
                 utility_consideration=AIUtilityConsiderationGroup(
-                    ConstantUtilityConsideration(0.5),
+                    ConstantUtilityConsideration(1.0),
                     AIUtilityConsiderationGroup(
                         GreedConsideration(),
                         BoldnessConsideration(),
@@ -541,7 +541,7 @@ class Simulation:
             AIActionType(
                 name="CheatOnSpouse",
                 cost=400,
-                cooldown=3,
+                cooldown=4,
                 utility_consideration=AIUtilityConsiderationGroup(
                     HonorConsideration().invert().pow(2),
                     OpinionOfSpouse().invert().pow(2),
@@ -554,7 +554,7 @@ class Simulation:
             AIActionType(
                 name="TryCheatOnSpouse",
                 cost=400,
-                cooldown=3,
+                cooldown=4,
                 utility_consideration=AIUtilityConsiderationGroup(
                     HonorConsideration().invert().pow(2),
                     OpinionOfSpouse().invert().pow(2),
@@ -751,12 +751,12 @@ class Simulation:
             )
         )
 
-        # behavior_library.add_behavior(
-        #     behaviors.CheatOnSpouseBehavior(
-        #         name="CheatOnSpouse",
-        #         precondition=AIPreconditionGroup(ConstantPrecondition(True)),
-        #     )
-        # )
+        behavior_library.add_behavior(
+            behaviors.CheatOnSpouseBehavior(
+                name="CheatOnSpouse",
+                precondition=AIPreconditionGroup(ConstantPrecondition(True)),
+            )
+        )
 
     def initialize_social_rules(self) -> None:
         """Initialize social rules"""

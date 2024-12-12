@@ -25,7 +25,6 @@ from minerva.config import Config
 from minerva.data import ck3_traits, japanese_city_names, japanese_names
 from minerva.datetime import MONTHS_PER_YEAR
 from minerva.inspection import SimulationInspector
-from minerva.pcg.character import generate_initial_families
 from minerva.pcg.world_map import generate_world_map
 from minerva.simulation import Simulation
 
@@ -139,11 +138,6 @@ if __name__ == "__main__":
 
     print("Generating Map and Territories ...")
     generate_world_map(sim.world)
-
-    time.sleep(0.8)
-
-    print("Generating Initial Families ...")
-    generate_initial_families(sim.world)
 
     time.sleep(0.8)
 
