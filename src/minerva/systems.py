@@ -104,11 +104,18 @@ from minerva.life_events.events import (
 from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.base_types import PCGFactories
 from minerva.pcg.character import generate_family
+from minerva.pcg.world_map import generate_world_map
 from minerva.relationships.base_types import Attraction, Opinion
 from minerva.relationships.helpers import get_relationship
+from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import StatusEffect, StatusEffectManager
 from minerva.stats.helpers import remove_status_effect
-from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
+from minerva.world_map.components import (
+    InRevolt,
+    PopulationHappiness,
+    Territory,
+    WorldMap,
+)
 from minerva.world_map.helpers import set_territory_controlling_family
 
 _logger = logging.getLogger(__name__)
@@ -1897,3 +1904,16 @@ class CheatSchemeUpdateSystem(System):
                     get_relationship(
                         cheating_scheme.accomplice, scheme.initiator
                     ).get_component(Opinion).base_value -= 15
+
+
+class MapGenerationSystem(System):
+    """Initializes the world map by generating territories."""
+
+    __system_group__ = "InitializationSystems"
+
+    def on_update(self, world: World) -> None:
+        generate_world_map(world)
+        _logger.info("Generating map and territories.")
+        world.get_resource(SimulationEvents).map_generated.emit(
+            world.get_resource(WorldMap)
+        )

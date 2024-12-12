@@ -12,6 +12,7 @@ import pygame_gui.ui_manager
 
 from minerva.characters.components import Dynasty, DynastyTracker
 from minerva.simulation import Simulation
+from minerva.simulation_events import SimulationEvents
 from minerva.viz.camera import Camera
 from minerva.viz.constants import TILE_SIZE
 from minerva.viz.game_events import gameobject_wiki_shown
@@ -87,7 +88,6 @@ class Game:
         )
         self.pause_button.disable()
         self.sim_running = False
-        self.sim_initialized = False
         self.sim_update_cooldown = 1.0 / simulation.config.sim_update_frequency
         self.arrow_key_states = {
             "left": False,
@@ -109,13 +109,26 @@ class Game:
         self.wiki_window.kill()
         self.visible_sprites = YSortCameraGroup(self.display)
         self.terrain_tiles = YSortCameraGroup(self.display)
-        self.world_map = simulation.world.get_resource(WorldMap)
         self._castle_sprites: list[CastleSprite] = []
-        self._create_terrain_sprites()
-        self._create_border_sprites()
-        self._create_castle_sprites()
 
+        self.register_game_event_listeners()
+        self.register_simulation_event_listeners()
+
+    def register_game_event_listeners(self):
+        """Register callbacks for game events."""
         gameobject_wiki_shown.add_listener(self._on_show_gameobject_wiki)
+
+    def register_simulation_event_listeners(self):
+        """Register callbacks for simulation events."""
+        sim_events = self.simulation.world.get_resource(SimulationEvents)
+
+        sim_events.map_generated.add_listener(self._on_map_generated)
+
+    def _on_map_generated(self, world_map: WorldMap) -> None:
+        """Callback for when the map is generated."""
+        self._create_terrain_sprites(world_map)
+        self._create_border_sprites(world_map)
+        self._create_castle_sprites(world_map)
 
     def on_play_simulation(self) -> None:
         """."""
@@ -123,7 +136,6 @@ class Game:
         self.play_button.disable()
         self.pause_button.enable()
         self.sim_running = True
-        self.sim_initialized = True
 
     def on_pause_simulation(self) -> None:
         """."""
@@ -161,18 +173,9 @@ class Game:
         self.terrain_tiles.update(camera_delta)
 
         # Update the simulation
-        # self.sim_update_cooldown -= delta_time
-        # if (
-        #     # self.sim_update_cooldown <= 0 and
-        #     self.sim_running
-        #     and not self.world_grid_generator.is_complete
-        # ):
-        #     # self.world_grid_generator.generate_territories()
-        #     # self.simulation.step()
-        #     # self.world_grid_generator.step()
-        #     #
-        #     # if self.world_grid_generator.is_complete:
-        #     #     self._create_border_sprites()
+        self.sim_update_cooldown -= delta_time
+        if self.sim_update_cooldown <= 0 and self.sim_running:
+            self.simulation.step()
 
     def draw_debug(self) -> None:
         """Draw debug information"""
@@ -205,8 +208,11 @@ class Game:
     def _draw_world_grid_lines(self, color: str = "#000000") -> None:
         # Draw the ground
         # world_grid = self.simulation.world.get_resource(WorldGrid)
+        if not self.simulation.world.has_resource(WorldMap):
+            return
 
-        n_cols, n_rows = self.world_map.territory_grid.get_size()
+        world_map = self.simulation.world.get_resource(WorldMap)
+        n_cols, n_rows = world_map.territory_grid.get_size()
 
         for y in range(n_rows + 1):
             for x in range(n_cols + 1):
@@ -229,7 +235,7 @@ class Game:
                     pygame.color.Color(color),
                 )
 
-    def _create_castle_sprites(self) -> None:
+    def _create_castle_sprites(self, world_map: WorldMap) -> None:
         dynasty_tracker = self.simulation.world.get_resource(DynastyTracker)
         royal_family = (
             dynasty_tracker.current_dynasty.get_component(Dynasty).family
@@ -237,7 +243,7 @@ class Game:
             else None
         )
 
-        for territory in self.world_map.territories:
+        for territory in world_map.territories:
             castle_sprite = CastleSprite(territory)
             castle_label = LabelSprite(
                 text=territory.name,
@@ -268,8 +274,8 @@ class Game:
             self.visible_sprites.add(castle_label)  # type: ignore
             self._castle_sprites.append(castle_sprite)
 
-    def _create_border_sprites(self) -> None:
-        for (x, y), wall_flags in self.world_map.borders.enumerate():
+    def _create_border_sprites(self, world_map: WorldMap) -> None:
+        for (x, y), wall_flags in world_map.borders.enumerate():
 
             if wall_flags == CompassDir.NONE:
                 continue
@@ -283,10 +289,8 @@ class Game:
 
             self.visible_sprites.add(sprite)  # type: ignore
 
-    def _create_terrain_sprites(self) -> None:
-        for (x, y), _ in self.simulation.world.get_resource(
-            WorldMap
-        ).territory_grid.enumerate():
+    def _create_terrain_sprites(self, world_map: WorldMap) -> None:
+        for (x, y), _ in world_map.territory_grid.enumerate():
             x1 = x * TILE_SIZE
             y1 = y * TILE_SIZE
             self.terrain_tiles.add(get_terrain_tile(TerrainType.GRASS, (x1, y1)))  # type: ignore

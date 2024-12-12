@@ -237,6 +237,7 @@ class Simulation:
         self.world.add_system(
             minerva.systems.CheatSchemeUpdateSystem(),
         )
+        self.world.add_system(minerva.systems.MapGenerationSystem())
 
     def initialize_actions(self) -> None:
         """Initialize actions."""

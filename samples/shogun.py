@@ -14,7 +14,6 @@ import argparse
 import pathlib
 import pstats
 import random
-import time
 from cProfile import Profile
 from datetime import datetime
 
@@ -25,7 +24,6 @@ from minerva.config import Config
 from minerva.data import ck3_traits, japanese_city_names, japanese_names
 from minerva.datetime import MONTHS_PER_YEAR
 from minerva.inspection import SimulationInspector
-from minerva.pcg.world_map import generate_world_map
 from minerva.simulation import Simulation
 
 
@@ -135,11 +133,6 @@ if __name__ == "__main__":
 
     print(f"Minerva version: {minerva.__version__}")
     print(f"World Seed: {sim.config.seed}")
-
-    print("Generating Map and Territories ...")
-    generate_world_map(sim.world)
-
-    time.sleep(0.8)
 
     if bool(args.enable_profiling):
         run_simulation_with_profiling(sim, int(args.years))
