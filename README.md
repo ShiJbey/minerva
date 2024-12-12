@@ -18,9 +18,9 @@ I started this project as a fork of Neighborly because I felt that Neighborly wa
 
 ## 🚀 How Does Minerva Work?
 
-Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories. Over decades of simulated time, Minerva generates a history for the simulated world, containing records of royal dynasties, conflicts between families, intermarriages, and conquests. We use this generated history for data analysis. 
+Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories. Over decades of simulated time, Minerva generates a history for the simulated world, containing records of royal dynasties, conflicts between families, intermarriages, and conquests. We use this generated history for data analysis.
 
-This simulation takes place on a map subdivided into procedurally generated territories. Each territory has a name and is home to zero or more families. Families are controlled by a family head, a generated character responsible for taking action on behalf of the family. These actions might include forming alliances, going to war, increasing political influence, quelling revolts, or planning coups against the royal family. Characters select actions using utility scores, prioritizing actions that are most beneficial to them. Generally, characters seek to take actions that increase their power and influence. 
+This simulation takes place on a map subdivided into procedurally generated territories. Each territory has a name and is home to zero or more families. Families are controlled by a family head, a generated character responsible for taking action on behalf of the family. These actions might include forming alliances, going to war, increasing political influence, quelling revolts, or planning coups against the royal family. Characters select actions using utility scores, prioritizing actions that are most beneficial to them. Generally, characters seek to take actions that increase their power and influence.
 
 ## 📦 Download and Installation
 
@@ -108,6 +108,8 @@ python ./samples/shogun.py -s 123abc -y 75
 # the database to "sample123.db".
 python ./samples/shogun.py -y 100 --db-out ./sample123.db
 ```
+
+![WARNING]: The pygame visualization is not fully supported, and is missing many crucial features. Currently, users can see the layout of the map, and explore the world wiki by pressing the `F1` key on their keyboard.
 
 ## 🧭 Exploring the SQL Data
 
