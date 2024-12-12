@@ -49,6 +49,9 @@ _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
 _ST = TypeVar("_ST", bound="System")
 
+EntityId = int
+"""Type alias int to entity ID."""
+
 
 class Entity:
     """A reference to an entity within the world."""
@@ -58,7 +61,7 @@ class Entity:
         "world",
     )
 
-    _uid: int
+    _uid: EntityId
     """The unique ID of this entity."""
     world: World
     """The world instance this entity belongs to."""
@@ -72,7 +75,7 @@ class Entity:
         self.world = world
 
     @property
-    def uid(self) -> int:
+    def uid(self) -> EntityId:
         """The entity's unique ID."""
         return self._uid
 
@@ -639,13 +642,13 @@ class World:
 
     _next_entity_id: int
     """Next ID assigned to a spawned entity."""
-    _components: dict[Type[Component], set[int]]
+    _components: dict[Type[Component], set[EntityId]]
     """Entity component data."""
-    _entities: dict[int, dict[Type[Component], Component]]
+    _entities: dict[EntityId, dict[Type[Component], Component]]
     """Entity data."""
-    _uid_to_entity_map: dict[int, Entity]
+    _uid_to_entity_map: dict[EntityId, Entity]
     """Map of UIDs to entity instances."""
-    _entity_names: dict[int, str]
+    _entity_names: dict[EntityId, str]
     """Names of entities."""
     _dead_entities: OrderedSet[Entity]
     """Destroyed entities to clean-up at the start of a world step."""
@@ -792,11 +795,11 @@ class World:
 
         return entity
 
-    def get_entity(self, uid: int) -> Entity:
+    def get_entity(self, uid: EntityId) -> Entity:
         """Get an entity by its UID."""
         return self._uid_to_entity_map[uid]
 
-    def entity_exists(self, uid: int) -> bool:
+    def entity_exists(self, uid: EntityId) -> bool:
         """Check if an entity exists using its UID."""
         return uid in self._uid_to_entity_map
 
@@ -905,28 +908,28 @@ class World:
     @overload
     def query_components(
         self, component_types: tuple[Type[_T1]]
-    ) -> Generator[tuple[int, tuple[_T1]], None, None]: ...
+    ) -> Generator[tuple[EntityId, tuple[_T1]], None, None]: ...
 
     @overload
     def query_components(
         self, component_types: tuple[Type[_T1], Type[_T2]]
-    ) -> Generator[tuple[int, tuple[_T1, _T2]], None, None]: ...
+    ) -> Generator[tuple[EntityId, tuple[_T1, _T2]], None, None]: ...
 
     @overload
     def query_components(
         self, component_types: tuple[Type[_T1], Type[_T2], Type[_T3]]
-    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3]], None, None]: ...
+    ) -> Generator[tuple[EntityId, tuple[_T1, _T2, _T3]], None, None]: ...
 
     @overload
     def query_components(
         self, component_types: tuple[Type[_T1], Type[_T2], Type[_T3], Type[_T4]]
-    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3, _T4]], None, None]: ...
+    ) -> Generator[tuple[EntityId, tuple[_T1, _T2, _T3, _T4]], None, None]: ...
 
     @overload
     def query_components(
         self,
         component_types: tuple[Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5]],
-    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]], None, None]: ...
+    ) -> Generator[tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5]], None, None]: ...
 
     @overload
     def query_components(
@@ -934,7 +937,9 @@ class World:
         component_types: tuple[
             Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5], Type[_T6]
         ],
-    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]], None, None]: ...
+    ) -> Generator[
+        tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5, _T6]], None, None
+    ]: ...
 
     @overload
     def query_components(
@@ -943,7 +948,7 @@ class World:
             Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5], Type[_T6], Type[_T7]
         ],
     ) -> Generator[
-        tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]], None, None
+        tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]], None, None
     ]: ...
 
     @overload
@@ -960,7 +965,7 @@ class World:
             Type[_T8],
         ],
     ) -> Generator[
-        tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]], None, None
+        tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]], None, None
     ]: ...
 
     def query_components(
@@ -993,15 +998,17 @@ class World:
             ],
         ],
     ) -> Union[
-        Generator[tuple[int, tuple[_T1]], None, None],
-        Generator[tuple[int, tuple[_T1, _T2]], None, None],
-        Generator[tuple[int, tuple[_T1, _T2, _T3]], None, None],
-        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4]], None, None],
-        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]], None, None],
-        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]], None, None],
-        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]], None, None],
+        Generator[tuple[EntityId, tuple[_T1]], None, None],
+        Generator[tuple[EntityId, tuple[_T1, _T2]], None, None],
+        Generator[tuple[EntityId, tuple[_T1, _T2, _T3]], None, None],
+        Generator[tuple[EntityId, tuple[_T1, _T2, _T3, _T4]], None, None],
+        Generator[tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5]], None, None],
+        Generator[tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5, _T6]], None, None],
         Generator[
-            tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]], None, None
+            tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]], None, None
+        ],
+        Generator[
+            tuple[EntityId, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]], None, None
         ],
     ]:
         """Get all game objects with the given components.
