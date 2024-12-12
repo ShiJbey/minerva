@@ -17,7 +17,7 @@ from minerva.characters.components import (
     Stewardship,
 )
 from minerva.characters.war_data import Alliance
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.relationships.base_types import Attraction, Opinion
 from minerva.relationships.helpers import get_relationship
 
@@ -27,7 +27,7 @@ class OpinionOfRecipientCons(AIUtilityConsideration):
 
     def evaluate(self, context: AIContext) -> float:
         sender = context.character
-        recipient: GameObject = context["recipient"]
+        recipient: Entity = context["recipient"]
         return get_relationship(sender, recipient).get_component(Opinion).normalized
 
 
@@ -36,7 +36,7 @@ class OpinionOfTargetCons(AIUtilityConsideration):
 
     def evaluate(self, context: AIContext) -> float:
         sender = context.character
-        target: GameObject = context["target"]
+        target: Entity = context["target"]
         return get_relationship(sender, target).get_component(Opinion).normalized
 
 
@@ -44,7 +44,7 @@ class OpinionOfSchemeInitiatorCons(AIUtilityConsideration):
     """Consider a character's opinion of the scheme initiator."""
 
     def evaluate(self, context: AIContext) -> float:
-        scheme: GameObject = context["scheme"]
+        scheme: Entity = context["scheme"]
         scheme_component = scheme.get_component(Scheme)
         character = context.character
         return (
@@ -143,7 +143,7 @@ class OpinionOfRulerConsideration(AIUtilityConsideration):
 
     def evaluate(self, context: AIContext) -> float:
         world = context.world
-        dynasty_tracker = world.resources.get_resource(DynastyTracker)
+        dynasty_tracker = world.get_resource(DynastyTracker)
 
         if dynasty_tracker.current_dynasty is None:
             return 0
@@ -246,7 +246,7 @@ class AttractionToTarget(AIUtilityConsideration):
         self.context_key = context_key
 
     def evaluate(self, context: AIContext) -> float:
-        target: GameObject = context[self.context_key]
+        target: Entity = context[self.context_key]
 
         return (
             get_relationship(context.character, target)
@@ -267,7 +267,7 @@ class OpinionOfTarget(AIUtilityConsideration):
         self.context_key = context_key
 
     def evaluate(self, context: AIContext) -> float:
-        target: GameObject = context[self.context_key]
+        target: Entity = context[self.context_key]
 
         return (
             get_relationship(context.character, target)

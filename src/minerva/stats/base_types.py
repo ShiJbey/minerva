@@ -16,7 +16,7 @@ import math
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Protocol
 
-from minerva.ecs import Component, GameObject
+from minerva.ecs import Component, Entity
 
 
 class StatModifierType(enum.IntEnum):
@@ -97,7 +97,7 @@ class StatComponent(Component, ABC):
     """The maximum score the overall stat is clamped to."""
     is_discrete: bool
     """Should the final calculated stat value be converted to an int."""
-    listeners: list[Callable[[GameObject, StatComponent], None]]
+    listeners: list[Callable[[Entity, StatComponent], None]]
     """Callbacks to execute when the value changes."""
     calculation_strategy: IStatCalculationStrategy
     """Function used to calculate the final value of the stat."""
@@ -175,7 +175,7 @@ class StatComponent(Component, ABC):
         """Notify all change listeners."""
 
         for listener in self.listeners:
-            listener(self.gameobject, self)
+            listener(self.entity, self)
 
 
 class StatusEffect(ABC):
@@ -213,18 +213,18 @@ class StatusEffect(ABC):
         return self._has_duration and self.duration <= 0
 
     @abstractmethod
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         """Apply the effects of the status effect.."""
 
         raise NotImplementedError()
 
     @abstractmethod
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         """Remove the effects of this status effect."""
 
         raise NotImplementedError()
 
-    def update(self, target: GameObject) -> None:
+    def update(self, target: Entity) -> None:
         """Update the status effect for every time step that it is not expired."""
         # pylint: disable W0613
 

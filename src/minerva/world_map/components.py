@@ -10,7 +10,7 @@ from typing import Any, Callable, Generic, Iterator, Optional, TypeVar
 from ordered_set import OrderedSet
 
 from minerva.datetime import SimDate
-from minerva.ecs import Component, GameObject
+from minerva.ecs import Component, Entity
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
 _GT = TypeVar("_GT")  # Generic Grid Type variable
@@ -224,14 +224,14 @@ class WorldMap:
     """A grid where each cell contains the ID of the territory it belongs to."""
     borders: CartesianGrid[CompassDir]
     """Border walls."""
-    territories: list[GameObject]
+    territories: list[Entity]
     """Information about territories."""
 
     def __init__(self, size: tuple[int, int]) -> None:
         self._size = size
         self.territory_grid = CartesianGrid(size, lambda: -1)
         self.borders = CartesianGrid(size, lambda: CompassDir.NONE)
-        self.territories: list[GameObject] = []
+        self.territories: list[Entity] = []
 
     @property
     def size(self) -> tuple[int, int]:
@@ -289,21 +289,21 @@ class Territory(Component):
 
     name: str
     """The territory's name."""
-    controlling_family: Optional[GameObject]
+    controlling_family: Optional[Entity]
     """ID of the family that controls this territory."""
-    neighbors: OrderedSet[GameObject]
+    neighbors: OrderedSet[Entity]
     """Neighboring territories."""
     castle_position: tuple[int, int]
     """The position of the castle on the screen."""
-    political_influence: dict[GameObject, int]
+    political_influence: dict[Entity, int]
     """The Political influence held by all families in the territory."""
-    families: OrderedSet[GameObject]
+    families: OrderedSet[Entity]
     """The families that reside at this territory."""
 
     def __init__(
         self,
         name: str,
-        controlling_family: Optional[GameObject] = None,
+        controlling_family: Optional[Entity] = None,
     ) -> None:
         super().__init__()
         self.name = name

@@ -61,7 +61,7 @@ from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.datetime import SimDate
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 from minerva.pcg.base_types import PCGFactories
 from minerva.pcg.character import (
     DefaultBabyFactory,
@@ -117,10 +117,10 @@ class Simulation:
     def initialize_resources(self) -> None:
         """Initialize built-in resources."""
 
-        self._world.resources.add_resource(self._date)
-        self._world.resources.add_resource(self._config)
-        self._world.resources.add_resource(random.Random(self._config.seed))
-        self._world.resources.add_resource(
+        self._world.add_resource(self._date)
+        self._world.add_resource(self._config)
+        self._world.add_resource(random.Random(self._config.seed))
+        self._world.add_resource(
             PCGFactories(
                 character_factory=DefaultCharacterFactory(
                     male_first_name_factory=TraceryNameFactory("#male_first_name#"),
@@ -136,111 +136,111 @@ class Simulation:
                 ),
             )
         )
-        self._world.resources.add_resource(SpeciesLibrary())
-        self._world.resources.add_resource(TraitLibrary())
-        self._world.resources.add_resource(SocialRuleLibrary())
-        self._world.resources.add_resource(SuccessionChartCache())
-        self._world.resources.add_resource(AIBehaviorLibrary())
-        self._world.resources.add_resource(DynastyTracker())
-        self._world.resources.add_resource(AIActionLibrary())
-        self._world.resources.add_resource(Tracery(self.config.seed))
-        self._world.resources.add_resource(SimulationEvents())
-        self._world.resources.add_resource(SimDB(self._config.db_path))
+        self._world.add_resource(SpeciesLibrary())
+        self._world.add_resource(TraitLibrary())
+        self._world.add_resource(SocialRuleLibrary())
+        self._world.add_resource(SuccessionChartCache())
+        self._world.add_resource(AIBehaviorLibrary())
+        self._world.add_resource(DynastyTracker())
+        self._world.add_resource(AIActionLibrary())
+        self._world.add_resource(Tracery(self.config.seed))
+        self._world.add_resource(SimulationEvents())
+        self._world.add_resource(SimDB(self._config.db_path))
 
     def initialize_systems(self) -> None:
         """Initialize built-in systems."""
 
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.TickStatusEffectSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.TimeSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.CharacterAgingSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.SuccessionDepthChartUpdateSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.CharacterLifespanSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.FallbackFamilySuccessionSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.FallbackEmperorSuccessionSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.EmptyFamilyCleanUpSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.CharacterBehaviorSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.FamilyRoleSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.TerritoryRevoltSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.RevoltUpdateSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.TerritoryRandomEventSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.InfluencePointGainSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.PlaceholderMarriageSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.PregnancyPlaceHolderSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.ChildBirthSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.TerritoryInfluencePointBoostSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.SchemeUpdateSystems(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.AllianceSchemeUpdateSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.WarSchemeUpdateSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.CoupSchemeUpdateSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.WarUpdateSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.ActionCooldownSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.FamilyRefillSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.HeirDeclarationSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.OrphanIdentificationSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.OrphanAdoptionSystem(),
         )
-        self.world.systems.add_system(
+        self.world.add_system(
             minerva.systems.CheatSchemeUpdateSystem(),
         )
 
     def initialize_actions(self) -> None:
         """Initialize actions."""
-        action_library = self.world.resources.get_resource(AIActionLibrary)
+        action_library = self.world.get_resource(AIActionLibrary)
 
         action_library.add_action(
             AIActionType(
@@ -565,7 +565,7 @@ class Simulation:
 
     def initialize_behaviors(self) -> None:
         """Initialize behaviors."""
-        behavior_library = self.world.resources.get_resource(AIBehaviorLibrary)
+        behavior_library = self.world.get_resource(AIBehaviorLibrary)
 
         behavior_library.add_behavior(
             behaviors.IdleBehavior(
@@ -760,7 +760,7 @@ class Simulation:
 
     def initialize_social_rules(self) -> None:
         """Initialize social rules"""
-        social_rule_library = self.world.resources.get_resource(SocialRuleLibrary)
+        social_rule_library = self.world.get_resource(SocialRuleLibrary)
 
         social_rule_library.add_rule(social_rules.opinion_boost_for_family)
         social_rule_library.add_rule(social_rules.opinion_boost_for_birth_family)
@@ -775,7 +775,7 @@ class Simulation:
 
     def initialize_species_types(self) -> None:
         """Initialize species types."""
-        species_library = self.world.resources.get_resource(SpeciesLibrary)
+        species_library = self.world.get_resource(SpeciesLibrary)
 
         species_library.add_species(
             Species(
@@ -829,7 +829,7 @@ class Simulation:
     def initialize_database(self) -> None:
         """Initialize the simulation database."""
 
-        sim_db = self._world.resources.get_resource(SimDB)
+        sim_db = self._world.get_resource(SimDB)
 
         sim_db.register_table(
             DbTable("relations")
@@ -852,13 +852,13 @@ class Simulation:
             .with_text_column("relationship_status")
         )
 
-        def adapt_gameobject(obj: GameObject) -> int:
+        def adapt_gameobject(obj: Entity) -> int:
             return obj.uid
 
         def convert_gameobject(s: bytes):
             uid = int(str(s))
 
-            return self.world.gameobjects.get_gameobject(uid)
+            return self.world.get_entity(uid)
 
         def adapt_sex(sex: Sex) -> str:
             return sex.name
@@ -884,7 +884,7 @@ class Simulation:
         def convert_war_role(s: bytes):
             return WarRole(str(s))
 
-        sqlite3.register_adapter(GameObject, adapt_gameobject)
+        sqlite3.register_adapter(Entity, adapt_gameobject)
         sqlite3.register_converter("GameObject", convert_gameobject)
         sqlite3.register_adapter(Sex, adapt_sex)
         sqlite3.register_converter("Sex", convert_sex)
@@ -917,12 +917,12 @@ class Simulation:
     def export_db(self, export_path: str) -> None:
         """Export db to file on disk."""
         out = sqlite3.Connection(export_path)
-        self.world.resources.get_resource(SimDB).db.backup(out)
+        self.world.get_resource(SimDB).db.backup(out)
 
     def dump_db_config_json(self) -> str:
         """Dumps the SQLite table configuration as a JSON string."""
-        return self._world.resources.get_resource(SimDB).dump_config_json()
+        return self._world.get_resource(SimDB).dump_config_json()
 
     def dump_db_config_sql(self) -> str:
         """Dumps the SQLite table configurations as a SQLite config script."""
-        return self._world.resources.get_resource(SimDB).dump_config_sql()
+        return self._world.get_resource(SimDB).dump_config_sql()

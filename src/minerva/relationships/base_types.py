@@ -11,7 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Iterable, Optional
 
-from minerva.ecs import Component, GameObject
+from minerva.ecs import Component, Entity
 from minerva.stats.base_types import (
     IStatCalculationStrategy,
     StatComponent,
@@ -24,27 +24,27 @@ class Relationship(Component):
 
     __slots__ = "_target", "_owner"
 
-    _owner: GameObject
+    _owner: Entity
     """Who owns this relationship."""
-    _target: GameObject
+    _target: Entity
     """Who is the relationship directed toward."""
 
     def __init__(
         self,
-        owner: GameObject,
-        target: GameObject,
+        owner: Entity,
+        target: Entity,
     ) -> None:
         super().__init__()
         self._owner = owner
         self._target = target
 
     @property
-    def owner(self) -> GameObject:
+    def owner(self) -> Entity:
         """Get the owner of the relationship."""
         return self._owner
 
     @property
-    def target(self) -> GameObject:
+    def target(self) -> Entity:
         """Get the target of the relationship."""
         return self._target
 
@@ -68,9 +68,9 @@ class RelationshipManager(Component):
         "outgoing_modifiers",
     )
 
-    incoming_relationships: dict[GameObject, GameObject]
+    incoming_relationships: dict[Entity, Entity]
     """Relationship owners mapped to the Relationship GameObjects."""
-    outgoing_relationships: dict[GameObject, GameObject]
+    outgoing_relationships: dict[Entity, Entity]
     """Relationship targets mapped to the Relationship GameObjects."""
     incoming_modifiers: list[RelationshipModifier]
     """Modifiers for incoming relationships."""
@@ -135,7 +135,7 @@ class RelationshipModifier:
         self.attraction_modifier = attraction_modifier
         self.opinion_modifier = opinion_modifier
 
-    def evaluate_precondition(self, relationship: GameObject) -> bool:
+    def evaluate_precondition(self, relationship: Entity) -> bool:
         """Check the preconditions against the given relationship."""
         return self.precondition.evaluate(relationship)
 
@@ -159,7 +159,7 @@ class RelationshipPrecondition(ABC):
         return _PreconditionAND(*preconditions)
 
     @abstractmethod
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         """Check if the relationship passes the precondition."""
         raise NotImplementedError()
 
@@ -175,7 +175,7 @@ class _PreconditionAND(RelationshipPrecondition):
         super().__init__()
         self.preconditions = list(preconditions)
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return all(p.evaluate(relationship) for p in self.preconditions)
 
 
@@ -190,7 +190,7 @@ class _PreconditionOR(RelationshipPrecondition):
         super().__init__()
         self.preconditions = list(preconditions)
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return any(p.evaluate(relationship) for p in self.preconditions)
 
 
@@ -205,7 +205,7 @@ class _PreconditionNOT(RelationshipPrecondition):
         super().__init__()
         self.precondition = precondition
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return not self.precondition.evaluate(relationship)
 
 
@@ -236,7 +236,7 @@ class SocialRule:
         self.opinion_modifier = opinion_modifier
         self.attraction_modifier = attraction_modifier
 
-    def evaluate_precondition(self, relationship: GameObject) -> bool:
+    def evaluate_precondition(self, relationship: Entity) -> bool:
         """Check if a relationship passes the preconditions for this rule."""
         return self.precondition.evaluate(relationship)
 

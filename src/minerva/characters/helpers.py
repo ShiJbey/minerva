@@ -31,7 +31,7 @@ from minerva.characters.succession_helpers import set_current_ruler
 from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.datetime import SimDate
-from minerva.ecs import Active, GameObject
+from minerva.ecs import Active, Entity
 from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
 from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
@@ -47,7 +47,7 @@ _logger = logging.getLogger(__name__)
 
 
 def set_family_name(
-    family: GameObject,
+    family: Entity,
     name: str,
 ) -> None:
     """Set the name of the given family."""
@@ -56,7 +56,7 @@ def set_family_name(
     family.name = name
     family_component.name = name
 
-    db = family.world.resources.get_resource(SimDB).db
+    db = family.world.get_resource(SimDB).db
     cur = db.cursor()
     cur.execute(
         """UPDATE families SET name=? WHERE uid=?;""",
@@ -65,7 +65,7 @@ def set_family_name(
     db.commit()
 
 
-def add_branch_family(family: GameObject, branch_family: GameObject) -> None:
+def add_branch_family(family: Entity, branch_family: Entity) -> None:
     """Set the parent family of a family."""
 
     branch_family_component = branch_family.get_component(Family)
@@ -75,7 +75,7 @@ def add_branch_family(family: GameObject, branch_family: GameObject) -> None:
     family_component.branch_families.add(branch_family)
 
     world = branch_family.world
-    db = world.resources.get_resource(SimDB).db
+    db = world.get_resource(SimDB).db
     cursor = db.cursor()
 
     cursor.execute(
@@ -87,12 +87,12 @@ def add_branch_family(family: GameObject, branch_family: GameObject) -> None:
 
 
 def set_family_head(
-    family: GameObject,
-    character: Optional[GameObject],
+    family: Entity,
+    character: Optional[Entity],
 ) -> None:
     """Set the current head of a family."""
-    current_date = family.world.resources.get_resource(SimDate).to_iso_str()
-    db = family.world.resources.get_resource(SimDB).db
+    current_date = family.world.get_resource(SimDate).to_iso_str()
+    db = family.world.get_resource(SimDB).db
     cur = db.cursor()
     family_component = family.get_component(Family)
     # Do nothing if already set properly
@@ -138,8 +138,8 @@ def set_family_head(
 
 
 def set_character_family(
-    character: GameObject,
-    family: Optional[GameObject],
+    character: Entity,
+    family: Optional[Entity],
 ) -> None:
     """Set a character's current family."""
     character_component = character.get_component(Character)
@@ -160,7 +160,7 @@ def set_character_family(
         family_component.active_members.add(character)
         character_component.family = family
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
     cur = db.cursor()
     cur.execute(
         """UPDATE characters SET family=? WHERE uid=?;""",
@@ -169,11 +169,11 @@ def set_character_family(
     db.commit()
 
 
-def set_family_home_base(family: GameObject, territory: Optional[GameObject]) -> None:
+def set_family_home_base(family: Entity, territory: Optional[Entity]) -> None:
     """Set the home base for the given family."""
     family_component = family.get_component(Family)
 
-    db = family.world.resources.get_resource(SimDB).db
+    db = family.world.get_resource(SimDB).db
     cur = db.cursor()
 
     if family_component.home_base is not None:
@@ -199,13 +199,13 @@ def set_family_home_base(family: GameObject, territory: Optional[GameObject]) ->
     db.commit()
 
 
-def remove_family_from_play(family: GameObject) -> None:
+def remove_family_from_play(family: Entity) -> None:
     """Remove a family from play."""
     world = family.world
     family_component = family.get_component(Family)
 
-    db = world.resources.get_resource(SimDB).db
-    current_date = world.resources.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
     db_cursor = db.cursor()
     db_cursor.execute(
         """
@@ -230,12 +230,12 @@ def remove_family_from_play(family: GameObject) -> None:
     # Remove the family from play
     set_family_home_base(family, None)
 
-    for _, (territory, _) in world.get_components((Territory, Active)):
+    for _, (territory, _) in world.query_components((Territory, Active)):
         if family in territory.political_influence:
             del territory.political_influence[family]
 
         if territory.controlling_family == family:
-            set_territory_controlling_family(territory.gameobject, None)
+            set_territory_controlling_family(territory.entity, None)
 
     family.deactivate()
 
@@ -246,16 +246,16 @@ def remove_family_from_play(family: GameObject) -> None:
     FamilyRemovedFromPlay(family).log_event()
 
 
-def remove_character_from_play(character: GameObject, pass_crown: bool = True) -> None:
+def remove_character_from_play(character: Entity, pass_crown: bool = True) -> None:
     """Remove a character from play."""
     world = character.world
-    current_date = world.resources.get_resource(SimDate).copy()
-    # rng = world.resources.get_resource(random.Random)
+    current_date = world.get_resource(SimDate).copy()
+    # rng = world.get_resource(random.Random)
     character_component = character.get_component(Character)
 
     character.deactivate()
 
-    heir: Optional[GameObject] = character_component.heir
+    heir: Optional[Entity] = character_component.heir
 
     # depth_chart = get_succession_depth_chart(character)
 
@@ -273,16 +273,17 @@ def remove_character_from_play(character: GameObject, pass_crown: bool = True) -
     #     # Select a random heir from the top 3 with most emphasis on the first
     #     heir_id = rng.choices(eligible_heirs, heir_weights, k=1)[0]
 
-    #     heir = world.gameobjects.get_gameobject(heir_id)
+    #     heir = world.get_gameobject(heir_id)
 
-    if family_head_component := character.try_component(HeadOfFamily):
+    if character.has_component(HeadOfFamily):
+        family_head_component = character.get_component(HeadOfFamily)
         # Perform succession
         family = family_head_component.family
         set_family_head(family, heir)
         if heir is not None:
             BecameFamilyHeadEvent(heir, family).log_event()
 
-    if _ := character.try_component(Emperor):
+    if character.has_component(Emperor):
         if pass_crown and heir:
             set_current_ruler(world, heir)
             heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
@@ -314,8 +315,8 @@ def remove_character_from_play(character: GameObject, pass_crown: bool = True) -
 
 
 def set_character_birth_family(
-    character: GameObject,
-    family: Optional[GameObject],
+    character: Entity,
+    family: Optional[Entity],
 ) -> None:
     """Set the birth family of a character."""
     character_component = character.get_component(Character)
@@ -329,7 +330,7 @@ def set_character_birth_family(
     if family is not None:
         character_component.birth_family = family
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
     cur = db.cursor()
     cur.execute(
         """UPDATE characters SET birth_family=? WHERE uid=?;""",
@@ -338,9 +339,7 @@ def set_character_birth_family(
     db.commit()
 
 
-def merge_family_with(
-    source_family: GameObject, destination_family: GameObject
-) -> None:
+def merge_family_with(source_family: Entity, destination_family: Entity) -> None:
     """Merge a source family into a destination family."""
 
     # Move all members over to the new family and remove them from the old
@@ -349,15 +348,15 @@ def merge_family_with(
         set_character_family(character, destination_family)
 
 
-def get_advisor_candidates(family: GameObject) -> list[GameObject]:
+def get_advisor_candidates(family: Entity) -> list[Entity]:
     """Get all the characters that can be assigned as advisors.
 
     Returns
     -------
-    list[GameObject]
+    list[Entity]
         All potential candidates in descending order of fitness.
     """
-    candidate_score_tuples: list[tuple[GameObject, float]] = []
+    candidate_score_tuples: list[tuple[Entity, float]] = []
 
     family_component = family.get_component(Family)
 
@@ -384,16 +383,16 @@ def get_advisor_candidates(family: GameObject) -> list[GameObject]:
     return candidates
 
 
-def get_warrior_candidates(family: GameObject) -> list[GameObject]:
+def get_warrior_candidates(family: Entity) -> list[Entity]:
     """Get all the characters that can be assigned as warriors.
 
     Returns
     -------
-    list[GameObject]
+    list[Entity]
         All potential candidates in descending order of fitness.
     """
 
-    candidate_score_tuples: list[tuple[GameObject, float]] = []
+    candidate_score_tuples: list[tuple[Entity, float]] = []
 
     family_component = family.get_component(Family)
 
@@ -421,10 +420,10 @@ def get_warrior_candidates(family: GameObject) -> list[GameObject]:
 
 
 def assign_family_member_to_roles(
-    family: GameObject, character: GameObject, roles: FamilyRoleFlags
+    family: Entity, character: Entity, roles: FamilyRoleFlags
 ) -> None:
     """Assign a character to a given set of roles."""
-    config = family.world.resources.get_resource(Config)
+    config = family.world.get_resource(Config)
     family_component = family.get_component(Family)
     character_component = character.get_component(Character)
 
@@ -470,7 +469,7 @@ def assign_family_member_to_roles(
 
 
 def unassign_family_member_from_roles(
-    family: GameObject, character: GameObject, roles: FamilyRoleFlags
+    family: Entity, character: Entity, roles: FamilyRoleFlags
 ) -> None:
     """Unassign a character from a given set of roles."""
 
@@ -508,9 +507,7 @@ def unassign_family_member_from_roles(
         )
 
 
-def unassign_family_member_from_all_roles(
-    family: GameObject, character: GameObject
-) -> None:
+def unassign_family_member_from_all_roles(family: Entity, character: Entity) -> None:
     """Unassign a character from a given set of roles."""
 
     family_component = family.get_component(Family)
@@ -538,14 +535,14 @@ def unassign_family_member_from_all_roles(
 # ===================================
 
 
-def set_character_first_name(character: GameObject, name: str) -> None:
+def set_character_first_name(character: Entity, name: str) -> None:
     """Set a character's first name."""
 
     character_component = character.get_component(Character)
     character_component.first_name = name
     character.name = character_component.full_name
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET first_name=? WHERE uid=?;""",
@@ -555,14 +552,14 @@ def set_character_first_name(character: GameObject, name: str) -> None:
     db.commit()
 
 
-def set_character_surname(character: GameObject, name: str) -> None:
+def set_character_surname(character: Entity, name: str) -> None:
     """Set the surname of a character."""
 
     character_component = character.get_component(Character)
     character_component.surname = name
     character.name = character_component.full_name
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET surname=? WHERE uid=?;""",
@@ -572,12 +569,12 @@ def set_character_surname(character: GameObject, name: str) -> None:
     db.commit()
 
 
-def set_character_birth_surname(character: GameObject, name: str) -> None:
+def set_character_birth_surname(character: Entity, name: str) -> None:
     """Set the birth surname of a character."""
 
     character.get_component(Character).birth_surname = name
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET birth_surname=? WHERE uid=?;""",
@@ -587,12 +584,12 @@ def set_character_birth_surname(character: GameObject, name: str) -> None:
     db.commit()
 
 
-def set_character_sex(character: GameObject, sex: Sex) -> None:
+def set_character_sex(character: Entity, sex: Sex) -> None:
     """Set the sex of a character."""
 
     character.get_component(Character).sex = sex
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET sex=? WHERE uid=?;""",
@@ -603,13 +600,13 @@ def set_character_sex(character: GameObject, sex: Sex) -> None:
 
 
 def set_character_sexual_orientation(
-    character: GameObject, orientation: SexualOrientation
+    character: Entity, orientation: SexualOrientation
 ) -> None:
     """Set the sexual orientation of a character."""
 
     character.get_component(Character).sexual_orientation = orientation
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET sexual_orientation=? WHERE uid=?;""",
@@ -619,12 +616,12 @@ def set_character_sexual_orientation(
     db.commit()
 
 
-def set_character_life_stage(character: GameObject, life_stage: LifeStage) -> None:
+def set_character_life_stage(character: Entity, life_stage: LifeStage) -> None:
     """Set the life stage of a character."""
 
     character.get_component(Character).life_stage = life_stage
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET life_stage=? WHERE uid=?;""",
@@ -634,7 +631,7 @@ def set_character_life_stage(character: GameObject, life_stage: LifeStage) -> No
     db.commit()
 
 
-def set_character_age(character: GameObject, age: float) -> None:
+def set_character_age(character: Entity, age: float) -> None:
     """Set the age of a character."""
     character_component = character.get_component(Character)
 
@@ -642,7 +639,7 @@ def set_character_age(character: GameObject, age: float) -> None:
     character_component.age = age
 
     if math.floor(previous_age) != math.floor(age):
-        db = character.world.resources.get_resource(SimDB).db
+        db = character.world.get_resource(SimDB).db
 
         db.execute(
             """UPDATE characters SET age=? WHERE uid=?;""",
@@ -652,12 +649,12 @@ def set_character_age(character: GameObject, age: float) -> None:
         db.commit()
 
 
-def set_character_birth_date(character: GameObject, birth_date: SimDate) -> None:
+def set_character_birth_date(character: Entity, birth_date: SimDate) -> None:
     """Set the birth date of a character."""
 
     character.get_component(Character).birth_date = birth_date
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET birth_date=? WHERE uid=?;""",
@@ -667,12 +664,12 @@ def set_character_birth_date(character: GameObject, birth_date: SimDate) -> None
     db.commit()
 
 
-def set_character_death_date(character: GameObject, death_date: SimDate) -> None:
+def set_character_death_date(character: Entity, death_date: SimDate) -> None:
     """Set the death date of a character."""
 
     character.get_component(Character).death_date = death_date
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET death_date=? WHERE uid=?;""",
@@ -682,7 +679,7 @@ def set_character_death_date(character: GameObject, death_date: SimDate) -> None
     db.commit()
 
 
-def set_character_mother(character: GameObject, mother: Optional[GameObject]) -> None:
+def set_character_mother(character: Entity, mother: Optional[Entity]) -> None:
     """Set the mother of a character."""
 
     character_component = character.get_component(Character)
@@ -693,7 +690,7 @@ def set_character_mother(character: GameObject, mother: Optional[GameObject]) ->
     if mother is not None:
         character_component.mother = mother
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET mother=? WHERE uid=?;""",
@@ -703,12 +700,12 @@ def set_character_mother(character: GameObject, mother: Optional[GameObject]) ->
     db.commit()
 
 
-def set_character_father(character: GameObject, father: Optional[GameObject]) -> None:
+def set_character_father(character: Entity, father: Optional[Entity]) -> None:
     """Set the father of a character."""
 
     character.get_component(Character).father = father
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET father=? WHERE uid=?;""",
@@ -719,13 +716,13 @@ def set_character_father(character: GameObject, father: Optional[GameObject]) ->
 
 
 def set_character_biological_father(
-    character: GameObject, father: Optional[GameObject]
+    character: Entity, father: Optional[Entity]
 ) -> None:
     """Set the biological father of a character."""
 
     character.get_component(Character).biological_father = father
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET biological_father=? WHERE uid=?;""",
@@ -735,7 +732,7 @@ def set_character_biological_father(
     db.commit()
 
 
-def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
+def start_marriage(character_a: Entity, character_b: Entity) -> None:
     """Set the current spouse of a character and create a new marriage."""
     world = character_a.world
     character_a_component = character_a.get_component(Character)
@@ -748,8 +745,8 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
     if character_b_component.spouse:
         raise RuntimeError(f"Error: {character_b.name_with_uid} is already married.")
 
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
 
     # Set the spouse references in the component data
@@ -767,7 +764,7 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
     )
 
     # Create a new marriage entries into the database
-    a_to_b = world.gameobjects.spawn_gameobject(
+    a_to_b = world.entity(
         components=[
             Marriage(character_a, character_b, current_date),
         ]
@@ -781,7 +778,7 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
         (a_to_b.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
     )
 
-    b_to_a = world.gameobjects.spawn_gameobject(
+    b_to_a = world.entity(
         components=[
             Marriage(character_b, character_a, current_date),
         ]
@@ -801,7 +798,7 @@ def start_marriage(character_a: GameObject, character_b: GameObject) -> None:
     character_b.get_component(CharacterMetrics).data.times_married += 1
 
 
-def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
+def end_marriage(character_a: Entity, character_b: Entity) -> None:
     """Unset the current spouse of a character and end the marriage."""
 
     world = character_a.world
@@ -825,8 +822,8 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
     character_a_component.spouse = None
     character_b_component.spouse = None
 
-    current_date = world.resources.get_resource(SimDate).to_iso_str()
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate).to_iso_str()
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
 
     # Update the spouse IDs in the database
@@ -867,7 +864,7 @@ def end_marriage(character_a: GameObject, character_b: GameObject) -> None:
     db.commit()
 
 
-def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
+def start_romantic_affair(character_a: Entity, character_b: Entity) -> None:
     """Start a romantic affair between two characters."""
     world = character_a.world
     character_a_component = character_a.get_component(Character)
@@ -880,8 +877,8 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
     if character_b_component.lover:
         raise RuntimeError(f"Error: {character_b.name_with_uid} already has a lover.")
 
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
 
     # Set the lover references in the component data
@@ -899,7 +896,7 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
     )
 
     # Create a new romantic affair entries into the database
-    a_to_b = world.gameobjects.spawn_gameobject(
+    a_to_b = world.entity(
         components=[
             RomanticAffair(character_a, character_b, current_date),
         ]
@@ -913,7 +910,7 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
         (a_to_b.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
     )
 
-    b_to_a = world.gameobjects.spawn_gameobject(
+    b_to_a = world.entity(
         components=[
             RomanticAffair(character_b, character_a, current_date),
         ]
@@ -930,7 +927,7 @@ def start_romantic_affair(character_a: GameObject, character_b: GameObject) -> N
     db.commit()
 
 
-def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> None:
+def end_romantic_affair(character_a: Entity, character_b: Entity) -> None:
     """End a romantic affair between two characters."""
     world = character_a.world
     character_a_component = character_a.get_component(Character)
@@ -953,8 +950,8 @@ def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> Non
     character_a_component.lover = None
     character_b_component.lover = None
 
-    current_date = world.resources.get_resource(SimDate).to_iso_str()
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate).to_iso_str()
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
 
     # Update the spouse IDs in the database
@@ -995,12 +992,12 @@ def end_romantic_affair(character_a: GameObject, character_b: GameObject) -> Non
     db.commit()
 
 
-def set_character_alive(character: GameObject, is_alive: bool) -> None:
+def set_character_alive(character: Entity, is_alive: bool) -> None:
     """Set is_alive status of a character."""
 
     character.get_component(Character).is_alive = is_alive
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET is_alive=? WHERE uid=?;""",
@@ -1010,7 +1007,7 @@ def set_character_alive(character: GameObject, is_alive: bool) -> None:
     db.commit()
 
 
-def set_relation_sibling(character: GameObject, sibling: GameObject) -> None:
+def set_relation_sibling(character: Entity, sibling: Entity) -> None:
     """Set a character as being a sibling to the first.
 
     Parameters
@@ -1026,7 +1023,7 @@ def set_relation_sibling(character: GameObject, sibling: GameObject) -> None:
     if sibling not in character_siblings:
         character_siblings.append(sibling)
 
-        db = character.world.resources.get_resource(SimDB).db
+        db = character.world.get_resource(SimDB).db
 
         db.execute(
             """
@@ -1038,12 +1035,12 @@ def set_relation_sibling(character: GameObject, sibling: GameObject) -> None:
         db.commit()
 
 
-def set_relation_child(character: GameObject, child: GameObject) -> None:
+def set_relation_child(character: Entity, child: Entity) -> None:
     """Set a character as being a child to the first."""
 
     character.get_component(Character).children.append(child)
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """
@@ -1056,7 +1053,7 @@ def set_relation_child(character: GameObject, child: GameObject) -> None:
 
 
 def update_grandparent_relations(
-    child: GameObject, grandparents: Iterable[Optional[GameObject]]
+    child: Entity, grandparents: Iterable[Optional[Entity]]
 ) -> None:
     """Update child's grandparent references and grandparent's grandchild references.
 
@@ -1080,7 +1077,7 @@ def update_grandparent_relations(
         grandparent_character_component.grandchildren.add(child)
 
 
-def get_family_of(character: GameObject) -> GameObject:
+def get_family_of(character: Entity) -> Entity:
     """Get the family a character belongs to."""
     character_component = character.get_component(Character)
 

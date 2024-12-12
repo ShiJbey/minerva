@@ -1,33 +1,40 @@
 # pylint: disable=C0302
 """Entity Component System
 
-This ECS implementation blends Unity-style GameObjects with the
-ECS logic from the Python esper library and the Bevy Game Engine.
+This ECS implementation is modified from the original version used in
+Neighborly. Some classes have been renamed to reduce confusion and some
+extra features were removed for simplicity. This ECS does not depend on
+the esper 2.x library. That code has been adapted into this code since
+I have no plans to upgrade to esper 3.x after the switch to module-level
+functions and data. Also, the switch allowed us to customize the ECS API
+to use Entities and our custom System/System group implementation. Credit
+for the base ECS design goes to the esper library (referenced below).
+Please check them out if you're looking for something more general-purpose.
 
 This ECS implementation is not thread-safe. It assumes that everything happens
 sequentially on the same thread.
 
-Sources:
+There is no external documentation for this ECS. All public classes,
+properties, and methods have doc comments to help ease confusion.
 
-- https://docs.unity3d.com/ScriptReference/GameObject.html
+References:
+
 - https://github.com/benmoran56/esper
 - https://github.com/bevyengine/bevy
-- https://bevy-cheatbook.github.io/programming/change-detection.html
-- https://bevy-cheatbook.github.io/programming/removal-detection.html
-- https://docs.unity3d.com/Packages/com.unity.entities@0.1/manual/index.html
+- https://github.com/SanderMertens/flecs
+- https://unity.com/ecs
 
 """
 
 from __future__ import annotations
 
 import dataclasses
-import logging
 from abc import ABC, abstractmethod
 from queue import PriorityQueue
 from typing import (
     Any,
     ClassVar,
-    Iterable,
+    Generator,
     Iterator,
     Optional,
     Type,
@@ -36,385 +43,96 @@ from typing import (
     overload,
 )
 
-import esper
 from ordered_set import OrderedSet
-
-_LOGGER = logging.getLogger(__name__)
 
 _CT = TypeVar("_CT", bound="Component")
 _RT = TypeVar("_RT", bound="Any")
 _ST = TypeVar("_ST", bound="System")
 
 
-class ResourceNotFoundError(Exception):
-    """Exception raised when attempting to access a resource that does not exist."""
-
-    __slots__ = ("resource_type", "message")
-
-    resource_type: Type[Any]
-    """The class type of the resource."""
-    message: str
-    """An error message."""
-
-    def __init__(self, resource_type: Type[Any]) -> None:
-        """
-        Parameters
-        ----------
-        resource_type
-            The type of the resource not found.
-        """
-        super().__init__()
-        self.resource_type = resource_type
-        self.message = f"Could not find resource with type: {resource_type.__name__}."
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(resource_type={self.resource_type})"
-
-
-class SystemNotFoundError(Exception):
-    """Exception raised when attempting to access a system that does not exist."""
-
-    __slots__ = ("system_type", "message")
-
-    system_type: str
-    """The class type of the system."""
-    message: str
-    """An error message."""
-
-    def __init__(self, system_type: str) -> None:
-        """
-        Parameters
-        ----------
-        system_type
-            The type of the resource not found.
-        """
-        super().__init__()
-        self.system_type = system_type
-        self.message = f"Could not find system with type: {system_type}."
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(resource_type={self.system_type})"
-
-
-class GameObjectNotFoundError(Exception):
-    """Exception raised when attempting to access a GameObject that does not exist."""
-
-    __slots__ = ("gameobject_id", "message")
-
-    gameobject_id: int
-    """The ID of the desired GameObject."""
-    message: str
-    """An error message."""
-
-    def __init__(self, gameobject_id: int) -> None:
-        """
-        Parameters
-        ----------
-        gameobject_id
-            The UID of the desired GameObject.
-        """
-        super().__init__()
-        self.gameobject_id = gameobject_id
-        self.message = f"Could not find GameObject with id: {gameobject_id}."
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(gameobject_uid={self.gameobject_id})"
-
-
-class ComponentNotFoundError(Exception):
-    """Exception raised when attempting to access a component that does not exist."""
-
-    __slots__ = ("component_type", "message")
-
-    component_type: Type[Component]
-    """The type of component not found."""
-    message: str
-    """An error message."""
-
-    def __init__(self, component_type: Type[Component]) -> None:
-        """
-        Parameters
-        ----------
-        component_type
-            The desired component type.
-        """
-        super().__init__()
-        self.component_type = component_type
-        self.message = f"Could not find Component with type: {component_type.__name__}."
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(component={self.component_type.__name__})"
-
-
-class GameObject:
-    """A reference to an entity within the world.
-
-    GameObjects wrap a unique integer identifier and provide an interface to access
-    associated components and child/parent gameobjects.
-    """
+class Entity:
+    """A reference to an entity within the world."""
 
     __slots__ = (
         "_uid",
-        "_name",
-        "_is_active",
         "world",
-        "metadata",
-        "_component_types",
-        "_component_manager",
     )
 
     _uid: int
-    """The unique ID of this GameObject."""
-    _name: str
-    """The name of this GameObject."""
-    _is_active: bool
-    """Is the GameObject actively a part of the simulation."""
+    """The unique ID of this entity."""
     world: World
-    """The world instance a GameObject belongs to."""
-    _component_manager: esper.World
-    """Reference to Esper ECS instance with all the component data."""
-    metadata: dict[str, Any]
-    """Metadata associated with this GameObject."""
-    _component_types: list[Type[Component]]
-    """Types of the GameObjects components in order of addition."""
+    """The world instance this entity belongs to."""
 
     def __init__(
         self,
-        unique_id: int,
+        uid: int,
         world: World,
-        component_manager: esper.World,
-        name: str = "",
     ) -> None:
-        self._uid = unique_id
-        self._is_active = True
-        self._name = name if name else f"GameObject({unique_id})"
+        self._uid = uid
         self.world = world
-        self._component_manager = component_manager
-        self.metadata = {}
-        self._component_types = []
 
     @property
     def uid(self) -> int:
-        """A GameObject's ID."""
+        """The entity's unique ID."""
         return self._uid
 
     @property
-    def exists(self) -> bool:
-        """Check if the GameObject still exists in the ECS.
+    def name(self) -> str:
+        """The entity's name."""
+        return self.world.get_entity_name(self)
 
-        Returns
-        -------
-        bool
-            True if the GameObject exists, False otherwise.
-        """
-        return self.world.gameobjects.has_gameobject(self.uid)
+    @name.setter
+    def name(self, value: str):
+        """Set the entity's name."""
+        self.world.set_entity_name(self, value)
+
+    @property
+    def is_valid(self) -> bool:
+        """Check if the entity still exists in the ECS."""
+        return self.world.entity_exists(self.uid)
 
     @property
     def is_active(self) -> bool:
-        """Check if a GameObject is active."""
-        return self._is_active
-
-    @property
-    def name(self) -> str:
-        """Get the GameObject's name"""
-        return self._name
-
-    @name.setter
-    def name(self, value: str) -> None:
-        """Set the GameObject's name"""
-        self._name = f"{value}"
+        """Check if a entity is active."""
+        return self.has_component(Active)
 
     @property
     def name_with_uid(self) -> str:
-        """Get the name of the gameobject with the UID."""
-        return f"{self._name} ({self._uid})"
+        """Get the name of the entity with the UID."""
+        return f"{self.name} ({self._uid})"
 
     def activate(self) -> None:
-        """Tag the GameObject as active."""
-        self.add_component(Active())
-        self._is_active = True
+        """Tag the entity as active."""
+        self.world.activate(self)
 
     def deactivate(self) -> None:
-        """Remove the Active tag from a GameObject."""
-        self.remove_component(Active)
-        self._is_active = False
-
-    def get_components(self) -> tuple[Component, ...]:
-        """Get all components associated with the GameObject.
-
-        Returns
-        -------
-        tuple[Component, ...]
-            Component instances
-        """
-        try:
-            return self._component_manager.components_for_entity(self.uid)
-        except KeyError:
-            # Ignore errors if gameobject is not found in esper ecs
-            return ()
-
-    def get_component_types(self) -> tuple[Type[Component], ...]:
-        """Get the class types of all components attached to the GameObject.
-
-        Returns
-        -------
-        tuple[Type[Component], ...]
-            Collection of component types.
-        """
-        return tuple(self._component_types)
-
-    def add_component(self, component: _CT) -> _CT:
-        """Add a component to this GameObject.
-
-        Parameters
-        ----------
-        component
-            The component.
-
-        Returns
-        -------
-        _CT
-            The added component
-        """
-
-        if self.has_component(type(component)):
-            raise TypeError(
-                "Cannot have multiple components of same type. "
-                f"Attempted to add {type(component)}."
-            )
-
-        component.gameobject = self
-        self._component_manager.add_component(self.uid, component)
-        self._component_types.append(type(component))
-        component.on_add()
-
-        return component
-
-    def remove_component(self, component_type: Type[Component]) -> bool:
-        """Remove a component from the GameObject.
-
-        Parameters
-        ----------
-        component_type
-            The type of the component to remove.
-
-        Returns
-        -------
-        bool
-            Returns True if component is removed, False otherwise.
-        """
-        try:
-            if not self.has_component(component_type):
-                return False
-
-            component = self.get_component(component_type)
-            component.on_remove()
-            self._component_types.remove(type(component))
-            self._component_manager.remove_component(self.uid, component_type)
-            return True
-
-        except KeyError:
-            # Esper's ECS will throw a key error if the GameObject does not
-            # have any components.
-            return False
-
-    def get_component(self, component_type: Type[_CT]) -> _CT:
-        """Get a component associated with a GameObject.
-
-        Parameters
-        ----------
-        component_type
-            The class type of the component to retrieve.
-
-        Returns
-        -------
-        _CT
-            The instance of the component with the given type.
-        """
-        try:
-            return self._component_manager.component_for_entity(
-                self.uid, component_type
-            )
-        except KeyError as exc:
-            raise ComponentNotFoundError(component_type) from exc
-
-    def has_components(self, *component_types: Type[Component]) -> bool:
-        """Check if a GameObject has one or more components.
-
-        Parameters
-        ----------
-        *component_types
-            Class types of components to check for.
-
-        Returns
-        -------
-        bool
-            True if all component types are present on a GameObject.
-        """
-        try:
-            return self._component_manager.has_components(self.uid, *component_types)
-        except KeyError:
-            return False
-
-    def has_component(self, component_type: Type[Component]) -> bool:
-        """Check if this entity has a component.
-
-        Parameters
-        ----------
-        component_type
-            The class type of the component to check for.
-
-        Returns
-        -------
-        bool
-            True if the component exists, False otherwise.
-        """
-        try:
-            return self._component_manager.has_component(self.uid, component_type)
-        except KeyError:
-            return False
-
-    def try_component(self, component_type: Type[_CT]) -> Optional[_CT]:
-        """Try to get a component associated with a GameObject.
-
-        Parameters
-        ----------
-        component_type
-            The class type of the component.
-
-        Returns
-        -------
-        _CT or None
-            The instance of the component.
-        """
-        try:
-            return self._component_manager.try_component(self.uid, component_type)
-        except KeyError:
-            return None
+        """Remove the Active tag from a entity."""
+        self.world.deactivate(self)
 
     def destroy(self) -> None:
-        """Remove a GameObject from the world."""
-        self.world.gameobjects.destroy_gameobject(self)
+        """Remove a entity from the world."""
+        self.world.destroy(self)
+
+    def add_component(self, component: _CT) -> _CT:
+        """Add a component."""
+        return self.world.add_component(self, component)
+
+    def remove_component(self, component_type: Type[Component]) -> bool:
+        """Remove a component with the given type."""
+        return self.world.remove_component(self, component_type)
+
+    def get_component(self, component_type: Type[_CT]) -> _CT:
+        """Get a component with the given type."""
+        return self.world.get_component(self, component_type)
+
+    def has_component(self, component_type: Type[Component]) -> bool:
+        """Check if this entity has a component."""
+        return self.world.has_component(self, component_type)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, GameObject):
+        if isinstance(other, Entity):
             return self.uid == other.uid
         return False
-
-    def __int__(self) -> int:
-        return self.uid
 
     def __hash__(self) -> int:
         return self.uid
@@ -423,42 +141,34 @@ class GameObject:
         return self.name
 
     def __repr__(self) -> str:
-        return f"GameObject(id={self.uid!r}, name={self.name!r})"
+        return f"Entity(uid={self.uid!r}, name={self.name!r})"
 
 
 class Component(ABC):
-    """A collection of data attributes associated with a GameObject."""
+    """A collection of data associated with an entity."""
 
-    __slots__ = ("_gameobject",)
+    __slots__ = ("_entity",)
 
-    _gameobject: GameObject
-    """The GameObject the component belongs to."""
+    _entity: Entity
+    """The entity the component belongs to."""
 
     @property
-    def gameobject(self) -> GameObject:
-        """Get the GameObject instance for this component."""
-        return self._gameobject
+    def entity(self) -> Entity:
+        """Get the entity instance for this component."""
+        return self._entity
 
-    @gameobject.setter
-    def gameobject(self, value: GameObject) -> None:
-        """Set the GameObject instance."""
+    @entity.setter
+    def entity(self, value: Entity) -> None:
+        """Set the entity instance."""
         # This method should only be called by the ECS
-        if not hasattr(self, "_gameobject"):
-            self._gameobject = value
+        if not hasattr(self, "_entity"):
+            self._entity = value
         else:
-            raise RuntimeError("Cannot reassign the GameObject for a component")
-
-    def on_add(self) -> None:
-        """Lifecycle method called when the component is added to a GameObject."""
-        return
-
-    def on_remove(self) -> None:
-        """Lifecycle method called when the component is removed from a GameObject."""
-        return
+            raise RuntimeError("Cannot reassign the component to another entity.")
 
 
 class TagComponent(Component):
-    """An Empty component used to mark a GameObject as having a state or type."""
+    """An Empty component used to mark a entity as having a state or type."""
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -468,7 +178,7 @@ class TagComponent(Component):
 
 
 class Active(TagComponent):
-    """Tags a GameObject as active within the simulation."""
+    """Tags a entity as active within the simulation."""
 
 
 class System(ABC):
@@ -552,123 +262,6 @@ class System(ABC):
         return cls.__update_order__
 
 
-@dataclasses.dataclass
-class _SystemSortNode:
-    system: System
-    update_first: bool = False
-    update_last: bool = False
-    order: int = 0
-
-
-@dataclasses.dataclass(order=True)
-class _NodeQueueEntry:
-    priority: int
-    item: _SystemSortNode = dataclasses.field(compare=False)
-
-
-def _get_incoming_edges(
-    edges: list[
-        tuple[
-            str,
-            str,
-        ]
-    ],
-    node: _SystemSortNode,
-) -> list[str]:
-    """Get incoming edges for a node in a system sorting graph."""
-    return [n for n, m in edges if m == node.system.system_name()]
-
-
-def _get_outgoing_edges(
-    edges: list[
-        tuple[
-            str,
-            str,
-        ]
-    ],
-    node: _SystemSortNode,
-) -> list[str]:
-    """Get outgoing edges for a node in a system sorting graph."""
-    return [m for n, m in edges if n == node.system.system_name()]
-
-
-def _topological_sort(systems: list[System]) -> list[System]:
-    """Perform topological sort on the provided systems."""
-
-    # Convert the systems to nodes
-    nodes: dict[str, _SystemSortNode] = {}
-    edges: list[tuple[str, str]] = []
-    for system in systems:
-        node = _SystemSortNode(system=system)
-
-        for constraint in system.update_order():
-            if constraint == "first":
-                node.update_first = True
-                node.order -= 1
-            elif constraint == "last":
-                node.update_last = True
-                node.order += 1
-            else:
-                # We have to parse it
-                command, system_name = tuple(s.strip() for s in constraint.split(":"))
-
-                if command == "before":
-                    edges.append((system.system_name(), system_name))
-                elif command == "after":
-                    edges.append((system_name, system.system_name()))
-                else:
-                    raise ValueError(f"Unknown update order constraint: {constraint}.")
-
-        if node.update_first and node.update_last:
-            raise ValueError(
-                f"'{system.system_name()}' has constraints to update first and last."
-            )
-
-        nodes[system.system_name()] = node
-
-    # Remove edges missing nodes
-    for i in reversed(range(len(edges))):
-        _n, _m = edges[i]
-
-        if _n not in nodes:
-            edges.pop(i)
-            continue
-
-        if _m not in nodes:
-            edges.pop(i)
-            continue
-
-    result: list[System] = []
-
-    # Get all nodes with no incoming edges.
-    starting_nodes = [
-        node for node in nodes.values() if len(_get_incoming_edges(edges, node)) == 0
-    ]
-
-    node_queue: PriorityQueue[_NodeQueueEntry] = PriorityQueue()
-    for node in starting_nodes:
-        node_queue.put(_NodeQueueEntry(priority=node.order, item=node))
-
-    while not node_queue.empty():
-        entry = node_queue.get()
-        node = entry.item
-        result.append(node.system)
-
-        for dependent_name in _get_outgoing_edges(edges, node):
-            dependent = nodes[dependent_name]
-            edges.remove((node.system.system_name(), dependent_name))
-
-            if len(_get_incoming_edges(edges, dependent)) == 0:
-                node_queue.put(
-                    _NodeQueueEntry(priority=dependent.order, item=dependent)
-                )
-
-    if edges:
-        raise ValueError("System ordering contains a dependency cycle.")
-
-    return result
-
-
 class SystemGroup(System, ABC):
     """A group of ECS systems that run as a unit.
 
@@ -741,11 +334,134 @@ class SystemGroup(System, ABC):
 
     def sort_children(self) -> None:
         """Performs topologically sort child systems."""
-        self._children = _topological_sort(self._children)
+        self._children = SystemGroup._topological_sort(self._children)
 
         for child in self._children:
             if isinstance(child, SystemGroup):
                 child.sort_children()
+
+    @dataclasses.dataclass
+    class _SystemSortNode:
+        system: System
+        update_first: bool = False
+        update_last: bool = False
+        order: int = 0
+
+    @dataclasses.dataclass(order=True)
+    class _NodeQueueEntry:
+        priority: int
+        item: SystemGroup._SystemSortNode = dataclasses.field(compare=False)
+
+    @staticmethod
+    def _get_incoming_edges(
+        edges: list[
+            tuple[
+                str,
+                str,
+            ]
+        ],
+        node: _SystemSortNode,
+    ) -> list[str]:
+        """Get incoming edges for a node in a system sorting graph."""
+        return [n for n, m in edges if m == node.system.system_name()]
+
+    @staticmethod
+    def _get_outgoing_edges(
+        edges: list[
+            tuple[
+                str,
+                str,
+            ]
+        ],
+        node: _SystemSortNode,
+    ) -> list[str]:
+        """Get outgoing edges for a node in a system sorting graph."""
+        return [m for n, m in edges if n == node.system.system_name()]
+
+    @staticmethod
+    def _topological_sort(systems: list[System]) -> list[System]:
+        """Perform topological sort on the provided systems."""
+
+        # Convert the systems to nodes
+        nodes: dict[str, SystemGroup._SystemSortNode] = {}
+        edges: list[tuple[str, str]] = []
+        for system in systems:
+            node = SystemGroup._SystemSortNode(system=system)
+
+            for constraint in system.update_order():
+                if constraint == "first":
+                    node.update_first = True
+                    node.order -= 1
+                elif constraint == "last":
+                    node.update_last = True
+                    node.order += 1
+                else:
+                    # We have to parse it
+                    command, system_name = tuple(
+                        s.strip() for s in constraint.split(":")
+                    )
+
+                    if command == "before":
+                        edges.append((system.system_name(), system_name))
+                    elif command == "after":
+                        edges.append((system_name, system.system_name()))
+                    else:
+                        raise ValueError(
+                            f"Unknown update order constraint: {constraint}."
+                        )
+
+            if node.update_first and node.update_last:
+                raise ValueError(
+                    f"'{system.system_name()}' has constraints to update first and last."
+                )
+
+            nodes[system.system_name()] = node
+
+        # Remove edges missing nodes
+        for i in reversed(range(len(edges))):
+            _n, _m = edges[i]
+
+            if _n not in nodes:
+                edges.pop(i)
+                continue
+
+            if _m not in nodes:
+                edges.pop(i)
+                continue
+
+        result: list[System] = []
+
+        # Get all nodes with no incoming edges.
+        starting_nodes = [
+            node
+            for node in nodes.values()
+            if len(SystemGroup._get_incoming_edges(edges, node)) == 0
+        ]
+
+        node_queue: PriorityQueue[SystemGroup._NodeQueueEntry] = PriorityQueue()
+        for node in starting_nodes:
+            node_queue.put(SystemGroup._NodeQueueEntry(priority=node.order, item=node))
+
+        while not node_queue.empty():
+            entry = node_queue.get()
+            node = entry.item
+            result.append(node.system)
+
+            for dependent_name in SystemGroup._get_outgoing_edges(edges, node):
+                dependent = nodes[dependent_name]
+                edges.remove((node.system.system_name(), dependent_name))
+
+                if len(SystemGroup._get_incoming_edges(edges, dependent)) == 0:
+                    node_queue.put(
+                        SystemGroup._NodeQueueEntry(
+                            priority=dependent.order, item=dependent
+                        )
+                    )
+
+        if edges:
+            raise ValueError("System ordering contains a dependency cycle.")
+
+        return result
 
 
 class InitializationSystems(SystemGroup):
@@ -827,7 +543,7 @@ class SystemManager(SystemGroup):
         if success:
             self.sort_children()
         else:
-            raise SystemNotFoundError(system.system_group())
+            raise KeyError(f"Could not find system group: {system.system_group()}.")
 
     def get_system(self, system_type: Type[_ST]) -> _ST:
         """Attempt to get a System of the given type.
@@ -856,9 +572,9 @@ class SystemManager(SystemGroup):
                 for child in current_sys.iter_children():
                     stack.append((current_sys, child))
 
-        raise SystemNotFoundError(system_type.__name__)
+        raise KeyError(f"Could not find system with type: {system_type}.")
 
-    def destroy_system(self, system_type: Type[System]) -> None:
+    def remove_system(self, system_type: Type[System]) -> None:
         """Remove all instances of a system type.
 
         Parameters
@@ -897,24 +613,98 @@ class SystemManager(SystemGroup):
         self.on_update(self._world)
 
 
-class ResourceManager:
-    """Manages shared resources for a world instance."""
+_T1 = TypeVar("_T1", bound=Component)
+_T2 = TypeVar("_T2", bound=Component)
+_T3 = TypeVar("_T3", bound=Component)
+_T4 = TypeVar("_T4", bound=Component)
+_T5 = TypeVar("_T5", bound=Component)
+_T6 = TypeVar("_T6", bound=Component)
+_T7 = TypeVar("_T7", bound=Component)
+_T8 = TypeVar("_T8", bound=Component)
 
-    __slots__ = ("_resources", "_world")
 
-    _world: World
-    """The world instance associated with the SystemManager."""
+class World:
+    """Manages entities, systems, and resources."""
+
+    __slots__ = (
+        "_systems",
+        "_next_entity_id",
+        "_components",
+        "_entities",
+        "_uid_to_entity_map",
+        "_entity_names",
+        "_dead_entities",
+        "_resources",
+    )
+
+    _next_entity_id: int
+    """Next ID assigned to a spawned entity."""
+    _components: dict[Type[Component], set[int]]
+    """Entity component data."""
+    _entities: dict[int, dict[Type[Component], Component]]
+    """Entity data."""
+    _uid_to_entity_map: dict[int, Entity]
+    """Map of UIDs to entity instances."""
+    _entity_names: dict[int, str]
+    """Names of entities."""
+    _dead_entities: OrderedSet[Entity]
+    """Destroyed entities to clean-up at the start of a world step."""
     _resources: dict[Type[Any], Any]
     """Resources shared by the world instance."""
 
-    def __init__(self, world: World) -> None:
-        self._world = world
+    def __init__(self) -> None:
         self._resources = {}
+        self._systems = SystemManager(self)
+        self._systems.add_system(InitializationSystems())
+        self._systems.add_system(EarlyUpdateSystems())
+        self._systems.add_system(UpdateSystems())
+        self._systems.add_system(LateUpdateSystems())
+        self._next_entity_id = 0
+        self._components = {}
+        self._entities = {}
+        self._uid_to_entity_map = {}
+        self._entity_names = {}
+        self._dead_entities = OrderedSet([])
 
-    @property
-    def resources(self) -> Iterable[Any]:
-        """Get an iterable of all the current resources."""
-        return self._resources.values()
+    def initialize(self) -> None:
+        """Run initialization systems only."""
+        initialization_system_group = self._systems.get_system(InitializationSystems)
+
+        initialization_system_group.on_update(self)
+
+    def step(self) -> None:
+        """Advance the simulation as single tick and call all the systems."""
+        self._clear_dead_entities()
+        self._systems.update_systems()
+
+    def add_system(self, system: System) -> None:
+        """Add a System instance.
+
+        Parameters
+        ----------
+        system
+            The system to add.
+        """
+        self._systems.add_system(system)
+
+    def get_system(self, system_type: Type[_ST]) -> _ST:
+        """Attempt to get a System of the given type.
+
+        Parameters
+        ----------
+        system_type
+            The type of the system to retrieve.
+
+        Returns
+        -------
+        _ST or None
+            The system instance if one is found.
+        """
+        return self._systems.get_system(system_type)
+
+    def remove_system(self, system_type: Type[System]) -> None:
+        """Remove all instances of a system type."""
+        self._systems.remove_system(system_type)
 
     def add_resource(self, resource: Any) -> None:
         """Add a shared resource to a world.
@@ -924,12 +714,7 @@ class ResourceManager:
         resource
             The resource to add
         """
-        resource_type = type(resource)  # type: ignore
-        if resource_type in self._resources:
-            _LOGGER.warning(
-                "Replacing existing resource of type: %s", resource_type.__name__
-            )
-        self._resources[resource_type] = resource
+        self._resources[type(resource)] = resource
 
     def remove_resource(self, resource_type: Type[Any]) -> None:
         """Remove a shared resource to a world.
@@ -939,10 +724,7 @@ class ResourceManager:
         resource_type
             The class of the resource.
         """
-        try:
-            del self._resources[resource_type]
-        except KeyError as exc:
-            raise ResourceNotFoundError(resource_type) from exc
+        del self._resources[resource_type]
 
     def get_resource(self, resource_type: Type[_RT]) -> _RT:
         """Access a shared resource.
@@ -957,10 +739,7 @@ class ResourceManager:
         _RT
             The instance of the resource.
         """
-        try:
-            return self._resources[resource_type]
-        except KeyError as exc:
-            raise ResourceNotFoundError(resource_type) from exc
+        return self._resources[resource_type]
 
     def has_resource(self, resource_type: Type[Any]) -> bool:
         """Check if a world has a shared resource.
@@ -977,271 +756,198 @@ class ResourceManager:
         """
         return resource_type in self._resources
 
-
-class GameObjectManager:
-    """Manages GameObject and Component Data for a single World instance."""
-
-    __slots__ = (
-        "world",
-        "_component_manager",
-        "_gameobjects",
-        "_dead_gameobjects",
-    )
-
-    world: World
-    """The manager's associated World instance."""
-    _component_manager: esper.World
-    """Esper ECS instance used for efficiency."""
-    _gameobjects: dict[int, GameObject]
-    """Mapping of GameObjects to unique identifiers."""
-    _dead_gameobjects: OrderedSet[int]
-    """IDs of GameObjects to clean-up following destruction."""
-
-    def __init__(self, world: World) -> None:
-        self.world = world
-        self._gameobjects = {}
-        self._component_manager = esper.World()
-        self._dead_gameobjects = OrderedSet([])
-
-    @property
-    def component_manager(self) -> esper.World:
-        """Get the esper world instance with all the component data."""
-        return self._component_manager
-
-    @property
-    def gameobjects(self) -> Iterable[GameObject]:
-        """Get all gameobjects.
-
-        Returns
-        -------
-        list[GameObject]
-            All the GameObjects that exist in the world.
-        """
-        return self._gameobjects.values()
-
-    def spawn_gameobject(
+    def entity(
         self,
         components: Optional[list[Component]] = None,
         name: str = "",
-    ) -> GameObject:
-        """Create a new GameObject and add it to the world.
+    ) -> Entity:
+        """Create a new entity and add it to the world.
 
         Parameters
         ----------
         components
-            A collection of component instances to add to the GameObject.
+            A collection of component instances to add to the entity.
         name
-            A name to give the GameObject.
+            A name to give the entity.
 
         Returns
         -------
-        GameObject
-            The created GameObject.
+        Entity
+            The created entity.
         """
-        entity_id = self._component_manager.create_entity()
+        self._next_entity_id += 1
 
-        gameobject = GameObject(
-            unique_id=entity_id,
-            world=self.world,
-            component_manager=self._component_manager,
-            name=name,
-        )
+        entity = Entity(uid=self._next_entity_id, world=self)
 
-        self._gameobjects[gameobject.uid] = gameobject
+        if entity.uid not in self._entities:
+            self._entities[entity.uid] = {}
+            self._uid_to_entity_map[entity.uid] = entity
+            self._entity_names[entity.uid] = name
 
         if components:
             for component in components:
-                gameobject.add_component(component)
+                self.add_component(entity, component)
 
-        gameobject.activate()
+        entity.activate()
 
-        return gameobject
+        return entity
 
-    def get_gameobject(self, gameobject_id: int) -> GameObject:
-        """Get a GameObject.
+    def get_entity(self, uid: int) -> Entity:
+        """Get an entity by its UID."""
+        return self._uid_to_entity_map[uid]
 
-        Parameters
-        ----------
-        gameobject_id
-            The ID of the GameObject.
+    def entity_exists(self, uid: int) -> bool:
+        """Check if an entity exists using its UID."""
+        return uid in self._uid_to_entity_map
 
-        Returns
-        -------
-        GameObject
-            The GameObject with the given ID.
-        """
-        if gameobject_id in self._gameobjects:
-            return self._gameobjects[gameobject_id]
+    def get_entity_name(self, entity: Entity) -> str:
+        """Get the given entity's name."""
+        return self._entity_names.get(entity.uid, "")
 
-        raise GameObjectNotFoundError(gameobject_id)
+    def set_entity_name(self, entity: Entity, name: str) -> None:
+        """Set the given entity's name."""
+        self._entity_names[entity.uid] = name
 
-    def has_gameobject(self, gameobject_id: int) -> bool:
-        """Check that a GameObject exists.
+    def activate(self, entity: Entity) -> None:
+        """Tag the entity as active."""
+        self.add_component(entity, Active())
 
-        Parameters
-        ----------
-        gameobject_id
-            The UID of the GameObject to check for.
+    def deactivate(self, entity: Entity) -> None:
+        """Remove the Active tag from an entity."""
+        self.remove_component(entity, Active)
+
+    def destroy(self, entity: Entity) -> None:
+        """Remove an entity from the world."""
+        entity.deactivate()
+        self._dead_entities.append(entity)
+
+    def _clear_dead_entities(self) -> None:
+        """Delete entities that were removed from the world."""
+        for entity in self._dead_entities:
+
+            for component_type in self._entities[entity.uid]:
+                self._components[component_type].discard(entity.uid)
+
+                if not self._components[component_type]:
+                    del self._components[component_type]
+
+            del self._entities[entity.uid]
+            del self._uid_to_entity_map[entity.uid]
+
+        self._dead_entities.clear()
+
+    def add_component(self, entity: Entity, component: _CT) -> _CT:
+        """Add a component to the given entity and return it."""
+        if entity.uid not in self._entities:
+            raise ValueError(f"Entity ({entity.uid}) is invalid.")
+
+        component_type = type(component)
+
+        if component_type in self._entities[entity.uid]:
+            raise TypeError(
+                "Cannot have multiple components of same type. "
+                f"Attempted to add {component_type}."
+            )
+
+        if component_type not in self._components:
+            self._components[component_type] = set()
+
+        self._components[component_type].add(entity.uid)
+
+        self._entities[entity.uid][component_type] = component
+
+        component.entity = entity
+
+        return component
+
+    def remove_component(self, entity: Entity, component_type: Type[Component]) -> bool:
+        """Remove a component from the entity.
 
         Returns
         -------
         bool
-            True if the GameObject exists. False otherwise.
+            Returns True if component is removed, False otherwise.
         """
-        return gameobject_id in self._gameobjects
+        if entity.uid not in self._entities:
+            raise ValueError(f"Entity ({entity.uid}) is invalid.")
 
-    def destroy_gameobject(self, gameobject: GameObject) -> None:
-        """Remove a gameobject from the world.
+        if component_type in self._entities[entity.uid]:
+            self._components[component_type].remove(entity.uid)
 
-        Parameters
-        ----------
-        gameobject
-            The GameObject to remove.
+            if not self._components[component_type]:
+                del self._components[component_type]
 
-        Note
-        ----
-        This component also removes all the components from the gameobject before
-        destruction.
-        """
-        gameobject = self._gameobjects[gameobject.uid]
+            del self._entities[entity.uid][component_type]
 
-        self._dead_gameobjects.append(gameobject.uid)
+            return True
 
-        # Deactivate first
-        gameobject.deactivate()
+        return False
 
-        # Destroy attached components
-        for component_type in reversed(gameobject.get_component_types()):
-            gameobject.remove_component(component_type)
+    def get_component(self, entity: Entity, component_type: Type[_CT]) -> _CT:
+        """Get a component associated with the given entity."""
+        if entity.uid not in self._entities:
+            raise ValueError(f"Entity ({entity.uid}) is invalid.")
 
-    def clear_dead_gameobjects(self) -> None:
-        """Delete gameobjects that were removed from the world."""
-        for gameobject_id in self._dead_gameobjects:
-            if len(self._gameobjects[gameobject_id].get_components()) > 0:
-                self._component_manager.delete_entity(gameobject_id, True)
+        if component_type in self._entities[entity.uid]:
+            return self._entities[entity.uid][component_type]
+        else:
+            raise KeyError(
+                f"Could not find Component with type: {component_type.__name__}."
+            )
 
-            del self._gameobjects[gameobject_id]
-        self._dead_gameobjects.clear()
+    def has_component(self, entity: Entity, component_type: Type[Component]) -> bool:
+        """Check if this entity has a component."""
+        if entity.uid not in self._entities:
+            raise ValueError(f"Entity ({entity.uid}) is invalid.")
 
-
-_T1 = TypeVar("_T1", bound=Component)
-_T2 = TypeVar("_T2", bound=Component)
-_T3 = TypeVar("_T3", bound=Component)
-_T4 = TypeVar("_T4", bound=Component)
-_T5 = TypeVar("_T5", bound=Component)
-_T6 = TypeVar("_T6", bound=Component)
-_T7 = TypeVar("_T7", bound=Component)
-_T8 = TypeVar("_T8", bound=Component)
-
-
-class World:
-    """Manages Gameobjects, Systems, events, and resources."""
-
-    __slots__ = (
-        "_resources",
-        "_gameobjects",
-        "_systems",
-    )
-
-    _gameobjects: GameObjectManager
-    """Manages GameObjects and Component data."""
-    _resources: ResourceManager
-    """Global resources shared by systems in the ECS."""
-    _systems: SystemManager
-    """The systems run every simulation step."""
-
-    def __init__(self) -> None:
-        self._resources = ResourceManager(self)
-        self._systems = SystemManager(self)
-        self._gameobjects = GameObjectManager(self)
-        self.systems.add_system(InitializationSystems())
-        self.systems.add_system(EarlyUpdateSystems())
-        self.systems.add_system(UpdateSystems())
-        self.systems.add_system(LateUpdateSystems())
-
-    @property
-    def systems(self) -> SystemManager:
-        """Get the world's system manager."""
-        return self._systems
-
-    @property
-    def gameobjects(self) -> GameObjectManager:
-        """Get the world's gameobject manager"""
-        return self._gameobjects
-
-    @property
-    def resources(self) -> ResourceManager:
-        """Get the world's resource manager"""
-        return self._resources
-
-    def initialize(self) -> None:
-        """Run initialization systems only."""
-        initialization_system_group = self.systems.get_system(InitializationSystems)
-
-        initialization_system_group.on_update(self)
-
-    def get_component(self, component_type: Type[_CT]) -> list[tuple[int, _CT]]:
-        """Get all the GameObjects that have a given component type.
-
-        Parameters
-        ----------
-        component_type
-            The component type to check for.
-
-        Returns
-        -------
-        list[tuple[int, _CT]]
-            A list of tuples containing the ID of a GameObject and its respective
-            component instance.
-        """
-        return self.gameobjects.component_manager.get_component(  # type: ignore
-            component_type
-        )
+        return component_type in self._entities[entity.uid]
 
     @overload
-    def get_components(
+    def query_components(
         self, component_types: tuple[Type[_T1]]
-    ) -> list[tuple[int, tuple[_T1]]]: ...
+    ) -> Generator[tuple[int, tuple[_T1]], None, None]: ...
 
     @overload
-    def get_components(
+    def query_components(
         self, component_types: tuple[Type[_T1], Type[_T2]]
-    ) -> list[tuple[int, tuple[_T1, _T2]]]: ...
+    ) -> Generator[tuple[int, tuple[_T1, _T2]], None, None]: ...
 
     @overload
-    def get_components(
+    def query_components(
         self, component_types: tuple[Type[_T1], Type[_T2], Type[_T3]]
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3]]]: ...
+    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3]], None, None]: ...
 
     @overload
-    def get_components(
+    def query_components(
         self, component_types: tuple[Type[_T1], Type[_T2], Type[_T3], Type[_T4]]
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4]]]: ...
+    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3, _T4]], None, None]: ...
 
     @overload
-    def get_components(
+    def query_components(
         self,
         component_types: tuple[Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5]],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]]]: ...
+    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]], None, None]: ...
 
     @overload
-    def get_components(
+    def query_components(
         self,
         component_types: tuple[
             Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5], Type[_T6]
         ],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]]]: ...
+    ) -> Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]], None, None]: ...
 
     @overload
-    def get_components(
+    def query_components(
         self,
         component_types: tuple[
             Type[_T1], Type[_T2], Type[_T3], Type[_T4], Type[_T5], Type[_T6], Type[_T7]
         ],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]]]: ...
+    ) -> Generator[
+        tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]], None, None
+    ]: ...
 
     @overload
-    def get_components(
+    def query_components(
         self,
         component_types: tuple[
             Type[_T1],
@@ -1253,9 +959,11 @@ class World:
             Type[_T7],
             Type[_T8],
         ],
-    ) -> list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]]: ...
+    ) -> Generator[
+        tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]], None, None
+    ]: ...
 
-    def get_components(
+    def query_components(
         self,
         component_types: Union[
             tuple[Type[_T1]],
@@ -1285,14 +993,16 @@ class World:
             ],
         ],
     ) -> Union[
-        list[tuple[int, tuple[_T1]]],
-        list[tuple[int, tuple[_T1, _T2]]],
-        list[tuple[int, tuple[_T1, _T2, _T3]]],
-        list[tuple[int, tuple[_T1, _T2, _T3, _T4]]],
-        list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]]],
-        list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]]],
-        list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]]],
-        list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]],
+        Generator[tuple[int, tuple[_T1]], None, None],
+        Generator[tuple[int, tuple[_T1, _T2]], None, None],
+        Generator[tuple[int, tuple[_T1, _T2, _T3]], None, None],
+        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4]], None, None],
+        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]], None, None],
+        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]], None, None],
+        Generator[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]], None, None],
+        Generator[
+            tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]], None, None
+        ],
     ]:
         """Get all game objects with the given components.
 
@@ -1300,29 +1010,19 @@ class World:
         ----------
         component_types
             The components to check for
+        inactive_ok
+            Include inactive entities in the query
 
         Returns
         -------
-        Union[
-            list[tuple[int, tuple[_T1]]],
-            list[tuple[int, tuple[_T1, _T2]]],
-            list[tuple[int, tuple[_T1, _T2, _T3]]],
-            list[tuple[int, tuple[_T1, _T2, _T3, _T4]]],
-            list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5]]],
-            list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6]]],
-            list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7]]],
-            list[tuple[int, tuple[_T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8]]],
-        ]
-            list of tuples containing a GameObject ID and an additional tuple with
-            the instances of the given component types, in-order.
+        A generator that yields components and their entity.
         """
-        ret = self.gameobjects.component_manager.get_components(*component_types)
-
-        # We have to ignore the type because of esper's lax type hinting for
-        # world.get_components()
-        return ret  # type: ignore
-
-    def step(self) -> None:
-        """Advance the simulation as single tick and call all the systems."""
-        self.gameobjects.clear_dead_gameobjects()
-        self.systems.update_systems()
+        try:
+            for entity_uid in sorted(  # type: ignore
+                set.intersection(*[self._components[ct] for ct in component_types])  # type: ignore
+            ):
+                yield entity_uid, tuple(  # type: ignore
+                    self._entities[entity_uid][ct] for ct in component_types
+                )
+        except KeyError:
+            pass

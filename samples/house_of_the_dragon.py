@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     sim = Simulation(Config(n_initial_families=0))
 
-    character_factory = sim.world.resources.get_resource(PCGFactories).character_factory
+    character_factory = sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         sim.world,

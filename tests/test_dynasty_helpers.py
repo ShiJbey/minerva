@@ -13,7 +13,7 @@ from minerva.characters.components import (
 from minerva.characters.helpers import set_character_family
 from minerva.characters.succession_helpers import set_current_ruler
 from minerva.data import japanese_city_names, japanese_names
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.pcg.base_types import PCGFactories
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
@@ -32,11 +32,9 @@ def test_sim() -> Simulation:
 
 def test_set_current_ruler(test_sim: Simulation):
     """Test setting the current ruler."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     viserys = character_factory.generate_character(
         test_sim.world,
@@ -75,8 +73,8 @@ def test_set_current_ruler(test_sim: Simulation):
     set_character_family(rhaenyra, targaryen_family)
     set_character_family(corlys, velaryon_family)
 
-    dynasty_tracker = test_sim.world.resources.get_resource(DynastyTracker)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    dynasty_tracker = test_sim.world.get_resource(DynastyTracker)
+    db = test_sim.world.get_resource(SimDB).db
 
     set_current_ruler(test_sim.world, viserys)
 
@@ -85,7 +83,7 @@ def test_set_current_ruler(test_sim: Simulation):
     assert len(dynasty_tracker.all_rulers) == 1
     assert dynasty_tracker.all_rulers[-1] == viserys
 
-    targaryen_dynasty: GameObject = dynasty_tracker.current_dynasty
+    targaryen_dynasty: Entity = dynasty_tracker.current_dynasty
     current_dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
     assert current_dynasty_component.family == targaryen_family
     assert current_dynasty_component.current_ruler == viserys

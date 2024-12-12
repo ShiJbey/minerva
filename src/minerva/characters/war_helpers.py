@@ -13,11 +13,11 @@ from minerva.characters.stat_helpers import (
 )
 from minerva.characters.war_data import Alliance, War, WarRole, WarTracker
 from minerva.datetime import SimDate
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.sim_db import SimDB
 
 
-def start_alliance(*families: GameObject) -> GameObject:
+def start_alliance(*families: Entity) -> Entity:
     """Start a new alliance between the two families."""
 
     if len(families) < 2:
@@ -28,13 +28,13 @@ def start_alliance(*families: GameObject) -> GameObject:
     founder = founder_family_component.head
 
     world = founder_family.world
-    current_date = world.resources.get_resource(SimDate)
+    current_date = world.get_resource(SimDate)
 
     if founder is None:
         raise TypeError("Alliance founding family is missing a family head.")
 
     # Create the new alliance object
-    alliance = world.gameobjects.spawn_gameobject()
+    alliance = world.entity()
     alliance_component = alliance.add_component(
         Alliance(
             founder=founder,
@@ -55,7 +55,7 @@ def start_alliance(*families: GameObject) -> GameObject:
         else:
             family_component.alliance = alliance
 
-    db = world.resources.get_resource(SimDB).db
+    db = world.get_resource(SimDB).db
     db_cursor = db.cursor()
 
     db_cursor.execute(
@@ -87,7 +87,7 @@ def start_alliance(*families: GameObject) -> GameObject:
     return alliance
 
 
-def join_alliance(alliance: GameObject, family: GameObject) -> None:
+def join_alliance(alliance: Entity, family: Entity) -> None:
     """Add a family to an alliance."""
     alliance_component = alliance.get_component(Alliance)
     family_component = family.get_component(Family)
@@ -102,8 +102,8 @@ def join_alliance(alliance: GameObject, family: GameObject) -> None:
     alliance_component.member_families.add(family)
 
     world = alliance.world
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     cursor = db.cursor()
 
     cursor.execute(
@@ -117,12 +117,12 @@ def join_alliance(alliance: GameObject, family: GameObject) -> None:
     db.commit()
 
 
-def end_alliance(alliance: GameObject) -> None:
+def end_alliance(alliance: Entity) -> None:
     """End an existing alliance between families."""
 
     world = alliance.world
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     db_cursor = db.cursor()
 
     alliance_component = alliance.get_component(Alliance)
@@ -156,18 +156,18 @@ def end_alliance(alliance: GameObject) -> None:
 
 
 def start_war(
-    family_a: GameObject, family_b: GameObject, contested_territory: GameObject
-) -> GameObject:
+    family_a: Entity, family_b: Entity, contested_territory: Entity
+) -> Entity:
     """One family declares war on another."""
     world = family_a.world
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     db_cursor = db.cursor()
 
     family_a_wars = family_a.get_component(WarTracker)
     family_b_wars = family_b.get_component(WarTracker)
 
-    war_obj = world.gameobjects.spawn_gameobject(
+    war_obj = world.entity(
         components=[
             War(
                 family_a,
@@ -206,12 +206,12 @@ def start_war(
     return war_obj
 
 
-def end_war(war: GameObject, winner: Optional[GameObject]) -> None:
+def end_war(war: Entity, winner: Optional[Entity]) -> None:
     """End a war between families."""
 
     world = war.world
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     db_cursor = db.cursor()
 
     war_component = war.get_component(War)
@@ -245,12 +245,12 @@ def end_war(war: GameObject, winner: Optional[GameObject]) -> None:
     war.destroy()
 
 
-def join_war_as(war: GameObject, family: GameObject, role: WarRole) -> None:
+def join_war_as(war: Entity, family: Entity, role: WarRole) -> None:
     """Join a war under the given role."""
 
     world = war.world
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     db_cursor = db.cursor()
 
     war_component = war.get_component(War)
@@ -280,7 +280,7 @@ def join_war_as(war: GameObject, family: GameObject, role: WarRole) -> None:
     db.commit()
 
 
-def create_alliance_scheme(initiator: GameObject) -> GameObject:
+def create_alliance_scheme(initiator: Entity) -> Entity:
     """Creates a new alliance scheme."""
     scheme = create_scheme(
         world=initiator.world,
@@ -295,14 +295,12 @@ def create_alliance_scheme(initiator: GameObject) -> GameObject:
     return scheme
 
 
-def destroy_alliance_scheme(scheme: GameObject) -> None:
+def destroy_alliance_scheme(scheme: Entity) -> None:
     """Destroy an alliance scheme."""
     destroy_scheme(scheme)
 
 
-def create_war_scheme(
-    initiator: GameObject, target: GameObject, territory: GameObject
-) -> GameObject:
+def create_war_scheme(initiator: Entity, target: Entity, territory: Entity) -> Entity:
     """Create a new war scheme."""
     scheme = create_scheme(
         world=initiator.world,
@@ -317,12 +315,12 @@ def create_war_scheme(
     return scheme
 
 
-def destroy_war_scheme(scheme: GameObject) -> None:
+def destroy_war_scheme(scheme: Entity) -> None:
     """Destroy a war scheme."""
     destroy_scheme(scheme)
 
 
-def create_coup_scheme(initiator: GameObject, target: GameObject) -> GameObject:
+def create_coup_scheme(initiator: Entity, target: Entity) -> Entity:
     """Create a new war scheme."""
     scheme = create_scheme(
         world=initiator.world,
@@ -337,12 +335,12 @@ def create_coup_scheme(initiator: GameObject, target: GameObject) -> GameObject:
     return scheme
 
 
-def destroy_coup_scheme(scheme: GameObject) -> None:
+def destroy_coup_scheme(scheme: Entity) -> None:
     """Destroy a coup scheme."""
     destroy_scheme(scheme)
 
 
-def calculate_alliance_martial(*families: GameObject) -> float:
+def calculate_alliance_martial(*families: Entity) -> float:
     """Calculates the avg martial score of a collection of families."""
     martial_sum: float = 0.0
     total_warriors: int = 0
@@ -394,7 +392,7 @@ def calculate_warrior_prowess_dist(war: War) -> tuple[float, float]:
     return score_mean, score_stdev
 
 
-def calculate_war_score(lead_family: GameObject, allies: list[GameObject]) -> int:
+def calculate_war_score(lead_family: Entity, allies: list[Entity]) -> int:
     """Calculate a strength score for a family and their allies in a war."""
 
     total_prowess: float = 0

@@ -563,7 +563,7 @@ class SimDB:
     table_configs: dict[str, DbTable]
     """Configuration settings for SQLite tables."""
 
-    def __init__(self, db_path: str) -> None:
+    def __init__(self, db_path: str = ":memory:") -> None:
         self.db = sqlite3.connect(db_path)
         self.table_configs = {}
 

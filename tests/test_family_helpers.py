@@ -48,7 +48,7 @@ def test_sim() -> Simulation:
 
 def test_add_branch_family(test_sim: Simulation):
     """Test adding a branch to a family."""
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     family_0 = family_factory.generate_family(test_sim.world)
     family_1 = family_factory.generate_family(test_sim.world)
@@ -74,16 +74,14 @@ def test_add_branch_family(test_sim: Simulation):
 
 def test_set_family_head(test_sim: Simulation):
     """Test updating who is the head of a family."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world, "Test Family")
     c0 = character_factory.generate_character(test_sim.world)
     c1 = character_factory.generate_character(test_sim.world)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     family_component = test_family.get_component(Family)
 
@@ -142,7 +140,7 @@ def test_set_family_head(test_sim: Simulation):
 def test_set_family_name(test_sim: Simulation):
     """Test updating the name of the family."""
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world, "Test Family")
 
@@ -150,7 +148,7 @@ def test_set_family_name(test_sim: Simulation):
 
     assert test_family.get_component(Family).name == "Test Family"
 
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     cur = db.execute("""SELECT name FROM families WHERE uid=?;""", (test_family.uid,))
     result = cur.fetchone()
@@ -171,11 +169,9 @@ def test_set_family_name(test_sim: Simulation):
 
 def test_add_character_to_family(test_sim: Simulation):
     """Test adding a character to a family."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world)
     c0 = character_factory.generate_character(test_sim.world)
@@ -195,11 +191,9 @@ def test_add_character_to_family(test_sim: Simulation):
 
 def test_remove_character_from_family(test_sim: Simulation):
     """Test removing a character from a family."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world)
     c0 = character_factory.generate_character(test_sim.world)
@@ -227,11 +221,9 @@ def test_remove_character_from_family(test_sim: Simulation):
 
 def test_merge_family_with(test_sim: Simulation):
     """Test merging families into one group."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     f0 = family_factory.generate_family(test_sim.world)
     og_f0_members = [
@@ -262,11 +254,9 @@ def test_merge_family_with(test_sim: Simulation):
 
 def test_remove_family_from_play(test_sim: Simulation):
     """Test removing a family from the active simulation."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world)
     c0 = character_factory.generate_character(test_sim.world)
@@ -281,11 +271,9 @@ def test_remove_family_from_play(test_sim: Simulation):
 
 def test_set_family_home_base(test_sim: Simulation):
     """Test updating what territory a family uses as their home base."""
-    territory_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).territory_factory
+    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     s0 = territory_factory.generate_territory(test_sim.world)
     f0 = family_factory.generate_family(test_sim.world)
@@ -303,11 +291,9 @@ def test_set_family_home_base(test_sim: Simulation):
 
 def test_get_warrior_candidates(test_sim: Simulation):
     """Test getting potential candidates for warrior roles in a family."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world)
 
@@ -353,11 +339,9 @@ def test_get_warrior_candidates(test_sim: Simulation):
 
 def test_get_advisor_candidates(test_sim: Simulation):
     """Test getting potential advisors for advisor roles in a family."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world)
 
@@ -403,11 +387,9 @@ def test_get_advisor_candidates(test_sim: Simulation):
 
 def test_set_family_role(test_sim: Simulation):
     """Test setting a character to have a given role in their family."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     test_family = family_factory.generate_family(test_sim.world)
 

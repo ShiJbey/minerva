@@ -12,7 +12,7 @@ from pygame_gui.elements import UIButton, UITextBox, UIWindow
 from pygame_gui.ui_manager import UIManager
 
 from minerva.characters.components import Character, Family
-from minerva.ecs import Active, GameObject
+from minerva.ecs import Active, Entity
 from minerva.simulation import Simulation
 from minerva.world_map.components import PopulationHappiness, Territory
 
@@ -50,8 +50,8 @@ class TerritoryListPageGenerator(WikiPageGenerator):
 
         territory_list: list[Any] = []
 
-        for uid, (territory, _) in sim.world.get_components((Territory, Active)):
-            territory_list.append({"uid": uid, "name": territory.gameobject.name})
+        for uid, (territory, _) in sim.world.query_components((Territory, Active)):
+            territory_list.append({"uid": uid, "name": territory.entity.name})
 
         content = template.render(territories=territory_list)
         content = content.replace("\n", "")
@@ -65,8 +65,8 @@ class FamilyListPageGenerator(WikiPageGenerator):
         template = _jinja_env.get_template("family_list.jinja")
         family_list: list[Any] = []
 
-        for uid, (family, _) in sim.world.get_components((Family, Active)):
-            family_list.append({"uid": uid, "name": family.gameobject.name})
+        for uid, (family, _) in sim.world.query_components((Family, Active)):
+            family_list.append({"uid": uid, "name": family.entity.name})
 
         content = template.render(families=family_list)
         content = content.replace("\n", "")
@@ -80,8 +80,8 @@ class CharacterListPageGenerator(WikiPageGenerator):
         template = _jinja_env.get_template("character_list.jinja")
         character_list: list[Any] = []
 
-        for uid, (character, _) in sim.world.get_components((Character, Active)):
-            character_list.append({"uid": uid, "name": character.gameobject.name})
+        for uid, (character, _) in sim.world.query_components((Character, Active)):
+            character_list.append({"uid": uid, "name": character.entity.name})
 
         content = template.render(characters=character_list)
         content = content.replace("\n", "")
@@ -93,7 +93,7 @@ class TerritoryPageGenerator(WikiPageGenerator):
 
     def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
         template = _jinja_env.get_template("territory.jinja")
-        territory: GameObject = kwargs["territory"]
+        territory: Entity = kwargs["territory"]
 
         content = template.render(
             territory=territory.get_component(Territory),
@@ -108,7 +108,7 @@ class CharacterPageGenerator(WikiPageGenerator):
 
     def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
         template = _jinja_env.get_template("character.jinja")
-        character: GameObject = kwargs["character"]
+        character: Entity = kwargs["character"]
 
         character_component = character.get_component(Character)
 
@@ -122,7 +122,7 @@ class FamilyPageGenerator(WikiPageGenerator):
 
     def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
         template = _jinja_env.get_template("family.jinja")
-        family: GameObject = kwargs["family"]
+        family: Entity = kwargs["family"]
 
         content = template.render(family=family.get_component(Family))
 
@@ -134,14 +134,13 @@ class GameObjectPageGenerator(WikiPageGenerator):
 
     def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
         uid = int(kwargs["uid"][0])
-        gameobject = sim.world.gameobjects.get_gameobject(uid)
-        object_type = gameobject.metadata["object_type"]
+        gameobject = sim.world.get_entity(uid)
 
-        if object_type == "territory":
+        if gameobject.has_component(Territory):
             content = TerritoryPageGenerator().generate_page(sim, territory=gameobject)
-        elif object_type == "character":
+        elif gameobject.has_component(Character):
             content = CharacterPageGenerator().generate_page(sim, character=gameobject)
-        elif object_type == "family":
+        elif gameobject.has_component(Family):
             content = FamilyPageGenerator().generate_page(sim, family=gameobject)
         else:
             content = f'<font size="6"><b>{gameobject.name} ({uid})</b></font>'

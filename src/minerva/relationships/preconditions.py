@@ -6,7 +6,7 @@ import enum
 from typing import Callable, Type
 
 from minerva.characters.components import Character, LifeStage, Sex
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.relationships.base_types import Relationship, RelationshipPrecondition
 from minerva.stats.base_types import StatComponent
 from minerva.traits.helpers import has_trait
@@ -17,13 +17,13 @@ class LambdaRelationshipPrecondition(RelationshipPrecondition):
 
     __slots__ = ("_func",)
 
-    _func: Callable[[GameObject], bool]
+    _func: Callable[[Entity], bool]
 
-    def __init__(self, func: Callable[[GameObject], bool]) -> None:
+    def __init__(self, func: Callable[[Entity], bool]) -> None:
         super().__init__()
         self._func = func
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return self._func(relationship)
 
 
@@ -38,7 +38,7 @@ class ConstantPrecondition(RelationshipPrecondition):
         super().__init__()
         self.value = value
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return self.value
 
 
@@ -57,7 +57,7 @@ class RelationshipHasTrait(RelationshipPrecondition):
         super().__init__()
         self.trait = trait
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return has_trait(relationship, self.trait)
 
 
@@ -76,7 +76,7 @@ class OwnerHasTrait(RelationshipPrecondition):
         super().__init__()
         self.trait = trait
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return has_trait(relationship.get_component(Relationship).owner, self.trait)
 
 
@@ -95,14 +95,14 @@ class TargetHasTrait(RelationshipPrecondition):
         super().__init__()
         self.trait = trait
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return has_trait(relationship.get_component(Relationship).target, self.trait)
 
 
 class AreSameSex(RelationshipPrecondition):
     """Checks if the owner and target of a relationship belong to the dame sex."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
 
         owner_sex = relationship_component.owner.get_component(Character).sex
@@ -114,7 +114,7 @@ class AreSameSex(RelationshipPrecondition):
 class AreOppositeSex(RelationshipPrecondition):
     """Checks if the owner and target of a relationship belong to the dame sex."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
 
         owner_sex = relationship_component.owner.get_component(Character).sex
@@ -185,7 +185,7 @@ class OwnerStatRequirement(RelationshipPrecondition):
         self.required_value = required_value
         self.comparator = comparator
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).owner
 
         stat = character.get_component(self.stat)
@@ -234,7 +234,7 @@ class TargetStatRequirement(RelationshipPrecondition):
         self.required_value = required_value
         self.comparator = comparator
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).target
 
         stat = character.get_component(self.stat)
@@ -275,7 +275,7 @@ class OwnerLifeStageRequirement(RelationshipPrecondition):
         self.life_stage = life_stage
         self.comparator = comparator
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).owner.get_component(
             Character
         )
@@ -317,7 +317,7 @@ class TargetLifeStageRequirement(RelationshipPrecondition):
         self.life_stage = life_stage
         self.comparator = comparator
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).target.get_component(
             Character
         )
@@ -355,7 +355,7 @@ class OwnerIsSex(RelationshipPrecondition):
         super().__init__()
         self.sex = sex
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return (
             relationship.get_component(Relationship).owner.get_component(Character).sex
             == self.sex
@@ -373,7 +373,7 @@ class TargetIsSex(RelationshipPrecondition):
         super().__init__()
         self.sex = sex
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         return (
             relationship.get_component(Relationship).target.get_component(Character).sex
             == self.sex
@@ -383,7 +383,7 @@ class TargetIsSex(RelationshipPrecondition):
 class BelongToSameFamily(RelationshipPrecondition):
     """Checks if the owner and target belong to the same family."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
         target_character = relationship_component.target.get_component(Character)
@@ -397,7 +397,7 @@ class BelongToSameFamily(RelationshipPrecondition):
 class BelongToSameBirthFamily(RelationshipPrecondition):
     """Checks if the owner and target belong to the same birth family."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
         target_character = relationship_component.target.get_component(Character)
@@ -414,7 +414,7 @@ class BelongToSameBirthFamily(RelationshipPrecondition):
 class TargetIsParent(RelationshipPrecondition):
     """Checks if the target is the owner's parent."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 
@@ -427,7 +427,7 @@ class TargetIsParent(RelationshipPrecondition):
 class TargetIsChild(RelationshipPrecondition):
     """Checks if the target is a child of the owner."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 
@@ -437,7 +437,7 @@ class TargetIsChild(RelationshipPrecondition):
 class TargetIsSibling(RelationshipPrecondition):
     """Checks if the owner and target are siblings."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 
@@ -447,7 +447,7 @@ class TargetIsSibling(RelationshipPrecondition):
 class TargetIsSpouse(RelationshipPrecondition):
     """Check if the target is the owner's spouse."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 

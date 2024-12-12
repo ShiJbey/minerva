@@ -15,7 +15,7 @@ from torch import nn
 from torch.utils.data import Dataset
 
 from feature_extraction import FeatureVectorFactory, get_default_vector_factory
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 
 FEATURE_VECT_SIZE = 24
 
@@ -169,9 +169,7 @@ class MinervaAnomalyDetector:
             error_threshold=error_threshold,
         )
 
-    def predict(
-        self, character: GameObject
-    ) -> tuple[bool, float, npt.NDArray[np.float32]]:
+    def predict(self, character: Entity) -> tuple[bool, float, npt.NDArray[np.float32]]:
         """Predict if a character is an anomaly.
 
         Returns

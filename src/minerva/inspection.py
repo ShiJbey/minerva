@@ -47,7 +47,7 @@ from minerva.characters.components import (
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
-from minerva.ecs import Active, GameObject
+from minerva.ecs import Active, Entity
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.simulation import Simulation
 from minerva.stats.base_types import StatusEffectManager
@@ -68,11 +68,15 @@ class SimulationInspector:
     def print_status(self) -> None:
         """Print the current status of the simulation."""
 
-        total_characters = len(self.sim.world.get_components((Character, Active)))
-        total_families = len(self.sim.world.get_components((Family, Active)))
-        total_territories = len(self.sim.world.get_components((Territory, Active)))
-        total_wars = len(self.sim.world.get_components((War, Active)))
-        total_alliances = len(self.sim.world.get_components((Alliance, Active)))
+        total_characters = len(
+            list(self.sim.world.query_components((Character, Active)))
+        )
+        total_families = len(list(self.sim.world.query_components((Family, Active))))
+        total_territories = len(
+            list(self.sim.world.query_components((Territory, Active)))
+        )
+        total_wars = len(list(self.sim.world.query_components((War, Active))))
+        total_alliances = len(list(self.sim.world.query_components((Alliance, Active))))
         current_ruler = get_current_ruler(self.sim.world)
         current_ruler_name = current_ruler.name_with_uid if current_ruler else "None"
 
@@ -99,8 +103,8 @@ class SimulationInspector:
     def inspect(self, gameobject_id: int) -> None:
         """Print information about a GameObject."""
 
-        if self.sim.world.gameobjects.has_gameobject(gameobject_id):
-            gameobject = self.sim.world.gameobjects.get_gameobject(gameobject_id)
+        if self.sim.world.entity_exists(gameobject_id):
+            gameobject = self.sim.world.get_entity(gameobject_id)
 
             if gameobject.has_component(Character):
                 self.inspect_character(gameobject_id)
@@ -130,7 +134,7 @@ class SimulationInspector:
         """Print information about a war."""
         console = rich.console.Console()
 
-        war = self.sim.world.gameobjects.get_gameobject(war_id)
+        war = self.sim.world.get_entity(war_id)
 
         war_component = war.get_component(War)
 
@@ -164,7 +168,7 @@ class SimulationInspector:
 
     def inspect_alliance(self, alliance_id: int) -> None:
         """Print information about an alliance to the console."""
-        alliance = self.sim.world.gameobjects.get_gameobject(alliance_id)
+        alliance = self.sim.world.get_entity(alliance_id)
         alliance_component = alliance.get_component(Alliance)
 
         founder = alliance_component.founder.name_with_uid
@@ -193,7 +197,7 @@ class SimulationInspector:
 
         renderable_objs: list[Any] = []
 
-        character = self.sim.world.gameobjects.get_gameobject(character_id)
+        character = self.sim.world.get_entity(character_id)
 
         character_component = character.get_component(Character)
 
@@ -293,7 +297,8 @@ class SimulationInspector:
         if character.has_component(Emperor):
             title_list.append("Emperor")
 
-        if head_of_family_comp := character.try_component(HeadOfFamily):
+        if character.has_component(HeadOfFamily):
+            head_of_family_comp = character.get_component(HeadOfFamily)
             title_list.append(
                 f"Head of {head_of_family_comp.family.name_with_uid} family"
             )
@@ -337,7 +342,8 @@ class SimulationInspector:
 
         renderable_objs.append(general_info_panel)
 
-        if pregnancy := character.try_component(Pregnancy):
+        if character.has_component(Pregnancy):
+            pregnancy = character.get_component(Pregnancy)
             conception = str(pregnancy.conception_date)
             due = str(pregnancy.due_date)
             assumed_father = (
@@ -361,7 +367,7 @@ class SimulationInspector:
             renderable_objs.append(pregnancy_panel)
 
         if character.has_component(Emperor):
-            dynasty_tracker = self.sim.world.resources.get_resource(DynastyTracker)
+            dynasty_tracker = self.sim.world.get_resource(DynastyTracker)
             current_dynasty = dynasty_tracker.current_dynasty
             assert current_dynasty
             ruler_panel = rich.panel.Panel(
@@ -550,7 +556,7 @@ class SimulationInspector:
 
     def inspect_family(self, family_id: int) -> None:
         """Print information about a family."""
-        family = self.sim.world.gameobjects.get_gameobject(family_id)
+        family = self.sim.world.get_entity(family_id)
 
         family_component = family.get_component(Family)
 
@@ -609,7 +615,7 @@ class SimulationInspector:
             else "None"
         )
 
-        controlled_territories_list: list[GameObject] = []
+        controlled_territories_list: list[Entity] = []
         for t in family_component.territories:
             territory_component = t.get_component(Territory)
             if territory_component.controlling_family == family:
@@ -669,7 +675,7 @@ class SimulationInspector:
 
     def inspect_territory(self, territory_id: int) -> None:
         """Print information about a territory."""
-        territory = self.sim.world.gameobjects.get_gameobject(territory_id)
+        territory = self.sim.world.get_entity(territory_id)
 
         territory_component = territory.get_component(Territory)
 
@@ -744,7 +750,7 @@ class SimulationInspector:
 
     def inspect_dynasty(self, dynasty_id: int) -> None:
         """Print information about a dynasty."""
-        dynasty = self.sim.world.gameobjects.get_gameobject(dynasty_id)
+        dynasty = self.sim.world.get_entity(dynasty_id)
 
         dynasty_component = dynasty.get_component(Dynasty)
 
@@ -794,7 +800,7 @@ class SimulationInspector:
 
     def list_dynasties(self) -> None:
         """Print information about the current dynasty."""
-        dynasty_tracker = self.sim.world.resources.get_resource(DynastyTracker)
+        dynasty_tracker = self.sim.world.get_resource(DynastyTracker)
 
         table = rich.table.Table(show_header=True, title="Dynasties", highlight=True)
         table.add_column("Current Dynasty", justify="right")
@@ -803,14 +809,16 @@ class SimulationInspector:
         table.add_column("Start Date")
         table.add_column("End Date")
 
-        results = sorted(self.sim.world.get_components((Dynasty,)), key=lambda e: e[0])
+        results = sorted(
+            self.sim.world.query_components((Dynasty,)), key=lambda e: e[0]
+        )
 
         for uid, (dynasty,) in results:
 
             family_name: str = dynasty.family.name_with_uid
 
             is_current_marker = (
-                "==>" if dynasty.gameobject == dynasty_tracker.current_dynasty else ""
+                "==>" if dynasty.entity == dynasty_tracker.current_dynasty else ""
             )
 
             table.add_row(
@@ -831,7 +839,7 @@ class SimulationInspector:
         table.add_column("Name")
         table.add_column("Controlling Family")
 
-        for _, (territory,) in self.sim.world.get_components((Territory,)):
+        for _, (territory,) in self.sim.world.query_components((Territory,)):
 
             controlling_family_name: str = (
                 territory.controlling_family.name_with_uid
@@ -840,7 +848,7 @@ class SimulationInspector:
             )
 
             table.add_row(
-                f"{territory.gameobject.name_with_uid}",
+                f"{territory.entity.name_with_uid}",
                 f"{controlling_family_name}",
             )
 
@@ -856,8 +864,8 @@ class SimulationInspector:
         table.add_column("Sex")
         table.add_column("Family")
 
-        for _, (character,) in self.sim.world.get_components((Character,)):
-            if not inactive_ok and not character.gameobject.has_component(Active):
+        for _, (character,) in self.sim.world.query_components((Character,)):
+            if not inactive_ok and not character.entity.has_component(Active):
                 continue
 
             family_name: str = (
@@ -865,7 +873,7 @@ class SimulationInspector:
             )
 
             table.add_row(
-                f"{character.gameobject.name_with_uid}",
+                f"{character.entity.name_with_uid}",
                 f"{int(character.age)}",
                 f"{character.sex.name}",
                 f"{family_name}",
@@ -881,8 +889,8 @@ class SimulationInspector:
         table.add_column("Family Head")
         table.add_column("Home Base")
 
-        for _, (family,) in self.sim.world.get_components((Family,)):
-            if not inactive_ok and not family.gameobject.has_component(Active):
+        for _, (family,) in self.sim.world.query_components((Family,)):
+            if not inactive_ok and not family.entity.has_component(Active):
                 continue
 
             family_head: str = family.head.name_with_uid if family.head else "None"
@@ -892,7 +900,7 @@ class SimulationInspector:
             )
 
             table.add_row(
-                f"{family.gameobject.name_with_uid}", f"{family_head}", f"{home_base}"
+                f"{family.entity.name_with_uid}", f"{family_head}", f"{home_base}"
             )
 
         console = rich.console.Console()
@@ -903,12 +911,12 @@ class SimulationInspector:
 
         if inactive_ok:
             alliances = [
-                (uid, f) for uid, (f,) in self.sim.world.get_components((Alliance,))
+                (uid, f) for uid, (f,) in self.sim.world.query_components((Alliance,))
             ]
         else:
             alliances = [
                 (uid, f)
-                for uid, (f, _) in self.sim.world.get_components((Alliance, Active))
+                for uid, (f, _) in self.sim.world.query_components((Alliance, Active))
             ]
 
         table = rich.table.Table(show_header=True, title="Alliances", highlight=True)
@@ -932,10 +940,11 @@ class SimulationInspector:
         """Print all active wars."""
 
         if inactive_ok:
-            wars = [(uid, f) for uid, (f,) in self.sim.world.get_components((War,))]
+            wars = [(uid, f) for uid, (f,) in self.sim.world.query_components((War,))]
         else:
             wars = [
-                (uid, f) for uid, (f, _) in self.sim.world.get_components((War, Active))
+                (uid, f)
+                for uid, (f, _) in self.sim.world.query_components((War, Active))
             ]
 
         table = rich.table.Table(show_header=True, title="Wars", highlight=True)

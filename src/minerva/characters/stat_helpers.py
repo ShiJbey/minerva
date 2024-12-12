@@ -9,7 +9,7 @@ from minerva.characters.components import (
     Prowess,
     Stewardship,
 )
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 
 EXCELLENT_STAT_THRESHOLD = 85
 GOOD_STAT_THRESHOLD = 20
@@ -27,7 +27,7 @@ class StatLevel(enum.Enum):
     EXCELLENT = enum.auto()
 
 
-def get_intelligence_level(character: GameObject) -> StatLevel:
+def get_intelligence_level(character: Entity) -> StatLevel:
     """Get the stat level for a character's intelligence stat."""
     stat_value = character.get_component(Intelligence).value
 
@@ -43,7 +43,7 @@ def get_intelligence_level(character: GameObject) -> StatLevel:
         return StatLevel.TERRIBLE
 
 
-def get_stewardship_level(character: GameObject) -> StatLevel:
+def get_stewardship_level(character: Entity) -> StatLevel:
     """Get the stat level for a character's stewardship stat."""
     stat_value = character.get_component(Stewardship).value
 
@@ -59,7 +59,7 @@ def get_stewardship_level(character: GameObject) -> StatLevel:
         return StatLevel.TERRIBLE
 
 
-def get_martial_level(character: GameObject) -> StatLevel:
+def get_martial_level(character: Entity) -> StatLevel:
     """Get the stat level for a character's martial stat."""
     stat_value = character.get_component(Martial).value
 
@@ -75,7 +75,7 @@ def get_martial_level(character: GameObject) -> StatLevel:
         return StatLevel.TERRIBLE
 
 
-def get_luck_level(character: GameObject) -> StatLevel:
+def get_luck_level(character: Entity) -> StatLevel:
     """Get the stat level for a character's luck stat."""
     stat_value = character.get_component(Luck).value
 
@@ -91,7 +91,7 @@ def get_luck_level(character: GameObject) -> StatLevel:
         return StatLevel.TERRIBLE
 
 
-def get_prowess_level(character: GameObject) -> StatLevel:
+def get_prowess_level(character: Entity) -> StatLevel:
     """Get the stat level for a character's prowess stat."""
     stat_value = character.get_component(Prowess).value
 

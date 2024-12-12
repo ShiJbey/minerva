@@ -1,6 +1,6 @@
 """General Life Events."""
 
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.life_events.base_types import LifeEvent
 from minerva.sim_db import SimDB
 
@@ -10,9 +10,9 @@ class MarriageEvent(LifeEvent):
 
     __slots__ = ("spouse",)
 
-    spouse: GameObject
+    spouse: Entity
 
-    def __init__(self, subject: GameObject, spouse: GameObject) -> None:
+    def __init__(self, subject: Entity, spouse: Entity) -> None:
         super().__init__(subject)
         self.spouse = spouse
 
@@ -20,7 +20,7 @@ class MarriageEvent(LifeEvent):
         return "Marriage"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
@@ -47,7 +47,7 @@ class PregnancyEvent(LifeEvent):
         return "Pregnancy"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
@@ -71,9 +71,9 @@ class ChildBirthEvent(LifeEvent):
 
     __slots__ = ("child",)
 
-    child: GameObject
+    child: Entity
 
-    def __init__(self, subject: GameObject, child: GameObject) -> None:
+    def __init__(self, subject: Entity, child: Entity) -> None:
         super().__init__(subject)
         self.child = child
 
@@ -81,7 +81,7 @@ class ChildBirthEvent(LifeEvent):
         return "ChildBirth"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
@@ -108,7 +108,7 @@ class BirthEvent(LifeEvent):
         return "Birth"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
@@ -132,12 +132,10 @@ class TakeOverTerritoryEvent(LifeEvent):
 
     __slots__ = ("territory", "family")
 
-    territory: GameObject
-    family: GameObject
+    territory: Entity
+    family: Entity
 
-    def __init__(
-        self, subject: GameObject, territory: GameObject, family: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, territory: Entity, family: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
         self.family = family
@@ -146,7 +144,7 @@ class TakeOverTerritoryEvent(LifeEvent):
         return "TakeOverTerritory"
 
     def on_event_logged(self) -> None:
-        # db = self.world.resources.get_resource(SimDB).db
+        # db = self.world.get_resource(SimDB).db
         # cur = db.cursor()
         # cur.execute(
         #     """
@@ -187,9 +185,9 @@ class ExpandedTerritoryEvent(LifeEvent):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, subject: GameObject, territory: GameObject) -> None:
+    def __init__(self, subject: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
 
@@ -211,12 +209,10 @@ class ExpandedFamilyTerritoryEvent(LifeEvent):
 
     __slots__ = ("family", "territory")
 
-    family: GameObject
-    territory: GameObject
+    family: Entity
+    territory: Entity
 
-    def __init__(
-        self, subject: GameObject, family: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, family: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.family = family
         self.territory = territory
@@ -240,9 +236,9 @@ class DisbandedAllianceEvent(LifeEvent):
 
     __slots__ = ("founding_family",)
 
-    founding_family: GameObject
+    founding_family: Entity
 
-    def __init__(self, subject: GameObject, founding_family: GameObject) -> None:
+    def __init__(self, subject: Entity, founding_family: Entity) -> None:
         super().__init__(subject)
         self.founding_family = founding_family
 
@@ -261,9 +257,9 @@ class LeftDisbandedAllianceEvent(LifeEvent):
 
     __slots__ = ("alliance",)
 
-    alliance: GameObject
+    alliance: Entity
 
-    def __init__(self, subject: GameObject, alliance: GameObject) -> None:
+    def __init__(self, subject: Entity, alliance: Entity) -> None:
         super().__init__(subject)
         self.alliance = alliance
 
@@ -286,9 +282,9 @@ class JoinedAllianceEvent(LifeEvent):
 
     __slots__ = ("alliance",)
 
-    alliance: GameObject
+    alliance: Entity
 
-    def __init__(self, subject: GameObject, alliance: GameObject) -> None:
+    def __init__(self, subject: Entity, alliance: Entity) -> None:
         super().__init__(subject)
         self.alliance = alliance
 
@@ -304,9 +300,9 @@ class FamilyJoinedAllianceEvent(LifeEvent):
 
     __slots__ = ("alliance",)
 
-    alliance: GameObject
+    alliance: Entity
 
-    def __init__(self, subject: GameObject, alliance: GameObject) -> None:
+    def __init__(self, subject: Entity, alliance: Entity) -> None:
         super().__init__(subject)
         self.alliance = alliance
 
@@ -335,9 +331,9 @@ class JoinAllianceSchemeEvent(LifeEvent):
 
     __slots__ = ("scheme_initiator",)
 
-    scheme_initiator: GameObject
+    scheme_initiator: Entity
 
-    def __init__(self, subject: GameObject, scheme_initiator: GameObject) -> None:
+    def __init__(self, subject: Entity, scheme_initiator: Entity) -> None:
         super().__init__(subject)
         self.scheme_initiator = scheme_initiator
 
@@ -356,9 +352,9 @@ class GiveBackToSmallFolkEvent(LifeEvent):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, subject: GameObject, territory: GameObject) -> None:
+    def __init__(self, subject: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
 
@@ -377,12 +373,10 @@ class GrowPoliticalInfluenceEvent(LifeEvent):
 
     __slots__ = ("family", "territory")
 
-    family: GameObject
-    territory: GameObject
+    family: Entity
+    territory: Entity
 
-    def __init__(
-        self, subject: GameObject, family: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, family: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.family = family
         self.territory = territory
@@ -403,9 +397,9 @@ class JoinCoupSchemeEvent(LifeEvent):
 
     __slots__ = ("scheme_initiator",)
 
-    scheme_initiator: GameObject
+    scheme_initiator: Entity
 
-    def __init__(self, subject: GameObject, scheme_initiator: GameObject) -> None:
+    def __init__(self, subject: Entity, scheme_initiator: Entity) -> None:
         super().__init__(subject)
         self.scheme_initiator = scheme_initiator
 
@@ -424,9 +418,9 @@ class StartCoupSchemeEvent(LifeEvent):
 
     __slots__ = ("ruler",)
 
-    ruler: GameObject
+    ruler: Entity
 
-    def __init__(self, subject: GameObject, ruler: GameObject) -> None:
+    def __init__(self, subject: Entity, ruler: Entity) -> None:
         super().__init__(subject)
         self.ruler = ruler
 
@@ -445,9 +439,9 @@ class LostTerritoryEvent(LifeEvent):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, subject: GameObject, territory: GameObject) -> None:
+    def __init__(self, subject: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
 
@@ -466,9 +460,9 @@ class RemovedFromPowerEvent(LifeEvent):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, subject: GameObject, territory: GameObject) -> None:
+    def __init__(self, subject: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
 
@@ -487,12 +481,10 @@ class StartWarSchemeEvent(LifeEvent):
 
     __slots__ = ("target", "territory")
 
-    target: GameObject
-    territory: GameObject
+    target: Entity
+    territory: Entity
 
-    def __init__(
-        self, subject: GameObject, target: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, target: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.target = target
         self.territory = territory
@@ -513,12 +505,10 @@ class DeclareWarEvent(LifeEvent):
 
     __slots__ = ("target", "territory")
 
-    target: GameObject
-    territory: GameObject
+    target: Entity
+    territory: Entity
 
-    def __init__(
-        self, subject: GameObject, target: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, target: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.target = target
         self.territory = territory
@@ -539,12 +529,10 @@ class DefendingTerritoryEvent(LifeEvent):
 
     __slots__ = ("opponent", "territory")
 
-    opponent: GameObject
-    territory: GameObject
+    opponent: Entity
+    territory: Entity
 
-    def __init__(
-        self, subject: GameObject, opponent: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, opponent: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.opponent = opponent
         self.territory = territory
@@ -565,9 +553,9 @@ class QuellRevoltEvent(LifeEvent):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, subject: GameObject, territory: GameObject) -> None:
+    def __init__(self, subject: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
 
@@ -586,9 +574,9 @@ class TaxTerritoryEvent(LifeEvent):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, subject: GameObject, territory: GameObject) -> None:
+    def __init__(self, subject: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
 
@@ -607,9 +595,9 @@ class RevoltEvent(LifeEvent):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, subject: GameObject, territory: GameObject) -> None:
+    def __init__(self, subject: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.territory = territory
 
@@ -628,12 +616,10 @@ class WarLostEvent(LifeEvent):
 
     __slots__ = ("winner", "territory")
 
-    winner: GameObject
-    territory: GameObject
+    winner: Entity
+    territory: Entity
 
-    def __init__(
-        self, subject: GameObject, winner: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, winner: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.winner = winner
         self.territory = territory
@@ -654,12 +640,10 @@ class WarWonEvent(LifeEvent):
 
     __slots__ = ("loser", "territory")
 
-    loser: GameObject
-    territory: GameObject
+    loser: Entity
+    territory: Entity
 
-    def __init__(
-        self, subject: GameObject, loser: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, subject: Entity, loser: Entity, territory: Entity) -> None:
         super().__init__(subject)
         self.loser = loser
         self.territory = territory
@@ -690,9 +674,9 @@ class AllianceFoundedEvent(LifeEvent):
 
     __slots__ = ("alliance",)
 
-    alliance: GameObject
+    alliance: Entity
 
-    def __init__(self, subject: GameObject, alliance: GameObject) -> None:
+    def __init__(self, subject: Entity, alliance: Entity) -> None:
         super().__init__(subject)
         self.alliance = alliance
 
@@ -719,7 +703,7 @@ class CoupSchemeDiscoveredEvent(LifeEvent):
 class SentencedToDeathEvent(LifeEvent):
     """Logs when a character is sentenced to death for a failed coup."""
 
-    def __init__(self, subject: GameObject, reason: str) -> None:
+    def __init__(self, subject: Entity, reason: str) -> None:
         super().__init__(subject)
         self.reason = reason
 
@@ -735,9 +719,9 @@ class RuleOverthrownEvent(LifeEvent):
 
     __slots__ = ("usurper",)
 
-    usurper: GameObject
+    usurper: Entity
 
-    def __init__(self, subject: GameObject, usurper: GameObject) -> None:
+    def __init__(self, subject: Entity, usurper: Entity) -> None:
         super().__init__(subject)
         self.usurper = usurper
 
@@ -756,9 +740,9 @@ class UsurpEvent(LifeEvent):
 
     __slots__ = ("former_ruler",)
 
-    former_ruler: GameObject
+    former_ruler: Entity
 
-    def __init__(self, subject: GameObject, former_ruler: GameObject) -> None:
+    def __init__(self, subject: Entity, former_ruler: Entity) -> None:
         super().__init__(subject)
         self.former_ruler = former_ruler
 
@@ -777,9 +761,9 @@ class CheatOnSpouseEvent(LifeEvent):
 
     __slots__ = ("accomplice",)
 
-    accomplice: GameObject
+    accomplice: Entity
 
-    def __init__(self, subject: GameObject, accomplice: GameObject) -> None:
+    def __init__(self, subject: Entity, accomplice: Entity) -> None:
         super().__init__(subject)
         self.accomplice = accomplice
 

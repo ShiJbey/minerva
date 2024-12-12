@@ -63,7 +63,7 @@ from minerva.characters.succession_helpers import set_current_ruler
 from minerva.characters.war_data import WarTracker
 from minerva.config import Config
 from minerva.datetime import SimDate
-from minerva.ecs import Active, GameObject, World
+from minerva.ecs import Active, Entity, World
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.pcg.base_types import (
     BabyFactory,
@@ -120,7 +120,7 @@ class DefaultCharacterFactory(CharacterFactory):
     ) -> float:
         """Set's the character to the given life stage and generates a valid age."""
 
-        rng = world.resources.get_resource(random.Random)
+        rng = world.get_resource(random.Random)
 
         if life_stage == LifeStage.SENIOR:
             return rng.randint(species.senior_age, species.lifespan[1])
@@ -146,12 +146,11 @@ class DefaultCharacterFactory(CharacterFactory):
         age: Optional[int] = None,
         n_max_personality_traits: int = 0,
         randomize_stats: bool = True,
-    ) -> GameObject:
+    ) -> Entity:
         """Create a new character."""
-        rng = world.resources.get_resource(random.Random)
+        rng = world.get_resource(random.Random)
 
-        obj = world.gameobjects.spawn_gameobject()
-        obj.metadata["object_type"] = "character"
+        obj = world.entity()
 
         if life_stage is not None and age is not None:
             raise ValueError(
@@ -159,7 +158,7 @@ class DefaultCharacterFactory(CharacterFactory):
             )
 
         # Step 0: Generate a species
-        species_library = world.resources.get_resource(SpeciesLibrary)
+        species_library = world.get_resource(SpeciesLibrary)
 
         if species:
             chosen_species = species_library.get_species(species)
@@ -374,7 +373,7 @@ class DefaultCharacterFactory(CharacterFactory):
             )
         )
 
-        db = world.resources.get_resource(SimDB).db
+        db = world.get_resource(SimDB).db
 
         db.execute(
             """
@@ -400,7 +399,7 @@ class DefaultCharacterFactory(CharacterFactory):
         )
 
         # Sample personality traits
-        trait_library = world.resources.get_resource(TraitLibrary)
+        trait_library = world.get_resource(TraitLibrary)
 
         personality_traits = trait_library.get_traits_with_tags(["personality"])
 
@@ -431,7 +430,7 @@ class DefaultCharacterFactory(CharacterFactory):
         return obj
 
 
-def generate_spouse_for(character: GameObject) -> GameObject:
+def generate_spouse_for(character: Entity) -> Entity:
     """Generate a spouse for the given character."""
 
     spouse_sex: Optional[Sex] = None
@@ -450,11 +449,9 @@ def generate_spouse_for(character: GameObject) -> GameObject:
         else:
             spouse_sex = Sex.FEMALE
 
-    character_factory = character.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = character.world.get_resource(PCGFactories).character_factory
 
-    config = character.world.resources.get_resource(Config)
+    config = character.world.get_resource(Config)
 
     return character_factory.generate_character(
         world=character.world,
@@ -467,19 +464,17 @@ def generate_spouse_for(character: GameObject) -> GameObject:
 class DefaultBabyFactory(BabyFactory):
     """Built-in implementation of a BabyFactory."""
 
-    def generate_child(self, mother: GameObject, father: GameObject) -> GameObject:
+    def generate_child(self, mother: Entity, father: Entity) -> Entity:
         """Generate a child from the given parents."""
-        rng = mother.world.resources.get_resource(random.Random)
-        config = mother.world.resources.get_resource(Config)
+        rng = mother.world.get_resource(random.Random)
+        config = mother.world.get_resource(Config)
 
         mother_character_component = mother.get_component(Character)
 
         mothers_family = mother_character_component.family
         assert mothers_family
 
-        character_factory = mother.world.resources.get_resource(
-            PCGFactories
-        ).character_factory
+        character_factory = mother.world.get_resource(PCGFactories).character_factory
 
         child = character_factory.generate_character(
             world=mother.world,
@@ -488,9 +483,7 @@ class DefaultBabyFactory(BabyFactory):
             surname=mothers_family.name,
         )
 
-        set_character_birth_date(
-            child, mother.world.resources.get_resource(SimDate).copy()
-        )
+        set_character_birth_date(child, mother.world.get_resource(SimDate).copy())
         set_character_birth_surname(child, mothers_family.name)
         set_character_birth_family(child, mothers_family)
         set_character_family(child, mothers_family)
@@ -530,7 +523,7 @@ class DefaultBabyFactory(BabyFactory):
 
         n_additional_traits = config.max_personality_traits - len(child_personality)
 
-        trait_library = mother.world.resources.get_resource(TraitLibrary)
+        trait_library = mother.world.get_resource(TraitLibrary)
 
         personality_traits = trait_library.get_traits_with_tags(["personality"])
 
@@ -568,15 +561,14 @@ class DefaultFamilyFactory(FamilyFactory):
         super().__init__()
         self.name_factory = name_factory
 
-    def generate_family(self, world: World, name: str = "") -> GameObject:
+    def generate_family(self, world: World, name: str = "") -> Entity:
         """Create a new family."""
-        rng = world.resources.get_resource(random.Random)
-        config = world.resources.get_resource(Config)
-        current_date = world.resources.get_resource(SimDate)
-        db = world.resources.get_resource(SimDB).db
+        rng = world.get_resource(random.Random)
+        config = world.get_resource(Config)
+        current_date = world.get_resource(SimDate)
+        db = world.get_resource(SimDB).db
 
-        family = world.gameobjects.spawn_gameobject()
-        family.metadata["object_type"] = "family"
+        family = world.entity()
         family_name = name if name else self.name_factory.generate_name(family)
 
         color_primary = rng.choice(config.family_colors_primary)
@@ -609,7 +601,7 @@ class DefaultFamilyFactory(FamilyFactory):
 
         db.commit()
 
-        world.resources.get_resource(SimulationEvents).family_added.emit(family)
+        world.get_resource(SimulationEvents).family_added.emit(family)
 
         return family
 
@@ -617,21 +609,19 @@ class DefaultFamilyFactory(FamilyFactory):
 def generate_initial_families(world: World) -> None:
     """Generates initial families."""
 
-    # config = world.resources.get_resource(Config)
-    rng = world.resources.get_resource(random.Random)
+    # config = world.get_resource(Config)
+    rng = world.get_resource(random.Random)
 
     # Generate the initial families
     _generate_initial_families(world)
 
     families = [
-        world.gameobjects.get_gameobject(uid)
-        for uid, _ in world.get_components((Family, Active))
+        world.get_entity(uid) for uid, _ in world.query_components((Family, Active))
     ]
 
     # Assign families to territories
     territories = [
-        world.gameobjects.get_gameobject(uid)
-        for uid, _ in world.get_components((Territory, Active))
+        world.get_entity(uid) for uid, _ in world.query_components((Territory, Active))
     ]
 
     unassigned_families = [*families]
@@ -641,8 +631,8 @@ def generate_initial_families(world: World) -> None:
 
     # Designate a family as the royal family
     family_heads = [
-        family_head.gameobject
-        for _, (family_head, _) in world.get_components((HeadOfFamily, Active))
+        family_head.entity
+        for _, (family_head, _) in world.query_components((HeadOfFamily, Active))
     ]
 
     # Start the first dynasty
@@ -664,16 +654,16 @@ def generate_initial_families(world: World) -> None:
         family_component.territories.add(home_base)
 
 
-def _generate_initial_families(world: World) -> list[GameObject]:
+def _generate_initial_families(world: World) -> list[Entity]:
     """Generate initial families."""
-    rng = world.resources.get_resource(random.Random)
-    config = world.resources.get_resource(Config)
+    rng = world.get_resource(random.Random)
+    config = world.get_resource(Config)
 
-    families: list[GameObject] = []
+    families: list[Entity] = []
 
-    family_factory = world.resources.get_resource(PCGFactories).family_factory
-    character_factory = world.resources.get_resource(PCGFactories).character_factory
-    baby_factory = world.resources.get_resource(PCGFactories).baby_factory
+    family_factory = world.get_resource(PCGFactories).family_factory
+    character_factory = world.get_resource(PCGFactories).character_factory
+    baby_factory = world.get_resource(PCGFactories).baby_factory
 
     for _ in range(config.n_initial_families):
         # Create a new family
@@ -683,7 +673,7 @@ def _generate_initial_families(world: World) -> list[GameObject]:
 
         # Track the household heads that are generated. The head of the first
         # household will become the family head.
-        household_heads: list[GameObject] = []
+        household_heads: list[Entity] = []
 
         n_household_to_generate: int = rng.randint(1, config.max_households_per_family)
 
@@ -723,7 +713,7 @@ def _generate_initial_families(world: World) -> list[GameObject]:
 
             n_children = rng.randint(0, max_children_per_life_stage[spouse_life_stage])
 
-            generated_children: list[GameObject] = []
+            generated_children: list[Entity] = []
 
             for _ in range(n_children):
                 child = baby_factory.generate_child(spouse, household_head)
@@ -758,15 +748,15 @@ def _generate_initial_families(world: World) -> list[GameObject]:
     return families
 
 
-def generate_family(world: World) -> GameObject:
+def generate_family(world: World) -> Entity:
     """Generates a family and its initial members."""
 
-    rng = world.resources.get_resource(random.Random)
-    config = world.resources.get_resource(Config)
+    rng = world.get_resource(random.Random)
+    config = world.get_resource(Config)
 
-    family_factory = world.resources.get_resource(PCGFactories).family_factory
-    character_factory = world.resources.get_resource(PCGFactories).character_factory
-    baby_factory = world.resources.get_resource(PCGFactories).baby_factory
+    family_factory = world.get_resource(PCGFactories).family_factory
+    character_factory = world.get_resource(PCGFactories).character_factory
+    baby_factory = world.get_resource(PCGFactories).baby_factory
 
     # Create a new family
     family = family_factory.generate_family(world)
@@ -774,7 +764,7 @@ def generate_family(world: World) -> GameObject:
 
     # Track the household heads that are generated. The head of the first
     # household will become the family head.
-    household_heads: list[GameObject] = []
+    household_heads: list[Entity] = []
 
     n_household_to_generate: int = rng.randint(1, config.max_households_per_family)
 
@@ -806,7 +796,7 @@ def generate_family(world: World) -> GameObject:
 
         n_children = rng.randint(0, config.max_children_per_household)
 
-        generated_children: list[GameObject] = []
+        generated_children: list[Entity] = []
 
         for _ in range(n_children):
             child = baby_factory.generate_child(spouse, household_head)

@@ -14,7 +14,7 @@ from itertools import count
 from typing import Callable, ClassVar, Iterable
 
 from minerva.datetime import SimDate
-from minerva.ecs import Component, GameObject, World
+from minerva.ecs import Component, Entity, World
 from minerva.sim_db import SimDB
 from minerva.viz.game_events import EventEmitter
 
@@ -30,18 +30,18 @@ class LifeEvent(ABC):
 
     world: World
     """The simulation's world instance."""
-    subject: GameObject
+    subject: Entity
     """What/Who is the event about."""
     event_id: int
     """Numerical ID of this life event."""
     timestamp: SimDate
     """The timestamp of the event"""
 
-    def __init__(self, subject: GameObject) -> None:
+    def __init__(self, subject: Entity) -> None:
         self.world = subject.world
         self.subject = subject
         self.event_id = next(self._next_life_event_id)
-        self.timestamp = subject.world.resources.get_resource(SimDate).copy()
+        self.timestamp = subject.world.get_resource(SimDate).copy()
 
     @abstractmethod
     def get_event_type(self) -> str:
@@ -61,7 +61,7 @@ class LifeEvent(ABC):
         """Dispatches the event to the proper listeners."""
         self.subject.get_component(LifeEventHistory).log_event(self)
 
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """

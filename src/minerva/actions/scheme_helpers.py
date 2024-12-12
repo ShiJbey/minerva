@@ -2,7 +2,7 @@
 
 from minerva.actions.base_types import Scheme, SchemeData, SchemeManager
 from minerva.datetime import SimDate
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 from minerva.sim_db import SimDB
 
 
@@ -10,13 +10,13 @@ def create_scheme(
     world: World,
     scheme_type: str,
     required_time: int,
-    initiator: GameObject,
+    initiator: Entity,
     data: SchemeData,
-) -> GameObject:
+) -> Entity:
     """Create a new scheme."""
-    scheme_obj = world.gameobjects.spawn_gameobject()
+    scheme_obj = world.entity()
 
-    current_date = world.resources.get_resource(SimDate)
+    current_date = world.get_resource(SimDate)
 
     scheme_component = scheme_obj.add_component(
         Scheme(
@@ -30,7 +30,7 @@ def create_scheme(
 
     scheme_obj.add_component(data)
 
-    db = world.resources.get_resource(SimDB).db
+    db = world.get_resource(SimDB).db
     cursor = db.cursor()
 
     cursor.execute(
@@ -55,7 +55,7 @@ def create_scheme(
     return scheme_obj
 
 
-def destroy_scheme(scheme: GameObject) -> None:
+def destroy_scheme(scheme: Entity) -> None:
     """Destroy a scheme object."""
     scheme_component = scheme.get_component(Scheme)
 
@@ -64,7 +64,7 @@ def destroy_scheme(scheme: GameObject) -> None:
 
     scheme_component.initiator.get_component(SchemeManager)
 
-    db = scheme.world.resources.get_resource(SimDB).db
+    db = scheme.world.get_resource(SimDB).db
     cursor = db.cursor()
 
     cursor.execute(
@@ -93,13 +93,13 @@ def destroy_scheme(scheme: GameObject) -> None:
     scheme.destroy()
 
 
-def add_member_to_scheme(scheme: GameObject, new_member: GameObject) -> None:
+def add_member_to_scheme(scheme: Entity, new_member: Entity) -> None:
     """Add a new member to a scheme."""
     scheme_component = scheme.get_component(Scheme)
 
     scheme_component.members.add(new_member)
 
-    db = scheme.world.resources.get_resource(SimDB).db
+    db = scheme.world.get_resource(SimDB).db
     cursor = db.cursor()
 
     cursor.execute(
@@ -114,13 +114,13 @@ def add_member_to_scheme(scheme: GameObject, new_member: GameObject) -> None:
     new_member.get_component(SchemeManager).add_scheme(scheme)
 
 
-def remove_member_from_scheme(scheme: GameObject, member: GameObject) -> None:
+def remove_member_from_scheme(scheme: Entity, member: Entity) -> None:
     """Remove a member from a scheme."""
     scheme_component = scheme.get_component(Scheme)
 
     scheme_component.members.remove(member)
 
-    db = scheme.world.resources.get_resource(SimDB).db
+    db = scheme.world.get_resource(SimDB).db
     cursor = db.cursor()
 
     cursor.execute(
@@ -136,7 +136,7 @@ def remove_member_from_scheme(scheme: GameObject, member: GameObject) -> None:
 
 
 def get_character_schemes_of_type(
-    character: GameObject, scheme_type: str, did_initiate: bool = False
+    character: Entity, scheme_type: str, did_initiate: bool = False
 ) -> list[Scheme]:
     """Get all active schemes of a given type that a character initiated."""
     scheme_manager = character.get_component(SchemeManager)

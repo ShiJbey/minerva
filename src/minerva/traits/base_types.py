@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from minerva.ecs import Component, GameObject
+from minerva.ecs import Component, Entity
 from minerva.pcg.content_selection import get_with_tags
 
 
@@ -17,12 +17,12 @@ class TraitEffect(ABC):
     """Abstract base class for all effect objects."""
 
     @abstractmethod
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         """Apply this effect."""
         raise NotImplementedError()
 
     @abstractmethod
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         """Remove this effect."""
         raise NotImplementedError()
 

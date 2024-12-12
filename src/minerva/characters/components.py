@@ -10,7 +10,7 @@ from typing import Optional
 from ordered_set import OrderedSet
 
 from minerva.datetime import SimDate
-from minerva.ecs import Component, GameObject, TagComponent
+from minerva.ecs import Component, Entity, TagComponent
 from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
 
 
@@ -212,31 +212,31 @@ class Character(Component):
     age: float
     birth_date: Optional[SimDate]
     death_date: Optional[SimDate]
-    mother: Optional[GameObject]
-    father: Optional[GameObject]
-    biological_father: Optional[GameObject]
-    siblings: OrderedSet[GameObject]
-    children: OrderedSet[GameObject]
-    grandparents: OrderedSet[GameObject]
-    grandchildren: OrderedSet[GameObject]
-    spouse: Optional[GameObject]
-    former_spouses: OrderedSet[GameObject]
-    marriage: Optional[GameObject]
-    past_marriages: OrderedSet[GameObject]
-    betrothed_to: Optional[GameObject]
-    betrothal: Optional[GameObject]
-    past_betrothals: OrderedSet[GameObject]
-    love_affair: Optional[GameObject]
-    past_love_affairs: OrderedSet[GameObject]
-    lover: Optional[GameObject]
+    mother: Optional[Entity]
+    father: Optional[Entity]
+    biological_father: Optional[Entity]
+    siblings: OrderedSet[Entity]
+    children: OrderedSet[Entity]
+    grandparents: OrderedSet[Entity]
+    grandchildren: OrderedSet[Entity]
+    spouse: Optional[Entity]
+    former_spouses: OrderedSet[Entity]
+    marriage: Optional[Entity]
+    past_marriages: OrderedSet[Entity]
+    betrothed_to: Optional[Entity]
+    betrothal: Optional[Entity]
+    past_betrothals: OrderedSet[Entity]
+    love_affair: Optional[Entity]
+    past_love_affairs: OrderedSet[Entity]
+    lover: Optional[Entity]
     is_alive: bool
-    family: Optional[GameObject]
-    birth_family: Optional[GameObject]
-    heir: Optional[GameObject]
-    heir_to: Optional[GameObject]
+    family: Optional[Entity]
+    birth_family: Optional[Entity]
+    heir: Optional[Entity]
+    heir_to: Optional[Entity]
     family_roles: FamilyRoleFlags
     influence_points: int
-    killed_by: Optional[GameObject]
+    killed_by: Optional[Entity]
 
     def __init__(
         self,
@@ -302,9 +302,9 @@ class Pregnancy(Component):
         "due_date",
     )
 
-    assumed_father: Optional[GameObject]
+    assumed_father: Optional[Entity]
     """The character believed to have impregnated this character."""
-    actual_father: GameObject
+    actual_father: Entity
     """The character that actually impregnated this character."""
     conception_date: SimDate
     """The date the child was conceived."""
@@ -313,8 +313,8 @@ class Pregnancy(Component):
 
     def __init__(
         self,
-        assumed_father: Optional[GameObject],
-        actual_father: GameObject,
+        assumed_father: Optional[Entity],
+        actual_father: Entity,
         conception_date: SimDate,
         due_date: SimDate,
     ) -> None:
@@ -350,12 +350,12 @@ class Betrothal(Component):
 
     __slots__ = ("character", "betrothed", "start_date")
 
-    character: GameObject
-    betrothed: GameObject
+    character: Entity
+    betrothed: Entity
     start_date: SimDate
 
     def __init__(
-        self, character: GameObject, betrothed: GameObject, start_date: SimDate
+        self, character: Entity, betrothed: Entity, start_date: SimDate
     ) -> None:
         super().__init__()
         self.character = character
@@ -372,13 +372,11 @@ class Marriage(Component):
 
     __slots__ = ("character", "spouse", "start_date")
 
-    character: GameObject
-    spouse: GameObject
+    character: Entity
+    spouse: Entity
     start_date: SimDate
 
-    def __init__(
-        self, character: GameObject, spouse: GameObject, start_date: SimDate
-    ) -> None:
+    def __init__(self, character: Entity, spouse: Entity, start_date: SimDate) -> None:
         super().__init__()
         self.character = character
         self.spouse = spouse
@@ -393,13 +391,11 @@ class RomanticAffair(Component):
 
     __slots__ = ("character", "lover", "start_date")
 
-    character: GameObject
-    lover: GameObject
+    character: Entity
+    lover: Entity
     start_date: SimDate
 
-    def __init__(
-        self, character: GameObject, lover: GameObject, start_date: SimDate
-    ) -> None:
+    def __init__(self, character: Entity, lover: Entity, start_date: SimDate) -> None:
         super().__init__()
         self.character = character
         self.lover = lover
@@ -444,29 +440,29 @@ class Family(Component):
 
     name: str
     """The name of the family."""
-    founder: Optional[GameObject]
+    founder: Optional[Entity]
     """The character that founded the family."""
-    parent_family: Optional[GameObject]
+    parent_family: Optional[Entity]
     """The family that this family branched from."""
-    branch_families: OrderedSet[GameObject]
+    branch_families: OrderedSet[Entity]
     """Branches of this family."""
-    head: Optional[GameObject]
+    head: Optional[Entity]
     """The character that is currently in charge of the family."""
-    former_heads: OrderedSet[GameObject]
+    former_heads: OrderedSet[Entity]
     """Former heads of this family."""
-    former_members: OrderedSet[GameObject]
+    former_members: OrderedSet[Entity]
     """All people who have left the family."""
-    alliance: Optional[GameObject]
+    alliance: Optional[Entity]
     """The alliance this family belongs to."""
-    home_base: Optional[GameObject]
+    home_base: Optional[Entity]
     """The territory this family belongs to."""
-    territories: OrderedSet[GameObject]
+    territories: OrderedSet[Entity]
     """The territories this family has control over."""
-    active_members: OrderedSet[GameObject]
+    active_members: OrderedSet[Entity]
     """Characters actively a part of this family."""
-    warriors: OrderedSet[GameObject]
+    warriors: OrderedSet[Entity]
     """Characters responsible for strength during wars."""
-    advisors: OrderedSet[GameObject]
+    advisors: OrderedSet[Entity]
     """Characters responsible for maintaining diplomatic stability."""
     color_primary: str
     """The primary color associated with this family."""
@@ -510,10 +506,10 @@ class HeadOfFamily(Component):
 
     __slots__ = ("family",)
 
-    family: GameObject
+    family: Entity
     """The family they are the head of."""
 
-    def __init__(self, family: GameObject) -> None:
+    def __init__(self, family: Entity) -> None:
         super().__init__()
         self.family = family
 
@@ -523,10 +519,10 @@ class FormerFamilyHead(Component):
 
     __slots__ = ("family",)
 
-    family: GameObject
+    family: Entity
     """The family they were the head of."""
 
-    def __init__(self, family: GameObject) -> None:
+    def __init__(self, family: Entity) -> None:
         super().__init__()
         self.family = family
 
@@ -548,20 +544,20 @@ class Dynasty(Component):
         "previous_dynasty",
     )
 
-    founder: GameObject
-    family: GameObject
+    founder: Entity
+    family: Entity
     _founding_date: SimDate
-    current_ruler: Optional[GameObject]
-    previous_rulers: OrderedSet[GameObject]
+    current_ruler: Optional[Entity]
+    previous_rulers: OrderedSet[Entity]
     _ending_date: Optional[SimDate]
-    previous_dynasty: Optional[GameObject]
+    previous_dynasty: Optional[Entity]
 
     def __init__(
         self,
-        founder: GameObject,
-        family: GameObject,
+        founder: Entity,
+        family: Entity,
         founding_date: SimDate,
-        previous_dynasty: Optional[GameObject] = None,
+        previous_dynasty: Optional[Entity] = None,
     ) -> None:
         super().__init__()
         self.founder = founder
@@ -593,7 +589,7 @@ class Dynasty(Component):
         self._ending_date = value.copy()
 
     @property
-    def last_ruler(self) -> Optional[GameObject]:
+    def last_ruler(self) -> Optional[Entity]:
         """Get the last ruler of the dynasty."""
         if self.previous_rulers:
             return self.previous_rulers[-1]
@@ -605,9 +601,9 @@ class DynastyTracker:
 
     __slots__ = ("current_dynasty", "previous_dynasties", "all_rulers")
 
-    current_dynasty: Optional[GameObject]
-    previous_dynasties: OrderedSet[GameObject]
-    all_rulers: OrderedSet[GameObject]
+    current_dynasty: Optional[Entity]
+    previous_dynasties: OrderedSet[Entity]
+    all_rulers: OrderedSet[Entity]
 
     def __init__(self) -> None:
         self.current_dynasty = None
@@ -615,7 +611,7 @@ class DynastyTracker:
         self.all_rulers = OrderedSet([])
 
     @property
-    def last_ruler(self) -> Optional[GameObject]:
+    def last_ruler(self) -> Optional[Entity]:
         """Get a reference to the last character that ruled."""
         if self.all_rulers:
             return self.all_rulers[-1]
@@ -623,7 +619,7 @@ class DynastyTracker:
         return None
 
     @property
-    def last_dynasty(self) -> Optional[GameObject]:
+    def last_dynasty(self) -> Optional[Entity]:
         """Get the previous dynasty."""
         if self.previous_dynasties:
             return self.previous_dynasties[-1]

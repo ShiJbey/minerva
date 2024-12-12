@@ -4,11 +4,11 @@
 
 from minerva.characters.components import Betrothal, Character
 from minerva.datetime import SimDate
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.sim_db import SimDB
 
 
-def init_betrothal(character_a: GameObject, character_b: GameObject) -> None:
+def init_betrothal(character_a: Entity, character_b: Entity) -> None:
     """Initialize a betrothal between two characters."""
     world = character_a.world
     character_a_component = character_a.get_component(Character)
@@ -21,12 +21,12 @@ def init_betrothal(character_a: GameObject, character_b: GameObject) -> None:
     if character_b_component.betrothed_to:
         raise RuntimeError(f"Error: {character_b.name_with_uid} is already betrothed.")
 
-    current_date = world.resources.get_resource(SimDate)
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
 
     # Create a new marriage entries into the database
-    a_to_b = world.gameobjects.spawn_gameobject(
+    a_to_b = world.entity(
         components=[
             Betrothal(character_a, character_b, current_date),
         ]
@@ -41,7 +41,7 @@ def init_betrothal(character_a: GameObject, character_b: GameObject) -> None:
         (a_to_b.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
     )
 
-    b_to_a = world.gameobjects.spawn_gameobject(
+    b_to_a = world.entity(
         components=[
             Betrothal(character_b, character_a, current_date),
         ]
@@ -59,7 +59,7 @@ def init_betrothal(character_a: GameObject, character_b: GameObject) -> None:
     db.commit()
 
 
-def terminate_betrothal(character_a: GameObject, character_b: GameObject) -> None:
+def terminate_betrothal(character_a: Entity, character_b: Entity) -> None:
     """Remove the betrothal from the characters."""
     world = character_a.world
     character_a_component = character_a.get_component(Character)
@@ -77,8 +77,8 @@ def terminate_betrothal(character_a: GameObject, character_b: GameObject) -> Non
             f" {character_a.name_with_uid}."
         )
 
-    current_date = world.resources.get_resource(SimDate).to_iso_str()
-    db = world.resources.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate).to_iso_str()
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
 
     character_a_current_betrothal = character_a_component.betrothal

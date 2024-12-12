@@ -12,7 +12,7 @@ from typing import Optional, Union
 import tracery
 import tracery.modifiers as tracery_modifiers
 
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 from minerva.pcg.base_types import NameFactory
 
 
@@ -80,15 +80,15 @@ class TraceryNameFactory(NameFactory):
         super().__init__()
         self.pattern = pattern
 
-    def generate_name(self, gameobject: GameObject) -> str:
+    def generate_name(self, gameobject: Entity) -> str:
         world = gameobject.world
-        tracery_instance = world.resources.get_resource(Tracery)
+        tracery_instance = world.get_resource(Tracery)
         return tracery_instance.generate(self.pattern)
 
 
 def load_tracery_file(world: World, file_path: Union[str, pathlib.Path]) -> None:
     """Load rules from a Tracery JSON file."""
-    tracery_instance = world.resources.get_resource(Tracery)
+    tracery_instance = world.get_resource(Tracery)
 
     with open(file_path, "r", encoding="utf8") as f:
         data: dict[str, list[str]] = json.load(f)

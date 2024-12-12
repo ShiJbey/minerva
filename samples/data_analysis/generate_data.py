@@ -66,13 +66,13 @@ def main():
             continue
 
         # Print the number of generated characters
-        generated_characters = sim.world.get_components((Character,))
+        generated_characters = list(sim.world.query_components((Character,)))
         print(f"Total generated characters: {len(generated_characters)}.")
         print("===")
 
         for _, (character,) in generated_characters:
             character_feature_vectors.append(
-                vect_factory.create_feature_vector(character.gameobject)
+                vect_factory.create_feature_vector(character.entity)
             )
 
     # Write each numpy array as a row in the CSV file

@@ -29,7 +29,7 @@ from minerva.characters.war_helpers import (
 )
 from minerva.config import Config
 from minerva.datetime import SimDate
-from minerva.ecs import Active, GameObject
+from minerva.ecs import Active, Entity
 from minerva.life_events.aging import DeathEvent
 from minerva.life_events.events import (
     AttemptingFormAllianceEvent,
@@ -65,11 +65,11 @@ _logger = logging.getLogger(__name__)
 class IdleAction(AIAction):
     """Character does nothing."""
 
-    def __init__(self, performer: GameObject) -> None:
+    def __init__(self, performer: Entity) -> None:
         super().__init__(performer, "Idle")
 
     def execute(self) -> bool:
-        current_date = self.world.resources.get_resource(SimDate)
+        current_date = self.world.get_resource(SimDate)
 
         _logger.debug(
             "[%s]: %s is idle.",
@@ -85,12 +85,10 @@ class GiveBackToTerritoryAction(AIAction):
 
     __slots__ = ("family", "territory")
 
-    family: GameObject
-    territory: GameObject
+    family: Entity
+    territory: Entity
 
-    def __init__(
-        self, performer: GameObject, family: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, performer: Entity, family: Entity, territory: Entity) -> None:
         super().__init__(performer, "GiveBackToTerritory")
         self.context["family"] = family
         self.context["territory"] = territory
@@ -112,12 +110,10 @@ class GrowPoliticalInfluenceAction(AIAction):
 
     __slots__ = ("family", "territory")
 
-    family: GameObject
-    territory: GameObject
+    family: Entity
+    territory: Entity
 
-    def __init__(
-        self, performer: GameObject, family: GameObject, territory: GameObject
-    ) -> None:
+    def __init__(self, performer: Entity, family: Entity, territory: Entity) -> None:
         super().__init__(performer, "GrowPoliticalInfluence")
         self.context["family"] = family
         self.context["territory"] = territory
@@ -137,7 +133,7 @@ class GrowPoliticalInfluenceAction(AIAction):
 class GetMarriedAction(AIAction):
     """An instance of a get married action."""
 
-    def __init__(self, performer: GameObject, partner: GameObject) -> None:
+    def __init__(self, performer: Entity, partner: Entity) -> None:
         super().__init__(performer, "GetMarried")
         self.context["partner"] = partner
 
@@ -149,7 +145,7 @@ class DieAction(AIAction):
     """Instance of an action where a character dies."""
 
     def __init__(
-        self, performer: GameObject, cause_of_death: str = "", pass_crown: bool = True
+        self, performer: Entity, cause_of_death: str = "", pass_crown: bool = True
     ) -> None:
         super().__init__(performer, "Die")
         self.pass_crown = pass_crown
@@ -174,9 +170,9 @@ class SendGiftAction(AIAction):
 
     __slots__ = ("recipient",)
 
-    recipient: GameObject
+    recipient: Entity
 
-    def __init__(self, performer: GameObject, recipient: GameObject) -> None:
+    def __init__(self, performer: Entity, recipient: Entity) -> None:
         super().__init__(performer, "SendGift")
         self.context["recipient"] = recipient
         self.performer = performer
@@ -184,7 +180,7 @@ class SendGiftAction(AIAction):
 
     def execute(self) -> bool:
         world = self.context.world
-        current_date = world.resources.get_resource(SimDate)
+        current_date = world.get_resource(SimDate)
 
         get_relationship(self.recipient, self.performer).get_component(
             Opinion
@@ -203,10 +199,10 @@ class SendGiftAction(AIAction):
 class SendAidAction(AIAction):
     """One family head sends a aid to another during a revolt."""
 
-    performer: GameObject
-    recipient: GameObject
+    performer: Entity
+    recipient: Entity
 
-    def __init__(self, performer: GameObject, recipient: GameObject) -> None:
+    def __init__(self, performer: Entity, recipient: Entity) -> None:
         super().__init__(performer, "SendGift")
         self.context["recipient"] = recipient
         self.performer = performer
@@ -214,7 +210,7 @@ class SendAidAction(AIAction):
 
     def execute(self) -> bool:
         world = self.context.world
-        current_date = world.resources.get_resource(SimDate)
+        current_date = world.get_resource(SimDate)
 
         performer_character_comp = self.performer.get_component(Character)
 
@@ -242,14 +238,14 @@ class SendAidAction(AIAction):
 class ExtortTerritoryOwnersAction(AIAction):
     """Ruler extorts all the families that control territories."""
 
-    def __init__(self, performer: GameObject) -> None:
+    def __init__(self, performer: Entity) -> None:
         super().__init__(performer, "ExtortTerritoryOwners")
 
     def execute(self) -> bool:
         world = self.context.world
-        current_date = world.resources.get_resource(SimDate)
+        current_date = world.get_resource(SimDate)
 
-        for _, (territory, _) in world.get_components((Territory, Active)):
+        for _, (territory, _) in world.query_components((Territory, Active)):
             if territory.controlling_family:
                 family_component = territory.controlling_family.get_component(Family)
                 if family_component.head:
@@ -271,20 +267,20 @@ class ExtortTerritoryOwnersAction(AIAction):
 class ExtortLocalFamiliesAction(AIAction):
     """Family controlling a territory extorts other families residing there."""
 
-    def __init__(self, performer: GameObject) -> None:
+    def __init__(self, performer: Entity) -> None:
         super().__init__(performer, "ExtortLocalFamilies")
 
     def execute(self) -> bool:
         world = self.context.world
-        current_date = world.resources.get_resource(SimDate)
+        current_date = world.get_resource(SimDate)
         family_head_component = self.performer.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
         for territory in family_component.territories:
             territory_component = territory.get_component(Territory)
-            if territory_component.controlling_family == family_component.gameobject:
+            if territory_component.controlling_family == family_component.entity:
                 for other_family in territory_component.families:
-                    if other_family == family_component.gameobject:
+                    if other_family == family_component.entity:
                         continue
 
                     other_family_component = other_family.get_component(Family)
@@ -310,15 +306,15 @@ class QuellRevoltAction(AIAction):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, performer: GameObject, territory: GameObject) -> None:
+    def __init__(self, performer: Entity, territory: Entity) -> None:
         super().__init__(performer, "QuellRevolt")
         self.context["territory"] = territory
         self.territory = territory
 
     def execute(self) -> bool:
-        config = self.context.world.resources.get_resource(Config)
+        config = self.context.world.get_resource(Config)
 
         self.territory.remove_component(InRevolt)
 
@@ -344,9 +340,9 @@ class TaxTerritoryAction(AIAction):
 
     __slots__ = ("territory",)
 
-    territory: GameObject
+    territory: Entity
 
-    def __init__(self, performer: GameObject, territory: GameObject) -> None:
+    def __init__(self, performer: Entity, territory: Entity) -> None:
         super().__init__(performer, "TaxTerritory")
         self.context["territory"] = territory
         self.territory = territory
@@ -367,14 +363,14 @@ class StartWarSchemeAction(AIAction):
 
     __slots__ = ("target", "territory")
 
-    target: GameObject
-    territory: GameObject
+    target: Entity
+    territory: Entity
 
     def __init__(
         self,
-        performer: GameObject,
-        target: GameObject,
-        territory: GameObject,
+        performer: Entity,
+        target: Entity,
+        territory: Entity,
     ) -> None:
         super().__init__(performer, "StartWarScheme")
         self.territory = territory
@@ -402,9 +398,9 @@ class StartCoupSchemeAction(AIAction):
 
     __slots__ = ("target",)
 
-    target: GameObject
+    target: Entity
 
-    def __init__(self, initiator: GameObject, target: GameObject) -> None:
+    def __init__(self, initiator: Entity, target: Entity) -> None:
         super().__init__(initiator, "StartCoupScheme")
         self.context["initiator"] = initiator
         self.context["target"] = target
@@ -425,9 +421,9 @@ class JoinCoupSchemeAction(AIAction):
 
     __slots__ = ("scheme",)
 
-    scheme: GameObject
+    scheme: Entity
 
-    def __init__(self, performer: GameObject, scheme: GameObject) -> None:
+    def __init__(self, performer: Entity, scheme: Entity) -> None:
         super().__init__(performer, "JoinCoupScheme")
         self.context["scheme"] = scheme
         self.scheme = scheme
@@ -447,9 +443,9 @@ class JoinAllianceSchemeAction(AIAction):
 
     __slots__ = ("scheme",)
 
-    scheme: GameObject
+    scheme: Entity
 
-    def __init__(self, performer: GameObject, scheme: GameObject) -> None:
+    def __init__(self, performer: Entity, scheme: Entity) -> None:
         super().__init__(performer, "JoinAllianceScheme")
         self.context["scheme"] = scheme
         self.scheme = scheme
@@ -470,7 +466,7 @@ class StartAllianceSchemeAction(AIAction):
 
     def __init__(
         self,
-        performer: GameObject,
+        performer: Entity,
     ) -> None:
         super().__init__(performer, "StartAllianceScheme")
 
@@ -487,9 +483,9 @@ class JoinExistingAllianceAction(AIAction):
 
     __slots__ = ("alliance",)
 
-    alliance: GameObject
+    alliance: Entity
 
-    def __init__(self, performer: GameObject, alliance: GameObject) -> None:
+    def __init__(self, performer: Entity, alliance: Entity) -> None:
         super().__init__(performer, "JoinExistingAlliance")
         self.context["alliance"] = alliance
         self.alliance = alliance
@@ -513,9 +509,9 @@ class DisbandAllianceAction(AIAction):
 
     __slots__ = ("alliance",)
 
-    alliance: GameObject
+    alliance: Entity
 
-    def __init__(self, performer: GameObject, alliance: GameObject) -> None:
+    def __init__(self, performer: Entity, alliance: Entity) -> None:
         super().__init__(performer, "DisbandAlliance")
         self.context["alliance"] = alliance
         self.alliance = alliance
@@ -529,7 +525,7 @@ class DisbandAllianceAction(AIAction):
         founding_family = alliance_component.founder_family
 
         for member_family in alliance_component.member_families:
-            if member_family == family_component.gameobject:
+            if member_family == family_component.entity:
                 continue
 
             member_family_component = member_family.get_component(Family)
@@ -558,14 +554,14 @@ class DisbandAllianceAction(AIAction):
 class ExpandIntoTerritoryAction(AIAction):
     """."""
 
-    def __init__(self, family_head: GameObject, territory: GameObject) -> None:
+    def __init__(self, family_head: Entity, territory: Entity) -> None:
         super().__init__(family_head, "ExpandIntoTerritory")
         self.context["family_head"] = family_head
         self.context["territory"] = territory
 
     def execute(self) -> bool:
-        family_head: GameObject = self.context["family_head"]
-        territory: GameObject = self.context["territory"]
+        family_head: Entity = self.context["family_head"]
+        territory: Entity = self.context["territory"]
 
         family_head_component = family_head.get_component(HeadOfFamily)
 
@@ -590,14 +586,14 @@ class ExpandIntoTerritoryAction(AIAction):
 class SeizeTerritoryAction(AIAction):
     """."""
 
-    def __init__(self, performer: GameObject, territory: GameObject) -> None:
+    def __init__(self, performer: Entity, territory: Entity) -> None:
         super().__init__(performer, "SeizeTerritory")
         self.context["family_head"] = performer
         self.context["territory"] = territory
 
     def execute(self) -> bool:
-        family_head: GameObject = self.context["family_head"]
-        territory: GameObject = self.context["territory"]
+        family_head: Entity = self.context["family_head"]
+        territory: Entity = self.context["territory"]
 
         family_head_component = family_head.get_component(HeadOfFamily)
 
@@ -619,9 +615,9 @@ class TryCheatOnSpouseAction(AIAction):
 
     __slots__ = ("accomplice",)
 
-    accomplice: GameObject
+    accomplice: Entity
 
-    def __init__(self, performer: GameObject, accomplice: GameObject) -> None:
+    def __init__(self, performer: Entity, accomplice: Entity) -> None:
         super().__init__(performer, "TryCheatOnSpouse")
         self.accomplice = accomplice
         self.context["accomplice"] = accomplice
@@ -642,9 +638,9 @@ class CheatOnSpouseAction(AIAction):
 
     __slots__ = ("accomplice",)
 
-    accomplice: GameObject
+    accomplice: Entity
 
-    def __init__(self, performer: GameObject, accomplice: GameObject) -> None:
+    def __init__(self, performer: Entity, accomplice: Entity) -> None:
         super().__init__(performer, "CheatOnSpouse")
         self.accomplice = accomplice
         self.context["accomplice"] = accomplice
@@ -668,15 +664,15 @@ class SexAction(AIAction):
 
     __slots__ = ("partner",)
 
-    partner: GameObject
+    partner: Entity
 
-    def __init__(self, performer: GameObject, partner: GameObject) -> None:
+    def __init__(self, performer: Entity, partner: Entity) -> None:
         super().__init__(performer, "Sex")
         self.partner = partner
         self.context["partner"] = partner
 
     def execute(self) -> bool:
-        rng = self.world.resources.get_resource(random.Random)
+        rng = self.world.get_resource(random.Random)
 
         performing_character = self.performer.get_component(Character)
         partner_character = self.partner.get_component(Character)
@@ -697,7 +693,7 @@ class SexAction(AIAction):
             chance_have_child = (performer_fertility + partner_fertility) / 2
 
             if rng.random() < chance_have_child:
-                current_date = self.world.resources.get_resource(SimDate).copy()
+                current_date = self.world.get_resource(SimDate).copy()
                 due_date = current_date.copy()
                 due_date.increment(months=9)
 

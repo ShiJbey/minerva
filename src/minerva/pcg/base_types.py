@@ -6,14 +6,14 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from minerva.characters.components import LifeStage, Sex, SexualOrientation
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 
 
 class NameFactory(ABC):
     """Generates a name for a GameObject."""
 
     @abstractmethod
-    def generate_name(self, gameobject: GameObject) -> str:
+    def generate_name(self, gameobject: Entity) -> str:
         """Generate a name for the given game object."""
         raise NotImplementedError()
 
@@ -35,7 +35,7 @@ class CharacterFactory(ABC):
         age: Optional[int] = None,
         n_max_personality_traits: int = 0,
         randomize_stats: bool = True,
-    ) -> GameObject:
+    ) -> Entity:
         """Generate a new character."""
         raise NotImplementedError()
 
@@ -44,7 +44,7 @@ class BabyFactory(ABC):
     """Generates baby characters from parents."""
 
     @abstractmethod
-    def generate_child(self, mother: GameObject, father: GameObject) -> GameObject:
+    def generate_child(self, mother: Entity, father: Entity) -> Entity:
         """Generate a new child from the given parents."""
         raise NotImplementedError()
 
@@ -53,7 +53,7 @@ class FamilyFactory(ABC):
     """Generates family GameObjects."""
 
     @abstractmethod
-    def generate_family(self, world: World, name: str = "") -> GameObject:
+    def generate_family(self, world: World, name: str = "") -> Entity:
         """Generate a new family."""
         raise NotImplementedError()
 
@@ -62,7 +62,7 @@ class TerritoryFactory(ABC):
     """Generates territory GameObjects."""
 
     @abstractmethod
-    def generate_territory(self, world: World, name: str = "") -> GameObject:
+    def generate_territory(self, world: World, name: str = "") -> Entity:
         """Generate a new territory."""
         raise NotImplementedError()
 

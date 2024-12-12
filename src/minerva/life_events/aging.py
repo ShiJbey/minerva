@@ -1,7 +1,7 @@
 """Life Events for character aging."""
 
 from minerva.characters.components import LifeStage
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.life_events.base_types import LifeEvent
 from minerva.sim_db import SimDB
 
@@ -13,7 +13,7 @@ class LifeStageChangeEvent(LifeEvent):
 
     life_stage: LifeStage
 
-    def __init__(self, subject: GameObject, life_stage: LifeStage) -> None:
+    def __init__(self, subject: Entity, life_stage: LifeStage) -> None:
         super().__init__(subject)
         self.life_stage = life_stage
 
@@ -21,7 +21,7 @@ class LifeStageChangeEvent(LifeEvent):
         return "LifeStageChange"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
@@ -49,7 +49,7 @@ class DeathEvent(LifeEvent):
 
     cause: str
 
-    def __init__(self, subject: GameObject, cause: str = "") -> None:
+    def __init__(self, subject: Entity, cause: str = "") -> None:
         super().__init__(subject)
         self.cause = cause
 
@@ -57,7 +57,7 @@ class DeathEvent(LifeEvent):
         return "Death"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """

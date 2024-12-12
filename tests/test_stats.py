@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
-from minerva.ecs import Component, GameObject, World
+import enum
+
+from minerva.ecs import Component, Entity, World
 from minerva.relationships.base_types import (
     Attraction,
     Opinion,
@@ -16,6 +18,7 @@ from minerva.relationships.base_types import (
 )
 from minerva.relationships.helpers import add_relationship, get_relationship
 from minerva.relationships.preconditions import ConstantPrecondition
+from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import (
     StatComponent,
     StatModifier,
@@ -57,6 +60,38 @@ class HungerState(Component):
         self.state = ""
 
 
+class _ClanInfo(Component):
+    """Info about a clan affiliation."""
+
+    clan_name: str
+    rival_clans: list[str]
+
+    def __init__(self, clan_name: str, clan_rivals: list[str]) -> None:
+        super().__init__()
+        self.clan_name = clan_name
+        self.rival_clans = clan_rivals
+
+
+class _OpinionStateValue(enum.IntEnum):
+    """Opinion state enum."""
+
+    TERRIBLE = 0
+    POOR = 1
+    NEUTRAL = 2
+    GOOD = 3
+    EXCELLENT = 4
+
+
+class _OpinionState(Component):
+    """State of an opinion."""
+
+    value: _OpinionStateValue
+
+    def __init__(self, value: _OpinionStateValue = _OpinionStateValue.NEUTRAL) -> None:
+        super().__init__()
+        self.value = value
+
+
 class HighMetabolismStatusEffect(StatusEffect):
     """Increases hunger."""
 
@@ -64,20 +99,22 @@ class HighMetabolismStatusEffect(StatusEffect):
         super().__init__("High Metabolism", "Increases hunger", duration)
         self.modifier = StatModifier(value=70, modifier_type=StatModifierType.FLAT)
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Hunger).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Hunger).remove_modifier(self.modifier)
 
 
 class RivalClansPrecondition(RelationshipPrecondition):
     """Checks if two characters belong to the same clan."""
 
-    def evaluate(self, relationship: GameObject) -> bool:
+    def evaluate(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
-        owner_rival_clans = relationship_component.owner.metadata["clan_rivals"]
-        target_clan = relationship_component.target.metadata["clan"]
+        owner_rival_clans = relationship_component.owner.get_component(
+            _ClanInfo
+        ).rival_clans
+        target_clan = relationship_component.target.get_component(_ClanInfo).clan_name
 
         return target_clan in owner_rival_clans
 
@@ -86,7 +123,7 @@ def test_get_stat() -> None:
     """Test stat get stat when changing base_value."""
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(components=[Hunger(0)])
+    character = world.entity(components=[Hunger(0)])
 
     hunger = character.get_component(Hunger)
 
@@ -105,7 +142,7 @@ def test_stat_change_listener() -> None:
     """Test stat get stat when changing base_value."""
     world = World()
 
-    def hunger_listener(gameobject: GameObject, stat: StatComponent) -> None:
+    def hunger_listener(gameobject: Entity, stat: StatComponent) -> None:
         hunger_intervals = [
             (200, "STARVING"),
             (100, "FAMISHED"),
@@ -118,7 +155,7 @@ def test_stat_change_listener() -> None:
                 gameobject.get_component(HungerState).state = label
                 return
 
-    character = world.gameobjects.spawn_gameobject(
+    character = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -146,7 +183,7 @@ def test_add_stat_modifier() -> None:
 
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(components=[Hunger(0)])
+    character = world.entity(components=[Hunger(0)])
 
     hunger = character.get_component(Hunger)
 
@@ -166,7 +203,7 @@ def test_remove_stat_modifier() -> None:
 
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(components=[Hunger(0)])
+    character = world.entity(components=[Hunger(0)])
 
     hunger = character.get_component(Hunger)
 
@@ -188,9 +225,7 @@ def test_status_effect() -> None:
 
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(
-        components=[Hunger(0), StatusEffectManager()]
-    )
+    character = world.entity(components=[Hunger(0), StatusEffectManager()])
 
     hunger = character.get_component(Hunger)
 
@@ -208,9 +243,7 @@ def test_remove_status_effect() -> None:
 
     world = World()
 
-    character = world.gameobjects.spawn_gameobject(
-        components=[Hunger(0), StatusEffectManager()]
-    )
+    character = world.entity(components=[Hunger(0), StatusEffectManager()])
 
     hunger = character.get_component(Hunger)
 
@@ -234,11 +267,10 @@ def test_status_effect_system() -> None:
 
     world = World()
 
-    world.systems.add_system(TickStatusEffectSystem())
+    world.add_system(TickStatusEffectSystem())
+    world.add_resource(SimulationEvents())
 
-    character = world.gameobjects.spawn_gameobject(
-        components=[Hunger(0), StatusEffectManager()]
-    )
+    character = world.entity(components=[Hunger(0), StatusEffectManager()])
 
     hunger = character.get_component(Hunger)
 
@@ -256,6 +288,8 @@ def test_status_effect_system() -> None:
 
     world.step()
 
+    world.step()
+
     assert hunger.value == 10
 
 
@@ -264,10 +298,11 @@ def test_get_relationship_stat() -> None:
 
     world = World()
 
-    world.systems.add_system(TickStatusEffectSystem())
-    world.resources.add_resource(SocialRuleLibrary())
+    world.add_system(TickStatusEffectSystem())
+    world.add_resource(SocialRuleLibrary())
+    world.add_resource(SimulationEvents())
 
-    c1 = world.gameobjects.spawn_gameobject(
+    c1 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -275,7 +310,7 @@ def test_get_relationship_stat() -> None:
         ]
     )
 
-    c2 = world.gameobjects.spawn_gameobject(
+    c2 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -298,10 +333,11 @@ def test_get_modifier_to_relationship_stat() -> None:
 
     world = World()
 
-    world.systems.add_system(TickStatusEffectSystem())
-    world.resources.add_resource(SocialRuleLibrary())
+    world.add_system(TickStatusEffectSystem())
+    world.add_resource(SocialRuleLibrary())
+    world.add_resource(SimulationEvents())
 
-    c1 = world.gameobjects.spawn_gameobject(
+    c1 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -309,7 +345,7 @@ def test_get_modifier_to_relationship_stat() -> None:
         ]
     )
 
-    c2 = world.gameobjects.spawn_gameobject(
+    c2 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -332,10 +368,11 @@ def test_relationship_modifiers() -> None:
 
     world = World()
 
-    world.systems.add_system(TickStatusEffectSystem())
-    world.resources.add_resource(SocialRuleLibrary())
+    world.add_system(TickStatusEffectSystem())
+    world.add_resource(SocialRuleLibrary())
+    world.add_resource(SimulationEvents())
 
-    c1 = world.gameobjects.spawn_gameobject(
+    c1 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -343,7 +380,7 @@ def test_relationship_modifiers() -> None:
         ]
     )
 
-    c2 = world.gameobjects.spawn_gameobject(
+    c2 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -382,10 +419,11 @@ def test_social_rules() -> None:
     """Test getting stat of relationship and changing base value."""
 
     world = World()
+    world.add_resource(SimulationEvents())
 
-    world.systems.add_system(TickStatusEffectSystem())
+    world.add_system(TickStatusEffectSystem())
     social_rule_library = SocialRuleLibrary()
-    world.resources.add_resource(social_rule_library)
+    world.add_resource(social_rule_library)
     social_rule_library.add_rule(
         SocialRule(
             rule_id="rival_clans_clash",
@@ -396,25 +434,23 @@ def test_social_rules() -> None:
         )
     )
 
-    c1 = world.gameobjects.spawn_gameobject(
+    c1 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
+            _ClanInfo(clan_name="EagleClan", clan_rivals=["BadgerClan"]),
         ]
     )
-    c1.metadata["clan"] = "EagleClan"
-    c1.metadata["clan_rivals"] = "BadgerClan"
 
-    c2 = world.gameobjects.spawn_gameobject(
+    c2 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
             RelationshipManager(),
+            _ClanInfo(clan_name="BadgerClan", clan_rivals=["EagleClan"]),
         ]
     )
-    c2.metadata["clan"] = "BadgerClan"
-    c2.metadata["clan_rivals"] = "EagleClan"
 
     c1.get_component(RelationshipManager).outgoing_modifiers.append(
         RelationshipModifier(
@@ -442,26 +478,30 @@ def test_social_rules() -> None:
 def test_relationship_stat_listener() -> None:
     """Test attaching listeners to relationship stats."""
 
-    def opinion_listener(gameobject: GameObject, stat: StatComponent) -> None:
+    def opinion_listener(gameobject: Entity, stat: StatComponent) -> None:
+        if not gameobject.has_component(_OpinionState):
+            gameobject.add_component(_OpinionState())
+
         opinion_intervals = [
-            (-75, "TERRIBLE"),
-            (-25, "POOR"),
-            (25, "NEUTRAL"),
-            (75, "GOOD"),
-            (100, "EXCELLENT"),
+            (-75, _OpinionStateValue.TERRIBLE),
+            (-25, _OpinionStateValue.POOR),
+            (25, _OpinionStateValue.NEUTRAL),
+            (75, _OpinionStateValue.GOOD),
+            (100, _OpinionStateValue.EXCELLENT),
         ]
 
         for level, label in opinion_intervals:
             if stat.value <= level:
-                gameobject.metadata["opinion_state"] = label
+                gameobject.get_component(_OpinionState).value = label
                 return
 
     world = World()
 
-    world.systems.add_system(TickStatusEffectSystem())
-    world.resources.add_resource(SocialRuleLibrary())
+    world.add_system(TickStatusEffectSystem())
+    world.add_resource(SocialRuleLibrary())
+    world.add_resource(SimulationEvents())
 
-    c1 = world.gameobjects.spawn_gameobject(
+    c1 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -469,7 +509,7 @@ def test_relationship_stat_listener() -> None:
         ]
     )
 
-    c2 = world.gameobjects.spawn_gameobject(
+    c2 = world.entity(
         components=[
             Hunger(0),
             StatusEffectManager(),
@@ -483,12 +523,14 @@ def test_relationship_stat_listener() -> None:
     opinion.listeners.append(opinion_listener)
 
     assert opinion.value == 0
-    assert relationship.metadata["opinion_state"] == "NEUTRAL"
+    assert relationship.get_component(_OpinionState).value == _OpinionStateValue.NEUTRAL
 
     opinion.base_value = 80
     assert opinion.value == 80
-    assert relationship.metadata["opinion_state"] == "EXCELLENT"
+    assert (
+        relationship.get_component(_OpinionState).value == _OpinionStateValue.EXCELLENT
+    )
 
     opinion.base_value = -60
     assert opinion.value == -60
-    assert relationship.metadata["opinion_state"] == "POOR"
+    assert relationship.get_component(_OpinionState).value == _OpinionStateValue.POOR

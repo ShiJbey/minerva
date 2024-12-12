@@ -33,7 +33,7 @@ from minerva.traits.effects import (
 
 def load_traits(world: World) -> None:
     """Load trait definitions."""
-    trait_library = world.resources.get_resource(TraitLibrary)
+    trait_library = world.get_resource(TraitLibrary)
 
     trait_library.add_trait(
         Trait(

@@ -18,14 +18,14 @@ from minerva.characters.components import (
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.datetime import SimDate
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 
 
 class FeatureExtractorFn(Protocol):
     """Extracts a single feature from a character."""
 
     @abstractmethod
-    def __call__(self, character: GameObject) -> float:
+    def __call__(self, character: Entity) -> float:
         """Extract a single feature."""
         raise NotImplementedError
 
@@ -52,7 +52,7 @@ class FeatureVectorFactory:
         """Get the headers for data columns."""
         return [h for h, _ in self.extractor_fns]
 
-    def create_feature_vector(self, character: GameObject) -> npt.NDArray[np.float32]:
+    def create_feature_vector(self, character: Entity) -> npt.NDArray[np.float32]:
         """Extract a feature vector from the provided character."""
         feature_vector = np.zeros(self.get_vector_len(), dtype=np.float32)
 
@@ -62,19 +62,19 @@ class FeatureVectorFactory:
         return feature_vector
 
 
-def sex_extractor(character: GameObject) -> float:
+def sex_extractor(character: Entity) -> float:
     """Extract of character is male."""
     character_component = character.get_component(Character)
     return 1 if character_component.sex == Sex.MALE else 0
 
 
-def age_extractor(character: GameObject) -> float:
+def age_extractor(character: Entity) -> float:
     """Extract the character's age"""
     character_component = character.get_component(Character)
     return character_component.age
 
 
-def is_family_head_extractor(character: GameObject) -> float:
+def is_family_head_extractor(character: Entity) -> float:
     """Extract if the character the head of their family"""
     return float(
         character.has_component(HeadOfFamily)
@@ -82,28 +82,28 @@ def is_family_head_extractor(character: GameObject) -> float:
     )
 
 
-def influence_point_extractor(character: GameObject) -> float:
+def influence_point_extractor(character: Entity) -> float:
     """Extract the character's influence points"""
     character_component = character.get_component(Character)
     return character_component.influence_points
 
 
-def num_siblings_extractor(character: GameObject) -> float:
+def num_siblings_extractor(character: Entity) -> float:
     """Extract the character's number of siblings"""
     character_component = character.get_component(Character)
     return len(character_component.siblings)
 
 
-def num_children_extractor(character: GameObject) -> float:
+def num_children_extractor(character: Entity) -> float:
     """Extract the character's number of children"""
     character_component = character.get_component(Character)
     return len(character_component.children)
 
 
-def is_royal_family_extractor(character: GameObject) -> float:
+def is_royal_family_extractor(character: Entity) -> float:
     """Extract if a character is from the royal family."""
     world = character.world
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
+    dynasty_tracker = world.get_resource(DynastyTracker)
     current_dynasty = dynasty_tracker.current_dynasty
     character_component = character.get_component(Character)
 
@@ -119,99 +119,99 @@ def is_royal_family_extractor(character: GameObject) -> float:
     return 0
 
 
-def is_current_ruler_extractor(character: GameObject) -> float:
+def is_current_ruler_extractor(character: Entity) -> float:
     """Extract if a character is the current ruler."""
     return 1 if character.has_component(Emperor) else 0
 
 
-def is_married_extractor(character: GameObject) -> float:
+def is_married_extractor(character: Entity) -> float:
     """Extract the if a character is married"""
     character_component = character.get_component(Character)
     return 1 if character_component.spouse is not None else 0
 
 
-def is_family_warrior_extractor(character: GameObject) -> float:
+def is_family_warrior_extractor(character: Entity) -> float:
     """Extract the if a character is a family warrior."""
     character_component = character.get_component(Character)
     return 1 if FamilyRoleFlags.WARRIOR in character_component.family_roles else 0
 
 
-def is_family_advisor_extractor(character: GameObject) -> float:
+def is_family_advisor_extractor(character: Entity) -> float:
     """Extract the if a character is a family advisor."""
     character_component = character.get_component(Character)
     return 1 if FamilyRoleFlags.ADVISOR in character_component.family_roles else 0
 
 
-def times_married_extractor(character: GameObject) -> float:
+def times_married_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.times_married
 
 
-def num_wars_extractor(character: GameObject) -> float:
+def num_wars_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_wars
 
 
-def num_wars_started_extractor(character: GameObject) -> float:
+def num_wars_started_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_wars_started
 
 
-def num_wars_won_extractor(character: GameObject) -> float:
+def num_wars_won_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_wars_won
 
 
-def num_wars_lost_extractor(character: GameObject) -> float:
+def num_wars_lost_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_wars_lost
 
 
-def num_revolts_quelled_extractor(character: GameObject) -> float:
+def num_revolts_quelled_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_revolts_quelled
 
 
-def num_coups_planned_extractor(character: GameObject) -> float:
+def num_coups_planned_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_coups_planned
 
 
-def num_territories_taken_extractor(character: GameObject) -> float:
+def num_territories_taken_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_territories_taken
 
 
-def times_ruled_extractor(character: GameObject) -> float:
+def times_ruled_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.times_as_ruler
 
 
-def num_alliances_founded_extractor(character: GameObject) -> float:
+def num_alliances_founded_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_alliances_founded
 
 
-def num_failed_alliance_attempts_extractor(character: GameObject) -> float:
+def num_failed_alliance_attempts_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_failed_alliance_attempts
 
 
-def num_alliances_disbanded_extractor(character: GameObject) -> float:
+def num_alliances_disbanded_extractor(character: Entity) -> float:
     """."""
     return character.get_component(CharacterMetrics).data.num_alliances_disbanded
 
 
-def did_inherit_throne_extractor(character: GameObject) -> float:
+def did_inherit_throne_extractor(character: Entity) -> float:
     """."""
     return float(
         character.get_component(CharacterMetrics).data.directly_inherited_throne
     )
 
 
-def time_since_last_war_extractor(character: GameObject) -> float:
+def time_since_last_war_extractor(character: Entity) -> float:
     """."""
-    current_date = character.world.resources.get_resource(SimDate)
+    current_date = character.world.get_resource(SimDate)
     last_war_date = character.get_component(
         CharacterMetrics
     ).data.date_of_last_declared_war

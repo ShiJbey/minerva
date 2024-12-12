@@ -1,7 +1,7 @@
 """Territory Generation Functions and Classes."""
 
 from minerva.config import Config
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 from minerva.pcg.base_types import NameFactory, TerritoryFactory
 from minerva.sim_db import SimDB
 from minerva.stats.helpers import default_stat_calc_strategy
@@ -19,13 +19,12 @@ class DefaultTerritoryFactory(TerritoryFactory):
         super().__init__()
         self.name_factory = name_factory
 
-    def generate_territory(self, world: World, name: str = "") -> GameObject:
+    def generate_territory(self, world: World, name: str = "") -> Entity:
         """Construct a new territory."""
-        config = world.resources.get_resource(Config)
+        config = world.get_resource(Config)
 
-        territory = world.gameobjects.spawn_gameobject()
+        territory = world.entity()
         name = name if name else self.name_factory.generate_name(territory)
-        territory.metadata["object_type"] = "territory"
         territory.add_component(Territory(name=name))
         territory.add_component(
             PopulationHappiness(
@@ -36,7 +35,7 @@ class DefaultTerritoryFactory(TerritoryFactory):
         )
         territory.name = name
 
-        db = world.resources.get_resource(SimDB).db
+        db = world.get_resource(SimDB).db
 
         db.execute(
             """INSERT INTO territories (uid, name) VALUES (?, ?);""",

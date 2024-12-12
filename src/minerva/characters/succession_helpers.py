@@ -31,7 +31,7 @@ from minerva.characters.components import (
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.datetime import SimDate
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 from minerva.life_events.succession import BecameEmperorEvent
 from minerva.sim_db import SimDB
 
@@ -63,7 +63,7 @@ class SuccessionDepthChart:
         self._rows = []
         self._index = {}
 
-    def add_row(self, character: GameObject, is_eligible: bool = True) -> None:
+    def add_row(self, character: Entity, is_eligible: bool = True) -> None:
         """Add a row to the chart."""
         if character.uid in self._index:
             # raise ValueError(f"Duplicate depth chart entry for: {character.name}")
@@ -78,7 +78,7 @@ class SuccessionDepthChart:
         self._rows.append(row)
         self._index[character.uid] = row
 
-    def get_depth(self, character: GameObject) -> int:
+    def get_depth(self, character: Entity) -> int:
         """Get the depth of a character in the chart."""
         if row_data := self._index.get(character.uid):
             return row_data.depth
@@ -110,7 +110,7 @@ class SuccessionChartCache:
         self._charts = {}
 
     def get_chart_for(
-        self, character: GameObject, recalculate: bool = False
+        self, character: Entity, recalculate: bool = False
     ) -> SuccessionDepthChart:
         """Get the chart for the given character"""
         if character.uid in self._charts and not recalculate:
@@ -121,7 +121,7 @@ class SuccessionChartCache:
 
         return depth_chart
 
-    def remove_chart_for(self, character: GameObject) -> bool:
+    def remove_chart_for(self, character: Entity) -> bool:
         """Removes the depth chart for the given character."""
 
         if character.uid in self._charts:
@@ -131,7 +131,7 @@ class SuccessionChartCache:
         return False
 
 
-def set_heir(character: GameObject, heir: GameObject) -> None:
+def set_heir(character: Entity, heir: Entity) -> None:
     """Set a character's heir."""
     character_component = character.get_component(Character)
     heir_character = heir.get_component(Character)
@@ -142,7 +142,7 @@ def set_heir(character: GameObject, heir: GameObject) -> None:
     character_component.heir = heir
     heir_character.heir_to = character
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET heir=? WHERE uid=?;""",
@@ -157,7 +157,7 @@ def set_heir(character: GameObject, heir: GameObject) -> None:
     db.commit()
 
 
-def remove_heir(character: GameObject) -> None:
+def remove_heir(character: Entity) -> None:
     """Remove the declared heir from this character."""
 
     character_component = character.get_component(Character)
@@ -171,7 +171,7 @@ def remove_heir(character: GameObject) -> None:
     character_component.heir = None
     heir_character.heir_to = None
 
-    db = character.world.resources.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE characters SET heir=? WHERE uid=?;""",
@@ -186,7 +186,7 @@ def remove_heir(character: GameObject) -> None:
     db.commit()
 
 
-def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
+def get_succession_depth_chart(character: Entity) -> SuccessionDepthChart:
     """Calculate the succession depth chart for the given character."""
 
     depth_chart = SuccessionDepthChart()
@@ -194,7 +194,7 @@ def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
     character_component = character.get_component(Character)
 
     # Get all children in the same family
-    child_list: list[tuple[GameObject, float, bool]] = []
+    child_list: list[tuple[Entity, float, bool]] = []
     for child in character_component.children:
         child_character_component = child.get_component(Character)
         is_eligible = (
@@ -219,7 +219,7 @@ def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
     #     depth_chart.add_row(character_component.spouse, is_eligible=True)
 
     # Get living siblings in the same family
-    sibling_list: list[tuple[GameObject, float, bool]] = []
+    sibling_list: list[tuple[Entity, float, bool]] = []
     for sibling in character_component.siblings:
         sibling_character_component = sibling.get_component(Character)
         is_eligible = (
@@ -242,7 +242,7 @@ def get_succession_depth_chart(character: GameObject) -> SuccessionDepthChart:
     return depth_chart
 
 
-def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
+def set_current_ruler(world: World, character: Optional[Entity]) -> None:
     """Set the character who is currently the ruler.
 
     Setting the ruler changes who is currently in charge and potentially
@@ -257,10 +257,10 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
     character
         The next ruler.
     """
-    db = world.resources.get_resource(SimDB).db
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
-    current_date = world.resources.get_resource(SimDate)
+    dynasty_tracker = world.get_resource(DynastyTracker)
+    current_date = world.get_resource(SimDate)
 
     # Check if there is a current dynasty and that it has a current ruler. If it
     # does, remove the ruler/emperor component and update their ruler entry in the
@@ -301,7 +301,7 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
                 WHERE
                 uid=?;
                 """,
-                (current_date.to_iso_str(), current_dynasty_component.gameobject.uid),
+                (current_date.to_iso_str(), current_dynasty_component.entity.uid),
             )
 
             dynasty_tracker.previous_dynasties.add(dynasty_tracker.current_dynasty)
@@ -323,7 +323,7 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
                     """,
                     (
                         current_date.to_iso_str(),
-                        current_dynasty_component.gameobject.uid,
+                        current_dynasty_component.entity.uid,
                     ),
                 )
 
@@ -358,7 +358,7 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
                 """,
                 (
                     character.uid,
-                    current_dynasty_component.gameobject.uid,
+                    current_dynasty_component.entity.uid,
                     current_date.to_iso_str(),
                     last_ruler,
                 ),
@@ -369,10 +369,10 @@ def set_current_ruler(world: World, character: Optional[GameObject]) -> None:
     db.commit()
 
 
-def get_current_ruler(world: World) -> Optional[GameObject]:
+def get_current_ruler(world: World) -> Optional[Entity]:
     """Get the current ruler."""
 
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
+    dynasty_tracker = world.get_resource(DynastyTracker)
 
     if dynasty_tracker.current_dynasty is not None:
 
@@ -383,12 +383,12 @@ def get_current_ruler(world: World) -> Optional[GameObject]:
     return None
 
 
-def _start_new_dynasty(founding_character: GameObject) -> GameObject:
+def _start_new_dynasty(founding_character: Entity) -> Entity:
     """Start a new dynasty and return it."""
     world = founding_character.world
 
-    current_date = world.resources.get_resource(SimDate)
-    dynasty_tracker = world.resources.get_resource(DynastyTracker)
+    current_date = world.get_resource(SimDate)
+    dynasty_tracker = world.get_resource(DynastyTracker)
 
     if dynasty_tracker.current_dynasty is not None:
         raise RuntimeError("Cannot start new dynasty while another is active.")
@@ -397,12 +397,12 @@ def _start_new_dynasty(founding_character: GameObject) -> GameObject:
     family = character_component.family
     assert family is not None, "Dynasty founder missing family"
 
-    dynasty_obj = world.gameobjects.spawn_gameobject(
+    dynasty_obj = world.entity(
         components=[
             Dynasty(
                 founder=founding_character,
                 family=family,
-                founding_date=world.resources.get_resource(SimDate).copy(),
+                founding_date=world.get_resource(SimDate).copy(),
             )
         ],
         name=f"The {character_component.surname} dynasty",
@@ -416,14 +416,14 @@ def _start_new_dynasty(founding_character: GameObject) -> GameObject:
     BecameEmperorEvent(founding_character).log_event()
     dynasty_tracker.all_rulers.add(founding_character)
 
-    previous_ruler: Optional[GameObject] = None
+    previous_ruler: Optional[Entity] = None
     if dynasty_component.previous_dynasty:
         previous_dynasty_comp = dynasty_component.previous_dynasty.get_component(
             Dynasty
         )
         previous_ruler = previous_dynasty_comp.last_ruler
 
-    db = world.resources.get_resource(SimDB).db
+    db = world.get_resource(SimDB).db
     cur = db.cursor()
     cur.execute(
         """

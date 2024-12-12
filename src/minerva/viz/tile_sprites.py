@@ -8,7 +8,7 @@ import pygame
 import pygame.gfxdraw
 from pygame.sprite import Sprite
 
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.viz.constants import (
     TERRITORY_BORDER_PADDING,
     TERRITORY_BORDER_THICKNESS,
@@ -66,7 +66,7 @@ class CrownSprite(Sprite):
 class CastleSprite(Sprite):
     """A sprite of a territory castle."""
 
-    def __init__(self, territory: GameObject, *groups: Any) -> None:
+    def __init__(self, territory: Entity, *groups: Any) -> None:
         super().__init__(*groups)
         self.image = pygame.transform.scale(
             pygame.image.load(

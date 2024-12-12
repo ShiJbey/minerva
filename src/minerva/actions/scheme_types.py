@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from minerva.actions.base_types import Scheme, SchemeData
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 
 
 class WarScheme(SchemeData):
@@ -11,15 +11,15 @@ class WarScheme(SchemeData):
 
     __slots__ = ("aggressor", "defender", "territory")
 
-    aggressor: GameObject
-    defender: GameObject
-    territory: GameObject
+    aggressor: Entity
+    defender: Entity
+    territory: Entity
 
     def __init__(
         self,
-        aggressor: GameObject,
-        defender: GameObject,
-        territory: GameObject,
+        aggressor: Entity,
+        defender: Entity,
+        territory: Entity,
     ) -> None:
         super().__init__()
         self.aggressor = aggressor
@@ -40,9 +40,9 @@ class CoupScheme(SchemeData):
 
     __slots__ = ("target",)
 
-    target: GameObject
+    target: Entity
 
-    def __init__(self, target: GameObject) -> None:
+    def __init__(self, target: Entity) -> None:
         super().__init__()
         self.target = target
 
@@ -67,9 +67,9 @@ class CheatingScheme(SchemeData):
 
     __slots__ = ("accomplice",)
 
-    accomplice: GameObject
+    accomplice: Entity
 
-    def __init__(self, accomplice: GameObject) -> None:
+    def __init__(self, accomplice: Entity) -> None:
         super().__init__()
         self.accomplice = accomplice
 

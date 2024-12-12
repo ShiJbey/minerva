@@ -4,12 +4,12 @@
 
 from __future__ import annotations
 
-from minerva.actions.base_types import AIPrecondition, AIContext, Scheme, SchemeManager
+from minerva.actions.base_types import AIContext, AIPrecondition, Scheme, SchemeManager
 from minerva.actions.scheme_helpers import get_character_schemes_of_type
 from minerva.actions.scheme_types import CoupScheme
-from minerva.characters.components import HeadOfFamily, Character, Family, Emperor
+from minerva.characters.components import Character, Emperor, Family, HeadOfFamily
 from minerva.characters.war_data import Alliance, WarTracker
-from minerva.ecs import GameObject, Active
+from minerva.ecs import Active, Entity
 
 
 class IsFamilyHeadPrecondition(AIPrecondition):
@@ -23,7 +23,7 @@ class HasTerritoriesInRevolt(AIPrecondition):
     """Checks if the character has any territories in revolt."""
 
     def evaluate(self, context: AIContext) -> bool:
-        territories: list[GameObject] = context.get_value("territories_in_revolt", [])
+        territories: list[Entity] = context.get_value("territories_in_revolt", [])
         return bool(territories)
 
 
@@ -56,7 +56,7 @@ class AreAllianceSchemesActive(AIPrecondition):
     def evaluate(self, context: AIContext) -> bool:
         alliance_schemes: list[Scheme] = []
 
-        for _, (scheme, _) in context.world.get_components((Scheme, Active)):
+        for _, (scheme, _) in context.world.query_components((Scheme, Active)):
             if scheme.get_type() == "alliance":
                 alliance_schemes.append(scheme)
 
@@ -67,7 +67,7 @@ class AreAlliancesActive(AIPrecondition):
     """Evaluate to True if there are alliances available to join."""
 
     def evaluate(self, context: AIContext) -> bool:
-        return len(context.world.get_components((Alliance, Active))) > 0
+        return len(list(context.world.query_components((Alliance, Active)))) > 0
 
 
 class IsRulerPrecondition(AIPrecondition):
@@ -81,7 +81,7 @@ class AreCoupSchemesActive(AIPrecondition):
     """Evaluates to True when there are active coup schemes."""
 
     def evaluate(self, context: AIContext) -> bool:
-        return len(context.world.get_components((CoupScheme, Active))) > 0
+        return len(list(context.world.query_components((CoupScheme, Active)))) > 0
 
 
 class IsAllianceMemberPlottingCoup(AIPrecondition):
@@ -100,7 +100,7 @@ class IsAllianceMemberPlottingCoup(AIPrecondition):
 
         alliance_component = family_component.alliance.get_component(Alliance)
 
-        for _, (scheme, _, _) in context.world.get_components(
+        for _, (scheme, _, _) in context.world.query_components(
             (Scheme, CoupScheme, Active)
         ):
             scheme_initiator_family = scheme.initiator.get_component(Character).family

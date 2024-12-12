@@ -31,9 +31,7 @@ def test_sim() -> Simulation:
 
 def test_get_succession_depth_chart(test_sim: Simulation):
     """Test depth chart calculations."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     viserys = character_factory.generate_character(
         test_sim.world,

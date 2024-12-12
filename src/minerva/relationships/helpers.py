@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.relationships.base_types import (
     Attraction,
     Opinion,
@@ -10,6 +10,7 @@ from minerva.relationships.base_types import (
     RelationshipManager,
     SocialRuleLibrary,
 )
+from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import (
     StatComponent,
     StatModifierType,
@@ -19,9 +20,9 @@ from minerva.traits.base_types import TraitManager
 
 
 def get_relationship(
-    owner: GameObject,
-    target: GameObject,
-) -> GameObject:
+    owner: Entity,
+    target: Entity,
+) -> Entity:
     """Get a relationship from one GameObject to another.
 
     This function will create a new instance of a relationship if one does not exist.
@@ -35,7 +36,7 @@ def get_relationship(
 
     Returns
     -------
-    GameObject
+    Entity
         A relationship instance.
     """
     relationships = owner.get_component(RelationshipManager)
@@ -45,7 +46,7 @@ def get_relationship(
     return add_relationship(owner, target)
 
 
-def has_relationship(owner: GameObject, target: GameObject) -> bool:
+def has_relationship(owner: Entity, target: Entity) -> bool:
     """Check if there is an existing relationship from the owner to the target.
 
     Parameters
@@ -65,7 +66,7 @@ def has_relationship(owner: GameObject, target: GameObject) -> bool:
     return target in relationships.outgoing_relationships
 
 
-def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
+def add_relationship(owner: Entity, target: Entity) -> Entity:
     """
     Creates a new relationship from the subject to the target
 
@@ -78,13 +79,13 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
 
     Returns
     -------
-    GameObject
+    Entity
         The new relationship instance
     """
     if has_relationship(owner, target):
         return get_relationship(owner, target)
 
-    relationship = owner.world.gameobjects.spawn_gameobject()
+    relationship = owner.world.entity()
 
     relationship.add_component(Relationship(owner=owner, target=target))
     relationship.add_component(StatusEffectManager())
@@ -97,10 +98,12 @@ def add_relationship(owner: GameObject, target: GameObject) -> GameObject:
     _add_outgoing_relationship(owner, relationship)
     _add_incoming_relationship(target, relationship)
 
+    owner.world.get_resource(SimulationEvents).relationship_created.emit(relationship)
+
     return relationship
 
 
-def destroy_relationship(owner: GameObject, target: GameObject) -> bool:
+def destroy_relationship(owner: Entity, target: Entity) -> bool:
     """Destroy the relationship GameObject to the target.
 
     Parameters
@@ -125,7 +128,7 @@ def destroy_relationship(owner: GameObject, target: GameObject) -> bool:
     return False
 
 
-def deactivate_relationships(gameobject: GameObject) -> None:
+def deactivate_relationships(gameobject: Entity) -> None:
     """Deactivates all an objects incoming and outgoing relationships."""
 
     relationships = gameobject.get_component(RelationshipManager)
@@ -137,7 +140,7 @@ def deactivate_relationships(gameobject: GameObject) -> None:
         relationship.deactivate()
 
 
-def _add_outgoing_relationship(character: GameObject, relationship: GameObject) -> None:
+def _add_outgoing_relationship(character: Entity, relationship: Entity) -> None:
     """Add a new relationship to a target.
 
     Parameters
@@ -158,9 +161,7 @@ def _add_outgoing_relationship(character: GameObject, relationship: GameObject) 
     relationship_manager.outgoing_relationships[relationship_target] = relationship
 
 
-def _remove_outgoing_relationship(
-    character: GameObject, relationship: GameObject
-) -> bool:
+def _remove_outgoing_relationship(character: Entity, relationship: Entity) -> bool:
     """Remove the outgoing relationship from the character."""
     relationship_manager = character.get_component(RelationshipManager)
     relationship_target = relationship.get_component(Relationship).target
@@ -172,7 +173,7 @@ def _remove_outgoing_relationship(
     return False
 
 
-def _add_incoming_relationship(character: GameObject, relationship: GameObject) -> None:
+def _add_incoming_relationship(character: Entity, relationship: Entity) -> None:
     """Add a new incoming relationship to character."""
     relationship_manager = character.get_component(RelationshipManager)
     relationship_owner = relationship.get_component(Relationship).owner
@@ -186,9 +187,7 @@ def _add_incoming_relationship(character: GameObject, relationship: GameObject) 
     relationship_manager.incoming_relationships[relationship_owner] = relationship
 
 
-def _remove_incoming_relationship(
-    character: GameObject, relationship: GameObject
-) -> bool:
+def _remove_incoming_relationship(character: Entity, relationship: Entity) -> bool:
     """Remove the incoming relationship from the character."""
     relationship_manager = character.get_component(RelationshipManager)
     relationship_owner = relationship.get_component(Relationship).owner
@@ -203,7 +202,7 @@ def _remove_incoming_relationship(
 def opinion_calc_strategy(stat_component: StatComponent) -> float:
     """Calculation strategy for opinion stats."""
 
-    relationship = stat_component.gameobject
+    relationship = stat_component.entity
     relationship_component = relationship.get_component(Relationship)
     owner = relationship_component.owner
     target = relationship_component.target
@@ -254,7 +253,7 @@ def opinion_calc_strategy(stat_component: StatComponent) -> float:
                 sum_percent_add += modifier.value
 
     # Get modifiers from social rules
-    social_rule_library = relationship.world.resources.get_resource(SocialRuleLibrary)
+    social_rule_library = relationship.world.get_resource(SocialRuleLibrary)
     for rule in social_rule_library.iter_rules():
         if rule.opinion_modifier is None:
             continue
@@ -274,7 +273,7 @@ def opinion_calc_strategy(stat_component: StatComponent) -> float:
 
 def attraction_calc_strategy(stat_component: StatComponent) -> float:
     """Calculation strategy for attraction stats."""
-    relationship = stat_component.gameobject
+    relationship = stat_component.entity
     relationship_component = relationship.get_component(Relationship)
     owner = relationship_component.owner
     target = relationship_component.target
@@ -325,7 +324,7 @@ def attraction_calc_strategy(stat_component: StatComponent) -> float:
                 sum_percent_add += modifier.value
 
     # Get modifiers from social rules
-    social_rule_library = relationship.world.resources.get_resource(SocialRuleLibrary)
+    social_rule_library = relationship.world.get_resource(SocialRuleLibrary)
     for rule in social_rule_library.iter_rules():
         if rule.attraction_modifier is None:
             continue

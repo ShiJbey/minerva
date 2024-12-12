@@ -5,14 +5,14 @@ from __future__ import annotations
 from typing import Optional
 
 from minerva.characters.components import Family
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.sim_db import SimDB
 from minerva.world_map.components import Territory
 
 
 def get_territory_political_influence(
-    territory: GameObject,
-    family: GameObject,
+    territory: Entity,
+    family: Entity,
 ) -> int:
     """Get the political influence of a family over a given territory."""
 
@@ -24,8 +24,8 @@ def get_territory_political_influence(
 
 
 def increment_political_influence(
-    territory: GameObject,
-    family: GameObject,
+    territory: Entity,
+    family: Entity,
     amount: int,
 ) -> None:
     """Get the political influence of a family over a given territory."""
@@ -39,7 +39,7 @@ def increment_political_influence(
 
 
 def set_territory_controlling_family(
-    territory: GameObject, family: Optional[GameObject]
+    territory: Entity, family: Optional[Entity]
 ) -> None:
     """Set what family currently controls the territory."""
 
@@ -56,7 +56,7 @@ def set_territory_controlling_family(
         family_component.territories.add(territory)
         territory_component.controlling_family = family
 
-    db = territory.world.resources.get_resource(SimDB).db
+    db = territory.world.get_resource(SimDB).db
 
     db.execute(
         """UPDATE territories SET controlling_family=? WHERE uid=?;""",

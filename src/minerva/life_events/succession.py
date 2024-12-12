@@ -1,6 +1,6 @@
 """Life Events Associated with Power Succession."""
 
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.life_events.base_types import LifeEvent
 from minerva.sim_db import SimDB
 
@@ -10,7 +10,7 @@ class BecameFamilyHeadEvent(LifeEvent):
 
     __slots__ = ("family",)
 
-    def __init__(self, subject: GameObject, family: GameObject) -> None:
+    def __init__(self, subject: Entity, family: Entity) -> None:
         super().__init__(subject)
         self.family = family
 
@@ -18,7 +18,7 @@ class BecameFamilyHeadEvent(LifeEvent):
         return "BecameFamilyHead"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
@@ -49,7 +49,7 @@ class BecameEmperorEvent(LifeEvent):
         return "BecameEmperor"
 
     def on_event_logged(self) -> None:
-        db = self.world.resources.get_resource(SimDB).db
+        db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """

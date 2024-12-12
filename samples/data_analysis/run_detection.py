@@ -86,11 +86,11 @@ def evaluate_detector_on_family_heads(
     console = rich.console.Console()
     table = rich.table.Table("Character", "MSE", "Reason(s)", title=figure_title)
 
-    for _, (character,) in sim.world.get_components((Character,)):
-        if character.gameobject.has_component(
+    for _, (character,) in sim.world.query_components((Character,)):
+        if character.entity.has_component(
             HeadOfFamily
-        ) or character.gameobject.has_component(FormerFamilyHead):
-            is_anomaly, error, justification = detector.predict(character.gameobject)
+        ) or character.entity.has_component(FormerFamilyHead):
+            is_anomaly, error, justification = detector.predict(character.entity)
 
             error_values.append(error)
 
@@ -102,7 +102,7 @@ def evaluate_detector_on_family_heads(
                 )
 
                 table.add_row(
-                    character.gameobject.name_with_uid, str(error), justification_str
+                    character.entity.name_with_uid, str(error), justification_str
                 )
                 n_anomalies += 1
 
@@ -125,12 +125,12 @@ def evaluate_detector_on_bg_npcs(
     console = rich.console.Console()
     table = rich.table.Table("Character", "MSE", "Reason(s)", title=figure_title)
 
-    for _, (character,) in sim.world.get_components((Character,)):
+    for _, (character,) in sim.world.query_components((Character,)):
         if not (
-            character.gameobject.has_component(HeadOfFamily)
-            or character.gameobject.has_component(FormerFamilyHead)
+            character.entity.has_component(HeadOfFamily)
+            or character.entity.has_component(FormerFamilyHead)
         ):
-            is_anomaly, error, justification = detector.predict(character.gameobject)
+            is_anomaly, error, justification = detector.predict(character.entity)
 
             error_values.append(error)
 
@@ -142,7 +142,7 @@ def evaluate_detector_on_bg_npcs(
                 )
 
                 table.add_row(
-                    character.gameobject.name_with_uid, str(error), justification_str
+                    character.entity.name_with_uid, str(error), justification_str
                 )
                 n_anomalies += 1
 

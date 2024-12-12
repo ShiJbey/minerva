@@ -4,10 +4,10 @@
 
 from ordered_set import OrderedSet
 
-from minerva.actions.base_types import AISensor, AIContext
-from minerva.characters.components import HeadOfFamily, Family
+from minerva.actions.base_types import AIContext, AISensor
+from minerva.characters.components import Family, HeadOfFamily
 from minerva.characters.war_data import Alliance
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.world_map.components import InRevolt, Territory
 
 
@@ -16,9 +16,10 @@ class TerritoriesInRevoltSensor(AISensor):
 
     def evaluate(self, context: AIContext) -> None:
         # Check if the character is a family head
-        territories_in_revolt: list[GameObject] = []
+        territories_in_revolt: list[Entity] = []
 
-        if family_head_component := context.character.try_component(HeadOfFamily):
+        if context.character.has_component(HeadOfFamily):
+            family_head_component = context.character.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
             for territory in family_component.territories:
@@ -33,9 +34,10 @@ class UnexpandedTerritoriesSensor(AISensor):
 
     def evaluate(self, context: AIContext) -> None:
         # Check if the character is a family head
-        unexpanded_territories: OrderedSet[GameObject] = OrderedSet([])
+        unexpanded_territories: OrderedSet[Entity] = OrderedSet([])
 
-        if family_head_component := context.character.try_component(HeadOfFamily):
+        if context.character.has_component(HeadOfFamily):
+            family_head_component = context.character.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
             for territory in family_component.territories:
                 territory_component = territory.get_component(Territory)
@@ -51,9 +53,10 @@ class UnControlledTerritoriesSensor(AISensor):
 
     def evaluate(self, context: AIContext) -> None:
         # Check if the character is a family head
-        uncontrolled_territories: OrderedSet[GameObject] = OrderedSet([])
+        uncontrolled_territories: OrderedSet[Entity] = OrderedSet([])
 
-        if family_head_component := context.character.try_component(HeadOfFamily):
+        if context.character.has_component(HeadOfFamily):
+            family_head_component = context.character.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
             for territory in family_component.territories:
@@ -72,12 +75,13 @@ class TerritoriesControlledByOpps(AISensor):
 
     def evaluate(self, context: AIContext) -> None:
         # Check if the character is a family head
-        enemy_territories: OrderedSet[GameObject] = OrderedSet([])
+        enemy_territories: OrderedSet[Entity] = OrderedSet([])
 
-        if family_head_component := context.character.try_component(HeadOfFamily):
+        if context.character.has_component(HeadOfFamily):
+            family_head_component = context.character.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
-            allies: set[GameObject] = set()
+            allies: set[Entity] = set()
             if family_component.alliance:
                 alliance_component = family_component.alliance.get_component(Alliance)
                 for member in alliance_component.member_families:

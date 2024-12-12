@@ -49,9 +49,7 @@ def test_sim() -> Simulation:
 def test_set_first_name(test_sim: Simulation):
     """Test updating a character's first name."""
 
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -64,7 +62,7 @@ def test_set_first_name(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.first_name == "Rhaenyra"
 
@@ -90,9 +88,7 @@ def test_set_first_name(test_sim: Simulation):
 def test_set_surname(test_sim: Simulation):
     """Test updating a character's surname."""
 
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -105,7 +101,7 @@ def test_set_surname(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.surname == "Targaryen"
 
@@ -126,9 +122,7 @@ def test_set_surname(test_sim: Simulation):
 
 def test_set_birth_surname(test_sim: Simulation):
     """Test updating a character's birth surname."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -141,7 +135,7 @@ def test_set_birth_surname(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.birth_surname == "Targaryen"
 
@@ -166,9 +160,7 @@ def test_set_birth_surname(test_sim: Simulation):
 
 def test_set_sex(test_sim: Simulation):
     """Test updating a character's sex."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -181,7 +173,7 @@ def test_set_sex(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.sex == Sex.FEMALE
 
@@ -202,9 +194,7 @@ def test_set_sex(test_sim: Simulation):
 
 def test_set_sexual_orientation(test_sim: Simulation):
     """Test updating a character's sexual orientation."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -217,7 +207,7 @@ def test_set_sexual_orientation(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.sexual_orientation == SexualOrientation.BISEXUAL
 
@@ -242,9 +232,7 @@ def test_set_sexual_orientation(test_sim: Simulation):
 
 def test_set_life_stage(test_sim: Simulation):
     """Test updating a character's life stage."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -257,7 +245,7 @@ def test_set_life_stage(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.life_stage == LifeStage.ADULT
     cur = db.execute(
@@ -281,9 +269,7 @@ def test_set_life_stage(test_sim: Simulation):
 
 def test_set_age(test_sim: Simulation):
     """Test updating a character's age."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -296,7 +282,7 @@ def test_set_age(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.age == 16
 
@@ -317,9 +303,7 @@ def test_set_age(test_sim: Simulation):
 
 def test_set_birth_date(test_sim: Simulation):
     """Test updating a character's birth date."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -332,7 +316,7 @@ def test_set_birth_date(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.birth_date is None
 
@@ -357,9 +341,7 @@ def test_set_birth_date(test_sim: Simulation):
 
 def test_set_death_date(test_sim: Simulation):
     """Test updating a character's death date."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -372,7 +354,7 @@ def test_set_death_date(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.death_date is None
 
@@ -397,9 +379,7 @@ def test_set_death_date(test_sim: Simulation):
 
 def test_set_mother(test_sim: Simulation):
     """Test updating a character's mother reference."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -422,7 +402,7 @@ def test_set_mother(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.mother is None
 
@@ -443,9 +423,7 @@ def test_set_mother(test_sim: Simulation):
 
 def test_set_father(test_sim: Simulation):
     """Test updating a character's father reference."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -468,7 +446,7 @@ def test_set_father(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.father is None
 
@@ -489,9 +467,7 @@ def test_set_father(test_sim: Simulation):
 
 def test_set_biological_father(test_sim: Simulation):
     """Test updating a character's biological father reference."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -514,7 +490,7 @@ def test_set_biological_father(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.biological_father is None
 
@@ -539,9 +515,7 @@ def test_set_biological_father(test_sim: Simulation):
 
 def test_set_alive(test_sim: Simulation):
     """Test updating a character's living status."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -554,7 +528,7 @@ def test_set_alive(test_sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.is_alive is True
 
@@ -579,11 +553,9 @@ def test_set_alive(test_sim: Simulation):
 
 def test_set_character_birth_family(test_sim: Simulation):
     """Test updating a character's birth family."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -598,7 +570,7 @@ def test_set_character_birth_family(test_sim: Simulation):
     targaryen_family = family_factory.generate_family(test_sim.world, "Targaryen")
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert character_component.birth_family is None
 
@@ -623,9 +595,7 @@ def test_set_character_birth_family(test_sim: Simulation):
 
 def test_set_relation_sibling(test_sim: Simulation):
     """Test updating a sibling reference from on character to another."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     daemon = character_factory.generate_character(
         test_sim.world,
@@ -648,7 +618,7 @@ def test_set_relation_sibling(test_sim: Simulation):
     )
 
     character_component = viserys.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert daemon not in character_component.siblings
 
@@ -673,9 +643,7 @@ def test_set_relation_sibling(test_sim: Simulation):
 
 def test_set_relation_child(test_sim: Simulation):
     """Test updating child reference from a parent to their child."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     rhaenyra = character_factory.generate_character(
         test_sim.world,
@@ -698,7 +666,7 @@ def test_set_relation_child(test_sim: Simulation):
     )
 
     character_component = viserys.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert rhaenyra not in character_component.children
 
@@ -723,9 +691,7 @@ def test_set_relation_child(test_sim: Simulation):
 
 def test_start_marriage(test_sim: Simulation):
     """Test starting marriages and updating spousal references."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     aemma = character_factory.generate_character(
         test_sim.world,
@@ -749,7 +715,7 @@ def test_start_marriage(test_sim: Simulation):
 
     aemma_character_component = aemma.get_component(Character)
     viserys_character_component = viserys.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
@@ -778,9 +744,7 @@ def test_start_marriage(test_sim: Simulation):
 
 def test_end_marriage(test_sim: Simulation):
     """Test ending marriages and updating spousal references."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     aemma = character_factory.generate_character(
         test_sim.world,
@@ -804,7 +768,7 @@ def test_end_marriage(test_sim: Simulation):
 
     aemma_character_component = aemma.get_component(Character)
     viserys_character_component = viserys.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
@@ -853,9 +817,7 @@ def test_end_marriage(test_sim: Simulation):
 
 def test_start_romantic_affair(test_sim: Simulation):
     """Test starting a romantic lover relationship and updating lover references."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     alicent = character_factory.generate_character(
         test_sim.world,
@@ -879,7 +841,7 @@ def test_start_romantic_affair(test_sim: Simulation):
 
     alicent_character_component = alicent.get_component(Character)
     cole_character_component = cole.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert cole_character_component.lover is None
     assert alicent_character_component.lover is None
@@ -908,9 +870,7 @@ def test_start_romantic_affair(test_sim: Simulation):
 
 def test_end_romantic_affair(test_sim: Simulation):
     """Test ending romantic lover relationships and updating lover references."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
     alicent = character_factory.generate_character(
         test_sim.world,
@@ -934,7 +894,7 @@ def test_end_romantic_affair(test_sim: Simulation):
 
     alicent_character_component = alicent.get_component(Character)
     cole_character_component = cole.get_component(Character)
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     assert cole_character_component.spouse is None
     assert alicent_character_component.spouse is None

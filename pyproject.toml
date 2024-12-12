@@ -15,7 +15,7 @@ keywords = [
     "simulation",
     "artificial intelligence",
     "agent-based modeling",
-    "multiagent systems",
+    "multi-agent systems",
     "emergent narrative",
     "narrative generation",
     "interactive storytelling",
@@ -43,7 +43,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "esper==2.*",
     "ordered-set==4.*",
     "tqdm==4.*",
     "pydantic==2.*",

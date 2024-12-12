@@ -7,7 +7,7 @@ from itertools import product
 from typing import Any, Generator
 
 from minerva.config import Config
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 from minerva.pcg.base_types import PCGFactories
 from minerva.world_map.components import (
     CartesianGrid,
@@ -232,11 +232,11 @@ class TerritoryGenerator:
 def generate_world_map(world: World) -> None:
     """Divide the world map into territories and instantiate territories."""
 
-    config = world.resources.get_resource(Config)
+    config = world.get_resource(Config)
 
     world_map = WorldMap(config.world_size)
 
-    world.resources.add_resource(world_map)
+    world.add_resource(world_map)
 
     territory_generator = TerritoryGenerator(
         config.world_size,
@@ -249,10 +249,10 @@ def generate_world_map(world: World) -> None:
     world_map.territories = []
     world_map.borders = territory_generator.borders.copy()
 
-    territory_id_to_gameobject: dict[int, GameObject] = {}
-    territories: dict[int, GameObject] = {}
+    territory_id_to_gameobject: dict[int, Entity] = {}
+    territories: dict[int, Entity] = {}
 
-    pcg_factories = world.resources.get_resource(PCGFactories)
+    pcg_factories = world.get_resource(PCGFactories)
 
     for territory_info in territory_generator.territories:
         territory = pcg_factories.territory_factory.generate_territory(world)

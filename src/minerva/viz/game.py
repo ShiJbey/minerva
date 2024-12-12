@@ -109,7 +109,7 @@ class Game:
         self.wiki_window.kill()
         self.visible_sprites = YSortCameraGroup(self.display)
         self.terrain_tiles = YSortCameraGroup(self.display)
-        self.world_map = simulation.world.resources.get_resource(WorldMap)
+        self.world_map = simulation.world.get_resource(WorldMap)
         self._castle_sprites: list[CastleSprite] = []
         self._create_terrain_sprites()
         self._create_border_sprites()
@@ -204,7 +204,7 @@ class Game:
 
     def _draw_world_grid_lines(self, color: str = "#000000") -> None:
         # Draw the ground
-        # world_grid = self.simulation.world.resources.get_resource(WorldGrid)
+        # world_grid = self.simulation.world.get_resource(WorldGrid)
 
         n_cols, n_rows = self.world_map.territory_grid.get_size()
 
@@ -230,7 +230,7 @@ class Game:
                 )
 
     def _create_castle_sprites(self) -> None:
-        dynasty_tracker = self.simulation.world.resources.get_resource(DynastyTracker)
+        dynasty_tracker = self.simulation.world.get_resource(DynastyTracker)
         royal_family = (
             dynasty_tracker.current_dynasty.get_component(Dynasty).family
             if dynasty_tracker.current_dynasty
@@ -284,7 +284,7 @@ class Game:
             self.visible_sprites.add(sprite)  # type: ignore
 
     def _create_terrain_sprites(self) -> None:
-        for (x, y), _ in self.simulation.world.resources.get_resource(
+        for (x, y), _ in self.simulation.world.get_resource(
             WorldMap
         ).territory_grid.enumerate():
             x1 = x * TILE_SIZE

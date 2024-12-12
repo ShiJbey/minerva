@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 from ordered_set import OrderedSet
 
 from minerva.datetime import SimDate
-from minerva.ecs import Component, GameObject
+from minerva.ecs import Component, Entity
 
 
 class WarRole(enum.IntEnum):
@@ -37,15 +37,15 @@ class War(Component):
         "_end_date",
     )
 
-    contested_territory: GameObject
+    contested_territory: Entity
     """The land they are fighting over."""
-    aggressor: GameObject
+    aggressor: Entity
     """The family that started the war by attacking the defender."""
-    defender: GameObject
+    defender: Entity
     """The family fighting off the aggressor and their allies."""
-    aggressor_allies: OrderedSet[GameObject]
+    aggressor_allies: OrderedSet[Entity]
     """Families allied with the aggressor in this war."""
-    defender_allies: OrderedSet[GameObject]
+    defender_allies: OrderedSet[Entity]
     """Families allied with the defender in this war."""
     _start_date: SimDate
     """The date the war started"""
@@ -54,9 +54,9 @@ class War(Component):
 
     def __init__(
         self,
-        aggressor: GameObject,
-        defender: GameObject,
-        contested_territory: GameObject,
+        aggressor: Entity,
+        defender: Entity,
+        contested_territory: Entity,
         start_date: SimDate,
     ) -> None:
         super().__init__()
@@ -97,9 +97,9 @@ class WarTracker(Component):
 
     __slots__ = ("offensive_wars", "defensive_wars")
 
-    offensive_wars: OrderedSet[GameObject]
+    offensive_wars: OrderedSet[Entity]
     """Wars this family started or is allied with the aggressor."""
-    defensive_wars: OrderedSet[GameObject]
+    defensive_wars: OrderedSet[Entity]
     """Wars where this family was attacked or is allied with the defender."""
 
     def __init__(self) -> None:
@@ -119,11 +119,11 @@ class Alliance(Component):
         "_end_date",
     )
 
-    founder: GameObject
+    founder: Entity
     """The family head that founded the alliance."""
-    founder_family: GameObject
+    founder_family: Entity
     """The family the alliance's founder was the head of."""
-    member_families: OrderedSet[GameObject]
+    member_families: OrderedSet[Entity]
     """All families that belong to the alliance."""
     _start_date: SimDate
     """The date the alliance started."""
@@ -132,9 +132,9 @@ class Alliance(Component):
 
     def __init__(
         self,
-        founder: GameObject,
-        founder_family: GameObject,
-        member_families: Iterable[GameObject],
+        founder: Entity,
+        founder_family: Entity,
+        member_families: Iterable[Entity],
         start_date: SimDate,
     ) -> None:
         super().__init__()

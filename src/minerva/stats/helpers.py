@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.stats.base_types import (
     StatComponent,
     StatModifierType,
@@ -37,7 +37,7 @@ def _recalculate_stat(stat: StatComponent) -> float:
     return final_value
 
 
-def add_status_effect(target: GameObject, status_effect: StatusEffect) -> None:
+def add_status_effect(target: Entity, status_effect: StatusEffect) -> None:
     """Add a status effect to a GameObject."""
 
     target.get_component(StatusEffectManager).status_effects.append(status_effect)
@@ -45,7 +45,7 @@ def add_status_effect(target: GameObject, status_effect: StatusEffect) -> None:
     status_effect.apply(target)
 
 
-def remove_status_effect(target: GameObject, status_effect: StatusEffect) -> bool:
+def remove_status_effect(target: Entity, status_effect: StatusEffect) -> bool:
     """Remove a status effect from a GameObject.
 
     Returns

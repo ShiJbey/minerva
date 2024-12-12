@@ -43,7 +43,7 @@ from minerva.characters.components import (
 )
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance
-from minerva.ecs import Active, GameObject
+from minerva.ecs import Active, Entity
 from minerva.relationships.base_types import Attraction
 from minerva.relationships.helpers import get_relationship
 from minerva.world_map.components import InRevolt, Territory
@@ -52,7 +52,7 @@ from minerva.world_map.components import InRevolt, Territory
 class IdleBehavior(AIBehavior):
     """A behavior that does nothing."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         return [
             IdleAction(character),
         ]
@@ -61,7 +61,7 @@ class IdleBehavior(AIBehavior):
 class GiveToSmallFolkBehavior(AIBehavior):
     """A family head  will try to increase their political influence in a territory."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Choose the territory with the lowest political influence
         # and spend influence points to increase political power
         family_head_component = character.get_component(HeadOfFamily)
@@ -71,10 +71,10 @@ class GiveToSmallFolkBehavior(AIBehavior):
 
         for territory in family_component.territories:
             territory_component = territory.get_component(Territory)
-            if territory_component.controlling_family == family_component.gameobject:
+            if territory_component.controlling_family == family_component.entity:
                 action = GiveBackToTerritoryAction(
                     performer=character,
-                    family=family_component.gameobject,
+                    family=family_component.entity,
                     territory=territory,
                 )
                 actions.append(action)
@@ -85,7 +85,7 @@ class GiveToSmallFolkBehavior(AIBehavior):
 class GrowPoliticalInfluenceBehavior(AIBehavior):
     """A family head  will try to increase their political influence in a territory."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Choose the territory with the lowest political influence
         # and spend influence points to increase political power
         family_head_component = character.get_component(HeadOfFamily)
@@ -96,7 +96,7 @@ class GrowPoliticalInfluenceBehavior(AIBehavior):
         for territory in family_component.territories:
             action = GrowPoliticalInfluenceAction(
                 performer=character,
-                family=family_component.gameobject,
+                family=family_component.entity,
                 territory=territory,
             )
             actions.append(action)
@@ -107,19 +107,19 @@ class GrowPoliticalInfluenceBehavior(AIBehavior):
 class SendGiftBehavior(AIBehavior):
     """Family heads will send gifts to each other to increase opinion scores."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Get all the families within the same territories
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
-        recipients: OrderedSet[GameObject] = OrderedSet([])
+        recipients: OrderedSet[Entity] = OrderedSet([])
         actions: list[AIAction] = []
 
         for territory in family_component.territories:
             territory_component = territory.get_component(Territory)
             for other_family in territory_component.families:
                 # Skip your own family
-                if other_family == family_component.gameobject:
+                if other_family == family_component.entity:
                     continue
 
                 other_family_component = other_family.get_component(Family)
@@ -139,14 +139,14 @@ class SendGiftBehavior(AIBehavior):
 class SendAidBehavior(AIBehavior):
     """Character will try to increase favor with a family dealing with a revolt."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
 
         # Get all territories in revolt and the family heads in charge
         # of those territories
-        recipients: OrderedSet[GameObject] = OrderedSet([])
+        recipients: OrderedSet[Entity] = OrderedSet([])
         actions: list[AIAction] = []
 
-        for _, (territory, _, _) in character.world.get_components(
+        for _, (territory, _, _) in character.world.query_components(
             (Territory, InRevolt, Active)
         ):
             if territory.controlling_family:
@@ -161,14 +161,14 @@ class SendAidBehavior(AIBehavior):
 class ExtortTerritoryOwners(AIBehavior):
     """The ruler will take influence points from the land-owning families."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         return [ExtortTerritoryOwnersAction(character)]
 
 
 class ExtortLocalFamiliesBehavior(AIBehavior):
     """A family head will extort families that live in their controlled territories."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
 
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
@@ -176,7 +176,7 @@ class ExtortLocalFamiliesBehavior(AIBehavior):
         controlled_territory_count = 0
         for territory in family_component.territories:
             territory_component = territory.get_component(Territory)
-            if territory_component.controlling_family == family_component.gameobject:
+            if territory_component.controlling_family == family_component.entity:
                 controlled_territory_count += 1
 
         if controlled_territory_count > 0:
@@ -188,7 +188,7 @@ class ExtortLocalFamiliesBehavior(AIBehavior):
 class QuellRevolt(AIBehavior):
     """The head of the family controlling a territory will try to quell a revolt."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # This behavior requires at least on territory to be in revolt. This
         # information is picked up by the
         family_head_component = character.get_component(HeadOfFamily)
@@ -199,7 +199,7 @@ class QuellRevolt(AIBehavior):
         for territory in family_component.territories:
             territory_component = territory.get_component(Territory)
 
-            if territory_component.controlling_family != family_component.gameobject:
+            if territory_component.controlling_family != family_component.entity:
                 continue
 
             if territory.has_component(InRevolt):
@@ -213,7 +213,7 @@ class QuellRevolt(AIBehavior):
 class StartAllianceSchemeBehavior(AIBehavior):
     """A family head will try to start a new alliance."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Character will start a new scheme to form an alliance. Other family heads can
         # choose to join before the alliance is officially formed.
         family_head_component = character.get_component(HeadOfFamily)
@@ -228,7 +228,7 @@ class StartAllianceSchemeBehavior(AIBehavior):
 class JoinAllianceSchemeBehavior(AIBehavior):
     """A family head will have their family join an existing alliance."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head will try to join an alliance scheme.
 
         world = character.world
@@ -246,14 +246,16 @@ class JoinAllianceSchemeBehavior(AIBehavior):
         if family_component.alliance:
             return []
 
-        for _, (scheme, _, _) in world.get_components((Scheme, AllianceScheme, Active)):
+        for _, (scheme, _, _) in world.query_components(
+            (Scheme, AllianceScheme, Active)
+        ):
             if not scheme.is_valid:
                 continue
 
             if scheme.initiator == character or character in scheme.members:
                 continue
 
-            actions.append(JoinAllianceSchemeAction(character, scheme.gameobject))
+            actions.append(JoinAllianceSchemeAction(character, scheme.entity))
 
         return actions
 
@@ -261,7 +263,7 @@ class JoinAllianceSchemeBehavior(AIBehavior):
 class JoinExistingAlliance(AIBehavior):
     """A family head will have their family join an existing alliance."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head will try to join an existing alliance.
 
         world = character.world
@@ -273,8 +275,8 @@ class JoinExistingAlliance(AIBehavior):
 
         actions: list[AIAction] = []
 
-        for _, (alliance, _) in world.get_components((Alliance, Active)):
-            actions.append(JoinExistingAllianceAction(character, alliance.gameobject))
+        for _, (alliance, _) in world.query_components((Alliance, Active)):
+            actions.append(JoinExistingAllianceAction(character, alliance.entity))
 
         return actions
 
@@ -282,7 +284,7 @@ class JoinExistingAlliance(AIBehavior):
 class DisbandAlliance(AIBehavior):
     """A family head will try to disband their current alliance."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head has the option to leave the current alliance, causing the
         # entire alliance to disband
 
@@ -293,7 +295,7 @@ class DisbandAlliance(AIBehavior):
             return []
 
         alliance_component = family_component.alliance.get_component(Alliance)
-        if alliance_component.founder_family == family_component.gameobject:
+        if alliance_component.founder_family == family_component.entity:
             return []
 
         else:
@@ -303,7 +305,7 @@ class DisbandAlliance(AIBehavior):
 class DeclareWarBehavior(AIBehavior):
     """A family head will declare war on another."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # The character will try to fight another family in a territory for control
         # over that territory. They will not declare war on a territory held by someone
         # in their alliance.
@@ -317,7 +319,7 @@ class DeclareWarBehavior(AIBehavior):
 
             if (
                 territory_component.controlling_family is None
-                or territory_component.controlling_family == family_component.gameobject
+                or territory_component.controlling_family == family_component.entity
             ):
                 continue
 
@@ -345,7 +347,7 @@ class DeclareWarBehavior(AIBehavior):
 class TaxTerritory(AIBehavior):
     """A family head will tax their controlling territory for influence points."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Choose the territory with the lowest political influence
         # and spend influence points to increase political power
         family_head_component = character.get_component(HeadOfFamily)
@@ -356,7 +358,7 @@ class TaxTerritory(AIBehavior):
 
             territory_component = territory.get_component(Territory)
 
-            if territory_component.controlling_family != family_component.gameobject:
+            if territory_component.controlling_family != family_component.entity:
                 continue
 
             action = TaxTerritoryAction(character, territory)
@@ -368,7 +370,7 @@ class TaxTerritory(AIBehavior):
 class PlanCoupBehavior(AIBehavior):
     """A family head will attempt to overthrow the royal family."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head will start a scheme to overthrow the royal family and other
         # characters can join. This is effectively the same as declaring war, but
         # alliances don't join and if discovered, all family heads involved are
@@ -387,21 +389,21 @@ class PlanCoupBehavior(AIBehavior):
 class JoinCoupSchemeBehavior(AIBehavior):
     """A family head joins someones coup scheme."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         world = character.world
 
         # Find all active alliances and join one based on the opinion of the character
         # toward the person who is the head of the founding family.
         actions: list[AIAction] = []
 
-        for _, (scheme, _, _) in world.get_components((Scheme, CoupScheme, Active)):
+        for _, (scheme, _, _) in world.query_components((Scheme, CoupScheme, Active)):
             if not scheme.is_valid:
                 continue
 
             if scheme.initiator == character or character in scheme.members:
                 continue
 
-            actions.append(JoinCoupSchemeAction(character, scheme.gameobject))
+            actions.append(JoinCoupSchemeAction(character, scheme.entity))
 
         return actions
 
@@ -409,13 +411,13 @@ class JoinCoupSchemeBehavior(AIBehavior):
 class ExpandPoliticalDomain(AIBehavior):
     """A family head expands the family's political influence to a new territory."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Loop through all territories that neighbor existing political territories
         # Consider all those where the family does not have an existing political
         # foothold
         character_brain = character.get_component(AIBrain)
         actions: list[AIAction] = []
-        unexpanded_territories: list[GameObject] = character_brain.context[
+        unexpanded_territories: list[Entity] = character_brain.context[
             "unexpanded_territories"
         ]
         for territory in unexpanded_territories:
@@ -428,7 +430,7 @@ class ExpandPoliticalDomain(AIBehavior):
 class SeizeControlOfTerritory(AIBehavior):
     """A family head takes control of an unclaimed territory."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Loop through all the territories where this character has political influence
         # For all those that that are unclaimed and the territory to a list of
         # potential territories to expand into.
@@ -450,7 +452,7 @@ class SeizeControlOfTerritory(AIBehavior):
 class CheatOnSpouseBehavior(AIBehavior):
     """."""
 
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         # Loop through the people that this character is attracted to and are adults
         world = character.world
 
@@ -484,7 +486,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             # Looking for heterosexual, bisexual, or asexual women
             eligible_accomplices = [
                 c
-                for _, (c, _) in world.get_components((Character, Active))
+                for _, (c, _) in world.query_components((Character, Active))
                 if c.spouse != character
                 and c.life_stage >= LifeStage.YOUNG_ADULT
                 and c.life_stage != LifeStage.SENIOR
@@ -494,13 +496,13 @@ class CheatOnSpouseBehavior(AIBehavior):
                     or c.sexual_orientation == SexualOrientation.BISEXUAL
                     or c.sexual_orientation == SexualOrientation.ASEXUAL
                 )
-                and c.gameobject not in character_component.siblings
-                and c.gameobject != character_component.mother
-                and c.gameobject != character_component.father
-                and c.gameobject != character_component.biological_father
-                and c.gameobject not in character_component.children
-                and c.gameobject not in character_component.grandchildren
-                and c.gameobject not in character_component.grandparents
+                and c.entity not in character_component.siblings
+                and c.entity != character_component.mother
+                and c.entity != character_component.father
+                and c.entity != character_component.biological_father
+                and c.entity not in character_component.children
+                and c.entity not in character_component.grandchildren
+                and c.entity not in character_component.grandparents
                 and len(c.grandparents.intersection(character_component.grandparents))
                 < 2
                 and c != character_component
@@ -513,7 +515,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             # Looking for heterosexual, bisexual, or asexual men
             eligible_accomplices = [
                 c
-                for _, (c, _) in world.get_components((Character, Active))
+                for _, (c, _) in world.query_components((Character, Active))
                 if c.spouse != character
                 and c.life_stage >= LifeStage.YOUNG_ADULT
                 and c.life_stage != LifeStage.SENIOR
@@ -523,13 +525,13 @@ class CheatOnSpouseBehavior(AIBehavior):
                     or c.sexual_orientation == SexualOrientation.BISEXUAL
                     or c.sexual_orientation == SexualOrientation.ASEXUAL
                 )
-                and c.gameobject not in character_component.siblings
-                and c.gameobject != character_component.mother
-                and c.gameobject != character_component.father
-                and c.gameobject != character_component.biological_father
-                and c.gameobject not in character_component.children
-                and c.gameobject not in character_component.grandchildren
-                and c.gameobject not in character_component.grandparents
+                and c.entity not in character_component.siblings
+                and c.entity != character_component.mother
+                and c.entity != character_component.father
+                and c.entity != character_component.biological_father
+                and c.entity not in character_component.children
+                and c.entity not in character_component.grandchildren
+                and c.entity not in character_component.grandparents
                 and len(c.grandparents.intersection(character_component.grandparents))
                 < 2
                 and c != character_component
@@ -542,7 +544,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             # Looking for homosexual, asexual, or bisexual men
             eligible_accomplices = [
                 c
-                for _, (c, _) in world.get_components((Character, Active))
+                for _, (c, _) in world.query_components((Character, Active))
                 if c.spouse != character_component
                 and c.life_stage >= LifeStage.YOUNG_ADULT
                 and c.life_stage != LifeStage.SENIOR
@@ -552,13 +554,13 @@ class CheatOnSpouseBehavior(AIBehavior):
                     or c.sexual_orientation == SexualOrientation.BISEXUAL
                     or c.sexual_orientation == SexualOrientation.ASEXUAL
                 )
-                and c.gameobject not in character_component.siblings
-                and c.gameobject != character_component.mother
-                and c.gameobject != character_component.father
-                and c.gameobject != character_component.biological_father
-                and c.gameobject not in character_component.children
-                and c.gameobject not in character_component.grandchildren
-                and c.gameobject not in character_component.grandparents
+                and c.entity not in character_component.siblings
+                and c.entity != character_component.mother
+                and c.entity != character_component.father
+                and c.entity != character_component.biological_father
+                and c.entity not in character_component.children
+                and c.entity not in character_component.grandchildren
+                and c.entity not in character_component.grandparents
                 and len(c.grandparents.intersection(character_component.grandparents))
                 < 2
                 and c != character_component
@@ -571,7 +573,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             # Looking for homosexual or bisexual women
             eligible_accomplices = [
                 c
-                for _, (c, _) in world.get_components((Character, Active))
+                for _, (c, _) in world.query_components((Character, Active))
                 if c.spouse != character_component
                 and c.life_stage >= LifeStage.YOUNG_ADULT
                 and c.life_stage != LifeStage.SENIOR
@@ -581,13 +583,13 @@ class CheatOnSpouseBehavior(AIBehavior):
                     or c.sexual_orientation == SexualOrientation.BISEXUAL
                     or c.sexual_orientation == SexualOrientation.ASEXUAL
                 )
-                and c.gameobject not in character_component.siblings
-                and c.gameobject != character_component.mother
-                and c.gameobject != character_component.father
-                and c.gameobject != character_component.biological_father
-                and c.gameobject not in character_component.children
-                and c.gameobject not in character_component.grandchildren
-                and c.gameobject not in character_component.grandparents
+                and c.entity not in character_component.siblings
+                and c.entity != character_component.mother
+                and c.entity != character_component.father
+                and c.entity != character_component.biological_father
+                and c.entity not in character_component.children
+                and c.entity not in character_component.grandchildren
+                and c.entity not in character_component.grandparents
                 and len(c.grandparents.intersection(character_component.grandparents))
                 < 2
                 and c != character_component
@@ -600,7 +602,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             # Looking for homosexual or bisexual men
             eligible_accomplices = [
                 c
-                for _, (c, _) in world.get_components((Character, Active))
+                for _, (c, _) in world.query_components((Character, Active))
                 if c.spouse != character
                 and c.life_stage >= LifeStage.YOUNG_ADULT
                 and c.life_stage != LifeStage.SENIOR
@@ -609,11 +611,11 @@ class CheatOnSpouseBehavior(AIBehavior):
                     c.sexual_orientation == SexualOrientation.HOMOSEXUAL
                     or c.sexual_orientation == SexualOrientation.BISEXUAL
                 )
-                and c.gameobject not in character_component.siblings
-                and c.gameobject != character_component.mother
-                and c.gameobject != character_component.father
-                and c.gameobject != character_component.biological_father
-                and c.gameobject not in character_component.children
+                and c.entity not in character_component.siblings
+                and c.entity != character_component.mother
+                and c.entity != character_component.father
+                and c.entity != character_component.biological_father
+                and c.entity not in character_component.children
                 and c != character_component
             ]
 
@@ -624,7 +626,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             # Looking for homosexual or bisexual women
             eligible_accomplices = [
                 c
-                for _, (c, _) in world.get_components((Character, Active))
+                for _, (c, _) in world.query_components((Character, Active))
                 if c.spouse != character
                 and c.life_stage >= LifeStage.YOUNG_ADULT
                 and c.life_stage != LifeStage.SENIOR
@@ -633,11 +635,11 @@ class CheatOnSpouseBehavior(AIBehavior):
                     c.sexual_orientation == SexualOrientation.HOMOSEXUAL
                     or c.sexual_orientation == SexualOrientation.BISEXUAL
                 )
-                and c.gameobject not in character_component.siblings
-                and c.gameobject != character_component.mother
-                and c.gameobject != character_component.father
-                and c.gameobject != character_component.biological_father
-                and c.gameobject not in character_component.children
+                and c.entity not in character_component.siblings
+                and c.entity != character_component.mother
+                and c.entity != character_component.father
+                and c.entity != character_component.biological_father
+                and c.entity not in character_component.children
                 and c != character_component
             ]
 
@@ -648,7 +650,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             # Looking for anyone asexual
             eligible_accomplices = [
                 c
-                for _, (c, _) in world.get_components((Character, Active))
+                for _, (c, _) in world.query_components((Character, Active))
                 if c.spouse != character
                 and c.life_stage >= LifeStage.YOUNG_ADULT
                 and c.life_stage != LifeStage.SENIOR
@@ -656,11 +658,11 @@ class CheatOnSpouseBehavior(AIBehavior):
                     c.sexual_orientation == SexualOrientation.ASEXUAL
                     or c.sexual_orientation == SexualOrientation.BISEXUAL
                 )
-                and c.gameobject not in character_component.siblings
-                and c.gameobject != character_component.mother
-                and c.gameobject != character_component.father
-                and c.gameobject != character_component.biological_father
-                and c.gameobject not in character_component.children
+                and c.entity not in character_component.siblings
+                and c.entity != character_component.mother
+                and c.entity != character_component.father
+                and c.entity != character_component.biological_father
+                and c.entity not in character_component.children
                 and c != character_component
             ]
 
@@ -677,7 +679,7 @@ class CheatOnSpouseBehavior(AIBehavior):
 
             if c_family_component.home_base == family_home_base:
                 attraction = (
-                    get_relationship(character, c.gameobject)
+                    get_relationship(character, c.entity)
                     .get_component(Attraction)
                     .value
                 )
@@ -689,7 +691,7 @@ class CheatOnSpouseBehavior(AIBehavior):
             actions: list[AIAction] = []
 
             for accomplice, _ in accomplices_in_territory[:3]:
-                actions.append(TryCheatOnSpouseAction(character, accomplice.gameobject))
+                actions.append(TryCheatOnSpouseAction(character, accomplice.entity))
 
             return actions
 

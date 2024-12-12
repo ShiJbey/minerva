@@ -35,11 +35,9 @@ def test_sim() -> Simulation:
 
 def test_start_alliance(test_sim: Simulation):
     """Test starting new alliances."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     character_0 = character_factory.generate_character(test_sim.world)
     character_1 = character_factory.generate_character(test_sim.world)
@@ -66,13 +64,11 @@ def test_start_alliance(test_sim: Simulation):
 
 def test_end_alliance(test_sim: Simulation):
     """Test terminating an existing alliance."""
-    character_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).character_factory
+    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     character_0 = character_factory.generate_character(test_sim.world)
     character_1 = character_factory.generate_character(test_sim.world)
@@ -89,7 +85,7 @@ def test_end_alliance(test_sim: Simulation):
     alliance = start_alliance(family_0, family_1)
     alliance_component = alliance.get_component(Alliance)
 
-    test_sim.world.resources.add_resource(SimDate(10, 1))
+    test_sim.world.add_resource(SimDate(10, 1))
 
     end_alliance(alliance)
 
@@ -109,13 +105,11 @@ def test_end_alliance(test_sim: Simulation):
 
 def test_start_war(test_sim: Simulation):
     """Test starting a war."""
-    territory_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).territory_factory
+    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     family_0 = family_factory.generate_family(test_sim.world)
     family_1 = family_factory.generate_family(test_sim.world)
@@ -136,13 +130,11 @@ def test_start_war(test_sim: Simulation):
 
 def test_end_war(test_sim: Simulation):
     """Test ending a war."""
-    territory_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).territory_factory
+    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     family_0 = family_factory.generate_family(test_sim.world)
     family_1 = family_factory.generate_family(test_sim.world)
@@ -156,7 +148,7 @@ def test_end_war(test_sim: Simulation):
     join_war_as(war, family_2, WarRole.AGGRESSOR_ALLY)
     join_war_as(war, family_3, WarRole.DEFENDER_ALLY)
 
-    test_sim.world.resources.get_resource(SimDate).increment(years=3)
+    test_sim.world.get_resource(SimDate).increment(years=3)
 
     end_war(war, family_1)
 
@@ -174,13 +166,11 @@ def test_end_war(test_sim: Simulation):
 
 def test_join_war_as(test_sim: Simulation):
     """Test character's joining a war on a specific side."""
-    territory_factory = test_sim.world.resources.get_resource(
-        PCGFactories
-    ).territory_factory
+    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
 
-    family_factory = test_sim.world.resources.get_resource(PCGFactories).family_factory
+    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
-    db = test_sim.world.resources.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).db
 
     family_0 = family_factory.generate_family(test_sim.world)
     family_1 = family_factory.generate_family(test_sim.world)

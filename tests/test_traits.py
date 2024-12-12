@@ -4,7 +4,7 @@
 import pytest
 
 from minerva.characters.components import Sociability
-from minerva.ecs import GameObject, World
+from minerva.ecs import Entity, World
 from minerva.relationships.base_types import (
     Attraction,
     RelationshipManager,
@@ -13,6 +13,8 @@ from minerva.relationships.base_types import (
 )
 from minerva.relationships.helpers import add_relationship
 from minerva.relationships.preconditions import ConstantPrecondition
+from minerva.sim_db import SimDB
+from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import (
     StatComponent,
     StatModifier,
@@ -48,9 +50,11 @@ def world() -> World:
     """Create test world."""
 
     w = World()
-    w.resources.add_resource(SocialRuleLibrary())
-    w.resources.add_resource(TraitLibrary())
-    w.resources.get_resource(TraitLibrary).add_trait(
+    w.add_resource(SimDB())
+    w.add_resource(SimulationEvents())
+    w.add_resource(SocialRuleLibrary())
+    w.add_resource(TraitLibrary())
+    w.get_resource(TraitLibrary).add_trait(
         Trait(
             trait_id="flirtatious",
             name="Flirtatious",
@@ -66,7 +70,7 @@ def world() -> World:
             ],
         )
     )
-    w.resources.get_resource(TraitLibrary).add_trait(
+    w.get_resource(TraitLibrary).add_trait(
         Trait(
             trait_id="charming",
             name="Charming",
@@ -80,7 +84,7 @@ def world() -> World:
             ],
         )
     )
-    w.resources.get_resource(TraitLibrary).add_trait(
+    w.get_resource(TraitLibrary).add_trait(
         Trait(
             trait_id="gullible",
             name="Gullible",
@@ -90,7 +94,7 @@ def world() -> World:
             conflicting_traits=["skeptical"],
         )
     )
-    w.resources.get_resource(TraitLibrary).add_trait(
+    w.get_resource(TraitLibrary).add_trait(
         Trait(
             trait_id="skeptical",
             name="Skeptical",
@@ -104,10 +108,10 @@ def world() -> World:
     return w
 
 
-def create_test_character(world: World) -> GameObject:
+def create_test_character(world: World) -> Entity:
     """Creates a simplified character for testing."""
 
-    return world.gameobjects.spawn_gameobject(
+    return world.entity(
         components=[
             RelationshipManager(),
             StatusEffectManager(),

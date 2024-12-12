@@ -21,7 +21,7 @@ from minerva.characters.components import (
     Stewardship,
     Vengefulness,
 )
-from minerva.ecs import GameObject
+from minerva.ecs import Entity
 from minerva.relationships.base_types import RelationshipManager, RelationshipModifier
 from minerva.stats.base_types import StatModifier
 from minerva.traits.base_types import TraitEffect
@@ -38,10 +38,10 @@ class AddLifespanModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Lifespan).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Lifespan).remove_modifier(self.modifier)
 
 
@@ -56,10 +56,10 @@ class AddFertilityModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Fertility).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Fertility).remove_modifier(self.modifier)
 
 
@@ -74,10 +74,10 @@ class AddStewardshipModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Stewardship).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Stewardship).remove_modifier(self.modifier)
 
 
@@ -92,10 +92,10 @@ class AddMartialModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Martial).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Martial).remove_modifier(self.modifier)
 
 
@@ -110,10 +110,10 @@ class AddIntrigueModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Intrigue).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Intrigue).remove_modifier(self.modifier)
 
 
@@ -128,10 +128,10 @@ class AddIntelligenceModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Intelligence).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Intelligence).remove_modifier(self.modifier)
 
 
@@ -146,10 +146,10 @@ class AddProwessModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Prowess).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Prowess).remove_modifier(self.modifier)
 
 
@@ -164,10 +164,10 @@ class AddSociabilityModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Sociability).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Sociability).remove_modifier(self.modifier)
 
 
@@ -182,10 +182,10 @@ class AddHonorModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Honor).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Honor).remove_modifier(self.modifier)
 
 
@@ -200,10 +200,10 @@ class AddBoldnessModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Boldness).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Boldness).remove_modifier(self.modifier)
 
 
@@ -218,10 +218,10 @@ class AddCompassionModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Compassion).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Compassion).remove_modifier(self.modifier)
 
 
@@ -236,10 +236,10 @@ class AddDiplomacyModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Diplomacy).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Diplomacy).remove_modifier(self.modifier)
 
 
@@ -254,10 +254,10 @@ class AddGreedModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Greed).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Greed).remove_modifier(self.modifier)
 
 
@@ -272,10 +272,10 @@ class AddRationalityModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Rationality).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Rationality).remove_modifier(self.modifier)
 
 
@@ -290,10 +290,10 @@ class AddVengefulnessModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Vengefulness).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Vengefulness).remove_modifier(self.modifier)
 
 
@@ -308,10 +308,10 @@ class AddRomancePropensityModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(RomancePropensity).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(RomancePropensity).remove_modifier(self.modifier)
 
 
@@ -326,10 +326,10 @@ class AddLuckModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         target.get_component(Luck).add_modifier(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         target.get_component(Luck).remove_modifier(self.modifier)
 
 
@@ -344,11 +344,11 @@ class AddIncomingRelationshipModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         relationship_manager = target.get_component(RelationshipManager)
         relationship_manager.incoming_modifiers.append(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         relationship_manager = target.get_component(RelationshipManager)
         relationship_manager.incoming_modifiers.remove(self.modifier)
 
@@ -364,10 +364,10 @@ class AddOutgoingRelationshipModifier(TraitEffect):
         super().__init__()
         self.modifier = modifier
 
-    def apply(self, target: GameObject) -> None:
+    def apply(self, target: Entity) -> None:
         relationship_manager = target.get_component(RelationshipManager)
         relationship_manager.outgoing_modifiers.append(self.modifier)
 
-    def remove(self, target: GameObject) -> None:
+    def remove(self, target: Entity) -> None:
         relationship_manager = target.get_component(RelationshipManager)
         relationship_manager.outgoing_modifiers.remove(self.modifier)

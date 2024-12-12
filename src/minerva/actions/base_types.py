@@ -16,7 +16,7 @@ from typing import Any, DefaultDict, Iterable, Iterator, Literal, Optional, Type
 from ordered_set import OrderedSet
 
 from minerva.datetime import SimDate
-from minerva.ecs import Component, GameObject, World
+from minerva.ecs import Component, Entity, World
 
 
 class ActionSelectionStrategy(ABC):
@@ -77,7 +77,7 @@ class AIContext:
     """A key-value store of variables used for decision-making."""
     world: World
     """The simulation's World instance."""
-    character: GameObject
+    character: Entity
     """The character this context is in reference to."""
     sensors: list[AISensor]
     """Sensors used to fill the blackboard with information about the world/action."""
@@ -87,7 +87,7 @@ class AIContext:
     def __init__(
         self,
         world: World,
-        character: GameObject,
+        character: Entity,
         sensors: list[AISensor],
         *,
         parent: Optional[AIContext] = None,
@@ -358,16 +358,16 @@ class AIAction(ABC):
 
     __slots__ = ("performer", "context", "action_type", "world")
 
-    performer: GameObject
+    performer: Entity
     context: AIContext
     action_type: AIActionType
     world: World
 
-    def __init__(self, performer: GameObject, action_type: str) -> None:
+    def __init__(self, performer: Entity, action_type: str) -> None:
         super().__init__()
         self.performer = performer
         self.context = performer.get_component(AIBrain).context.create_child()
-        self.action_type = performer.world.resources.get_resource(
+        self.action_type = performer.world.get_resource(
             AIActionLibrary
         ).get_action_with_name(action_type)
         self.context["performer"] = performer
@@ -385,7 +385,7 @@ class AIAction(ABC):
         """Get the amount of time between repeat uses of this action type."""
         return self.action_type.cooldown
 
-    def get_performer(self) -> GameObject:
+    def get_performer(self) -> Entity:
         """Get the character performing the action."""
         return self.performer
 
@@ -447,13 +447,13 @@ class AIBehavior(ABC):
         """Get the name of the behavior."""
         return self.name
 
-    def passes_preconditions(self, gameobject: GameObject) -> bool:
+    def passes_preconditions(self, gameobject: Entity) -> bool:
         """Check if the given character passes all the preconditions."""
         context = gameobject.get_component(AIBrain).context.create_child()
         return self.precondition.evaluate(context)
 
     @abstractmethod
-    def get_actions(self, character: GameObject) -> list[AIAction]:
+    def get_actions(self, character: Entity) -> list[AIAction]:
         """Get valid actions for performing this behavior."""
         raise NotImplementedError
 
@@ -512,9 +512,9 @@ class Scheme(Component):
     """The name of this scheme type."""
     start_date: SimDate
     """The date the scheme was started."""
-    initiator: GameObject
+    initiator: Entity
     """The character that initiated the scheme."""
-    members: OrderedSet[GameObject]
+    members: OrderedSet[Entity]
     """All characters involved in planning the scheme."""
     data: SchemeData
     """Context-specific data about this scheme."""
@@ -526,7 +526,7 @@ class Scheme(Component):
         scheme_type: str,
         required_time: int,
         date_started: SimDate,
-        initiator: GameObject,
+        initiator: Entity,
         data: SchemeData,
     ) -> None:
         super().__init__()
@@ -558,9 +558,9 @@ class SchemeManager(Component):
         "schemes",
     )
 
-    initiated_schemes: list[GameObject]
+    initiated_schemes: list[Entity]
     """All active schemes that a character initiated."""
-    schemes: list[GameObject]
+    schemes: list[Entity]
     """All active schemes that a character is part of (including those initiated)."""
 
     def __init__(self) -> None:
@@ -568,22 +568,22 @@ class SchemeManager(Component):
         self.initiated_schemes = []
         self.schemes = []
 
-    def add_scheme(self, scheme: GameObject) -> None:
+    def add_scheme(self, scheme: Entity) -> None:
         """Add a scheme to the manager."""
         self.schemes.append(scheme)
-        if scheme.get_component(Scheme).initiator == self.gameobject:
+        if scheme.get_component(Scheme).initiator == self.entity:
             self.initiated_schemes.append(scheme)
 
-    def remove_scheme(self, scheme: GameObject) -> None:
+    def remove_scheme(self, scheme: Entity) -> None:
         """Remove a scheme from the manager."""
         self.schemes.remove(scheme)
-        if scheme.get_component(Scheme).initiator == self.gameobject:
+        if scheme.get_component(Scheme).initiator == self.entity:
             self.initiated_schemes.remove(scheme)
 
-    def get_initiated_schemes(self) -> Iterable[GameObject]:
+    def get_initiated_schemes(self) -> Iterable[Entity]:
         """Get all schemes initiated by this character."""
         return self.initiated_schemes
 
-    def get_schemes(self) -> Iterable[GameObject]:
+    def get_schemes(self) -> Iterable[Entity]:
         """Get all the schemes the character is a member of."""
         return self.schemes
