@@ -460,7 +460,7 @@ def spawn_baby_from(
     mother: Entity, father: Entity, options: Optional[CharacterGenOptions] = None
 ) -> Entity:
     """Spawn a new baby given two parents."""
-    return mother.world.get_resource(BabyFactory).generate_child(
+    return mother.world.get_resource(PCGFactories).baby_factory.generate_child(
         mother, father, options if options else CharacterGenOptions()
     )
 
