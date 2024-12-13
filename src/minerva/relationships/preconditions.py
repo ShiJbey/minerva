@@ -43,7 +43,7 @@ class ConstantPrecondition(RelationshipPrecondition):
 
 
 class RelationshipHasTrait(RelationshipPrecondition):
-    """A RelationshipPrecondition that check if a GameObject has a given trait."""
+    """A RelationshipPrecondition that check if an entity has a given trait."""
 
     __slots__ = ("trait",)
 

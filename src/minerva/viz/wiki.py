@@ -129,21 +129,21 @@ class FamilyPageGenerator(WikiPageGenerator):
         return content
 
 
-class GameObjectPageGenerator(WikiPageGenerator):
+class EntityPageGenerator(WikiPageGenerator):
     """Generates the family list page for the wiki window."""
 
     def generate_page(self, sim: Simulation, **kwargs: Any) -> str:
         uid = int(kwargs["uid"][0])
-        gameobject = sim.world.get_entity(uid)
+        entity = sim.world.get_entity(uid)
 
-        if gameobject.has_component(Territory):
-            content = TerritoryPageGenerator().generate_page(sim, territory=gameobject)
-        elif gameobject.has_component(Character):
-            content = CharacterPageGenerator().generate_page(sim, character=gameobject)
-        elif gameobject.has_component(Family):
-            content = FamilyPageGenerator().generate_page(sim, family=gameobject)
+        if entity.has_component(Territory):
+            content = TerritoryPageGenerator().generate_page(sim, territory=entity)
+        elif entity.has_component(Character):
+            content = CharacterPageGenerator().generate_page(sim, character=entity)
+        elif entity.has_component(Family):
+            content = FamilyPageGenerator().generate_page(sim, family=entity)
         else:
-            content = f'<font size="6"><b>{gameobject.name} ({uid})</b></font>'
+            content = f'<font size="6"><b>{entity.name} ({uid})</b></font>'
 
         content = content.replace("\n", "")
         return content
@@ -154,7 +154,7 @@ _page_generators: dict[str, WikiPageGenerator] = {
     "/character_list": CharacterListPageGenerator(),
     "/territory_list": TerritoryListPageGenerator(),
     "/family_list": FamilyListPageGenerator(),
-    "/gameobject": GameObjectPageGenerator(),
+    "/entity": EntityPageGenerator(),
 }
 
 

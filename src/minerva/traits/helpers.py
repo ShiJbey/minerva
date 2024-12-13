@@ -7,13 +7,13 @@ from minerva.sim_db import SimDB
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
 
 
-def add_trait(gameobject: Entity, trait_id: str) -> bool:
-    """Add a trait to a GameObject.
+def add_trait(entity: Entity, trait_id: str) -> bool:
+    """Add a trait to an entity.
 
     Parameters
     ----------
-    gameobject
-        The gameobject to add the trait to.
+    entity
+        The entity to add the trait to.
     trait_id
         The trait.
 
@@ -24,27 +24,27 @@ def add_trait(gameobject: Entity, trait_id: str) -> bool:
         if the trait conflict with existing traits.
     """
 
-    library = gameobject.world.get_resource(TraitLibrary)
+    library = entity.world.get_resource(TraitLibrary)
     trait = library.get_trait(trait_id)
 
-    traits = gameobject.get_component(TraitManager)
+    traits = entity.get_component(TraitManager)
 
     if trait_id in traits.traits:
         return False
 
-    if has_conflicting_trait(gameobject, trait):
+    if has_conflicting_trait(entity, trait):
         return False
 
     traits.traits[trait.trait_id] = trait
 
     for effect in trait.effects:
-        effect.apply(gameobject)
+        effect.apply(entity)
 
-    db = gameobject.world.get_resource(SimDB).db
+    db = entity.world.get_resource(SimDB).db
 
     db.execute(
         """INSERT INTO character_traits (character_id, trait_id) VALUES (?, ?);""",
-        (gameobject.uid, trait.trait_id),
+        (entity.uid, trait.trait_id),
     )
 
     db.commit()
@@ -52,13 +52,13 @@ def add_trait(gameobject: Entity, trait_id: str) -> bool:
     return True
 
 
-def remove_trait(gameobject: Entity, trait_id: str) -> bool:
-    """Remove a trait from a GameObject.
+def remove_trait(entity: Entity, trait_id: str) -> bool:
+    """Remove a trait from an entity.
 
     Parameters
     ----------
-    gameobject
-        The gameobject to remove the trait from.
+    entity
+        The entity to remove the trait from.
     trait_id
         The trait.
 
@@ -68,22 +68,22 @@ def remove_trait(gameobject: Entity, trait_id: str) -> bool:
         True if the trait was removed successfully, False otherwise.
     """
 
-    library = gameobject.world.get_resource(TraitLibrary)
+    library = entity.world.get_resource(TraitLibrary)
     trait = library.get_trait(trait_id)
 
-    traits = gameobject.get_component(TraitManager)
+    traits = entity.get_component(TraitManager)
 
     if trait_id in traits.traits:
         del traits.traits[trait.trait_id]
 
         for effect in trait.effects:
-            effect.remove(gameobject)
+            effect.remove(entity)
 
-        db = gameobject.world.get_resource(SimDB).db
+        db = entity.world.get_resource(SimDB).db
 
         db.execute(
             """DELETE FROM character_traits WHERE character_id=? AND trait_id=?;""",
-            (gameobject.uid, trait.trait_id),
+            (entity.uid, trait.trait_id),
         )
 
         db.commit()
@@ -93,12 +93,12 @@ def remove_trait(gameobject: Entity, trait_id: str) -> bool:
     return False
 
 
-def has_conflicting_trait(gameobject: Entity, trait: Trait) -> bool:
+def has_conflicting_trait(entity: Entity, trait: Trait) -> bool:
     """Check if a trait conflicts with current traits.
 
     Parameters
     ----------
-    gameobject
+    entity
         The object to check.
     trait
         The trait to check.
@@ -109,7 +109,7 @@ def has_conflicting_trait(gameobject: Entity, trait: Trait) -> bool:
         True if the trait conflicts with any of the current traits or if any current
         traits conflict with the given trait. False otherwise.
     """
-    traits = gameobject.get_component(TraitManager)
+    traits = entity.get_component(TraitManager)
 
     for existing_trait in traits.traits.values():
         if existing_trait.trait_id in trait.conflicting_traits:
@@ -121,13 +121,13 @@ def has_conflicting_trait(gameobject: Entity, trait: Trait) -> bool:
     return False
 
 
-def has_trait(gameobject: Entity, trait_id: str) -> bool:
-    """Check if a GameObject has a given trait.
+def has_trait(entity: Entity, trait_id: str) -> bool:
+    """Check if an entity has a given trait.
 
     Parameters
     ----------
-    gameobject
-        The gameobject to check.
+    entity
+        The entity to check.
     trait_id
         The trait.
 
@@ -137,14 +137,14 @@ def has_trait(gameobject: Entity, trait_id: str) -> bool:
         True if the trait was removed successfully, False otherwise.
     """
 
-    return trait_id in gameobject.get_component(TraitManager).traits
+    return trait_id in entity.get_component(TraitManager).traits
 
 
-def get_personality_traits(gameobject: Entity) -> list[Trait]:
+def get_personality_traits(entity: Entity) -> list[Trait]:
     """Get all a character's personality traits."""
     personality_traits: list[Trait] = []
 
-    trait_manager = gameobject.get_component(TraitManager)
+    trait_manager = entity.get_component(TraitManager)
 
     for trait in trait_manager.traits.values():
         if "personality" in trait.tags:

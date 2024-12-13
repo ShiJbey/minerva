@@ -141,17 +141,17 @@ class TickStatusEffectSystem(System):
         for uid, (status_effect_manager, _) in world.query_components(
             (StatusEffectManager, Active)
         ):
-            gameobject = world.get_entity(uid)
+            entity = world.get_entity(uid)
             effects_to_remove: list[StatusEffect] = []
 
             for status_effect in status_effect_manager.status_effects:
                 if status_effect.is_expired():
                     effects_to_remove.append(status_effect)
                 else:
-                    status_effect.update(gameobject)
+                    status_effect.update(entity)
 
             for status_effect in effects_to_remove:
-                remove_status_effect(gameobject, status_effect)
+                remove_status_effect(entity, status_effect)
 
 
 class CharacterAgingSystem(System):

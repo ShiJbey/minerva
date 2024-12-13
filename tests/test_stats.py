@@ -35,7 +35,7 @@ from minerva.systems import TickStatusEffectSystem
 
 
 class Hunger(StatComponent):
-    """Tracks a GameObject's hunger."""
+    """Tracks an entity's hunger."""
 
     MAX_VALUE: int = 1000
 
@@ -142,7 +142,7 @@ def test_stat_change_listener() -> None:
     """Test stat get stat when changing base_value."""
     world = World()
 
-    def hunger_listener(gameobject: Entity, stat: StatComponent) -> None:
+    def hunger_listener(entity: Entity, stat: StatComponent) -> None:
         hunger_intervals = [
             (200, "STARVING"),
             (100, "FAMISHED"),
@@ -152,7 +152,7 @@ def test_stat_change_listener() -> None:
 
         for level, label in hunger_intervals:
             if stat.value >= level:
-                gameobject.get_component(HungerState).state = label
+                entity.get_component(HungerState).state = label
                 return
 
     character = world.entity(
@@ -478,9 +478,9 @@ def test_social_rules() -> None:
 def test_relationship_stat_listener() -> None:
     """Test attaching listeners to relationship stats."""
 
-    def opinion_listener(gameobject: Entity, stat: StatComponent) -> None:
-        if not gameobject.has_component(_OpinionState):
-            gameobject.add_component(_OpinionState())
+    def opinion_listener(entity: Entity, stat: StatComponent) -> None:
+        if not entity.has_component(_OpinionState):
+            entity.add_component(_OpinionState())
 
         opinion_intervals = [
             (-75, _OpinionStateValue.TERRIBLE),
@@ -492,7 +492,7 @@ def test_relationship_stat_listener() -> None:
 
         for level, label in opinion_intervals:
             if stat.value <= level:
-                gameobject.get_component(_OpinionState).value = label
+                entity.get_component(_OpinionState).value = label
                 return
 
     world = World()

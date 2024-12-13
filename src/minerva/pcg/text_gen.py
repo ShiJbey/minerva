@@ -80,8 +80,8 @@ class TraceryNameFactory(NameFactory):
         super().__init__()
         self.pattern = pattern
 
-    def generate_name(self, gameobject: Entity) -> str:
-        world = gameobject.world
+    def generate_name(self, entity: Entity) -> str:
+        world = entity.world
         tracery_instance = world.get_resource(Tracery)
         return tracery_instance.generate(self.pattern)
 

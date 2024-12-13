@@ -1,7 +1,7 @@
 """Relationship System Components.
 
 The relationship system tracks feelings of one character toward another character.
-Relationships are represented as independent GameObjects. Together they form a directed
+Relationships are represented as independent entities. Together they form a directed
 graph.
 
 """
@@ -20,7 +20,7 @@ from minerva.stats.base_types import (
 
 
 class Relationship(Component):
-    """Tags a GameObject as a relationship and tracks the owner and target."""
+    """Tags an entity as a relationship and tracks the owner and target."""
 
     __slots__ = "_target", "_owner"
 
@@ -59,7 +59,7 @@ class Relationship(Component):
 
 
 class RelationshipManager(Component):
-    """Tracks all relationships associated with a GameObject."""
+    """Tracks all relationships associated with an entity."""
 
     __slots__ = (
         "incoming_relationships",
@@ -69,9 +69,9 @@ class RelationshipManager(Component):
     )
 
     incoming_relationships: dict[Entity, Entity]
-    """Relationship owners mapped to the Relationship GameObjects."""
+    """Relationship owners mapped to the Relationship entities."""
     outgoing_relationships: dict[Entity, Entity]
-    """Relationship targets mapped to the Relationship GameObjects."""
+    """Relationship targets mapped to the Relationship entities."""
     incoming_modifiers: list[RelationshipModifier]
     """Modifiers for incoming relationships."""
     outgoing_modifiers: list[RelationshipModifier]
@@ -110,7 +110,7 @@ class Attraction(StatComponent):
 
 
 class RelationshipModifier:
-    """Conditionally modifies a GameObject's relationships."""
+    """Conditionally modifies an entity's relationships."""
 
     __slots__ = (
         "precondition",
@@ -119,7 +119,7 @@ class RelationshipModifier:
     )
 
     precondition: RelationshipPrecondition
-    """Precondition to evaluate against a relationship GameObject."""
+    """Precondition to evaluate against a relationship entity."""
     attraction_modifier: Optional[StatModifier]
     """A modifier applied to the a stat."""
     opinion_modifier: Optional[StatModifier]

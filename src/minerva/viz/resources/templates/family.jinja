@@ -1,8 +1,8 @@
-<font size="6"><b>{{family.name}} ({{family.gameobject.uid}})</b></font><br>
+<font size="6"><b>{{family.name}} ({{family.entity.uid}})</b></font><br>
 <br>
 <font size="4"><b>Family Head: </b></font>
 {% if family.head is not none %}
-<a href="/gameobject?uid={{family.head.uid}}">{{family.head.name}} ({{family.head.uid}})</a>
+<a href="/entity?uid={{family.head.uid}}">{{family.head.name}} ({{family.head.uid}})</a>
 {% else %}
 N/A
 {% endif %}
@@ -10,15 +10,15 @@ N/A
 <br>
 <font size="4"><b>Home Base: </b></font>
 {% if family.home_base is not none %}
-<a href="/gameobject?uid={{family.home_base.uid}}">{{family.home_base.name}} ({{family.home_base.uid}})</a>
+<a href="/entity?uid={{family.home_base.uid}}">{{family.home_base.name}} ({{family.home_base.uid}})</a>
 {% else %}
 N/A<br>
 {% endif %}
 <br>
 <font size="4"><b>Members:<b></font><br>
-{% if family.members %}
-{% for character in family.members%}
-- <a href="/gameobject?uid={{character.uid}}">{{character.name}} ({{character.uid}})</a><br>
+{% if family.active_members %}
+{% for character in family.active_members%}
+- <a href="/entity?uid={{character.uid}}">{{character.name}} ({{character.uid}})</a><br>
 {% endfor %}
 {% else %}
 N/A<br>

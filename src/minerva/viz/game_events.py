@@ -6,4 +6,4 @@ simulation_started = EventEmitter[None]()
 
 simulation_paused = EventEmitter[None]()
 
-gameobject_wiki_shown = EventEmitter[int]()
+event_wiki_shown = EventEmitter[int]()

@@ -249,12 +249,12 @@ def generate_world_map(world: World) -> None:
     world_map.territories = []
     world_map.borders = territory_generator.borders.copy()
 
-    territory_id_to_gameobject: dict[int, Entity] = {}
+    territory_id_to_entity: dict[int, Entity] = {}
     territories: dict[int, Entity] = {}
 
     for territory_info in territory_generator.territories:
         territory = spawn_territory(world)
-        territory_id_to_gameobject[territory_info.uid] = territory
+        territory_id_to_entity[territory_info.uid] = territory
         territories[territory_info.uid] = territory
         world_map.territories.append(territory)
 
@@ -268,7 +268,7 @@ def generate_world_map(world: World) -> None:
 
     # Generate a the neighbor links
     for territory_info in territory_generator.territories:
-        territory = territory_id_to_gameobject[territory_info.uid]
+        territory = territory_id_to_entity[territory_info.uid]
         territory_component = territory.get_component(Territory)
         for neighbor in territory_info.neighbors:
-            territory_component.neighbors.append(territory_id_to_gameobject[neighbor])
+            territory_component.neighbors.append(territory_id_to_entity[neighbor])

@@ -1,0 +1,22 @@
+<font size="6"><b>{{territory.entity.name}} ({{territory.entity.uid}})</b></font>
+<br>
+<font size="4"><b>Controlling Family: </b></font>
+{% if territory.controlling_family is not none %}
+<a href="/entity?uid={{territory.controlling_family.uid}}">{{territory.controlling_family.name}} ({{territory.controlling_family.uid}})</a>
+{% else %}
+N/A
+{% endif %}
+<br>
+<br>
+<font size="4"><b>Happiness Level: </b></font> {{happiness}}/100<br>
+<br>
+<font size="4"><b>Families:<b></font>
+<br>
+{% if territory.families %}
+{% for family in territory.families%}
+- <a href="/entity?uid={{family.uid}}">{{family.name}} ({{family.uid}})</a><br>
+{% endfor %}
+{% else %}
+N/A<br>
+{% endif %}
+<br>

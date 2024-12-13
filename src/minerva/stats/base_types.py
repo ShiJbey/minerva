@@ -233,7 +233,7 @@ class StatusEffect(ABC):
 
 
 class StatusEffectManager(Component):
-    """Manages all status effects attached to a GameObject."""
+    """Manages all status effects attached to an entity."""
 
     __slots__ = ("status_effects",)
 

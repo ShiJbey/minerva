@@ -100,34 +100,33 @@ class SimulationInspector:
 
         console.print(panel)
 
-    def inspect(self, gameobject_id: int) -> None:
-        """Print information about a GameObject."""
+    def inspect(self, entity_id: int) -> None:
+        """Print information about an entity."""
 
-        if self.sim.world.entity_exists(gameobject_id):
-            gameobject = self.sim.world.get_entity(gameobject_id)
+        if self.sim.world.entity_exists(entity_id):
+            entity = self.sim.world.get_entity(entity_id)
 
-            if gameobject.has_component(Character):
-                self.inspect_character(gameobject_id)
-            elif gameobject.has_component(Family):
-                self.inspect_family(gameobject_id)
-            elif gameobject.has_component(Territory):
-                self.inspect_territory(gameobject_id)
-            elif gameobject.has_component(Dynasty):
-                self.inspect_dynasty(gameobject_id)
-            elif gameobject.has_component(War):
-                self.inspect_war(gameobject_id)
-            elif gameobject.has_component(Alliance):
-                self.inspect_alliance(gameobject_id)
+            if entity.has_component(Character):
+                self.inspect_character(entity_id)
+            elif entity.has_component(Family):
+                self.inspect_family(entity_id)
+            elif entity.has_component(Territory):
+                self.inspect_territory(entity_id)
+            elif entity.has_component(Dynasty):
+                self.inspect_dynasty(entity_id)
+            elif entity.has_component(War):
+                self.inspect_war(entity_id)
+            elif entity.has_component(Alliance):
+                self.inspect_alliance(entity_id)
             else:
                 console = rich.console.Console()
-                console.print(rich.markdown.Markdown(f"# {gameobject.name_with_uid}"))
-                rich.inspect(gameobject)
+                console.print(rich.markdown.Markdown(f"# {entity.name_with_uid}"))
+                rich.inspect(entity)
 
         else:
             console = rich.console.Console()
             console.print(
-                "[red bold]Error:[/red bold] No GameObject found with id: "
-                f"{gameobject_id}."
+                "[red bold]Error:[/red bold] No entity found with id: " f"{entity_id}."
             )
 
     def inspect_war(self, war_id: int) -> None:

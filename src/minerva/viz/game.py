@@ -15,7 +15,7 @@ from minerva.simulation import Simulation
 from minerva.simulation_events import SimulationEvents
 from minerva.viz.camera import Camera
 from minerva.viz.constants import TILE_SIZE
-from minerva.viz.game_events import gameobject_wiki_shown
+from minerva.viz.game_events import event_wiki_shown
 from minerva.viz.tile_sprites import (
     BorderSprite,
     CastleSprite,
@@ -116,7 +116,7 @@ class Game:
 
     def register_game_event_listeners(self):
         """Register callbacks for game events."""
-        gameobject_wiki_shown.add_listener(self._on_show_gameobject_wiki)
+        event_wiki_shown.add_listener(self._on_show_wiki)
 
     def register_simulation_event_listeners(self):
         """Register callbacks for simulation events."""
@@ -360,9 +360,9 @@ class Game:
                         sprite.on_click()
                         break
 
-    def _on_show_gameobject_wiki(self, uid: int):
+    def _on_show_wiki(self, uid: int):
 
         if not self.wiki_window.alive():
             self.wiki_window = WikiWindow(manager=self.ui_manager, sim=self.simulation)
 
-        self.wiki_window.go_to_page(f"/gameobject?uid={uid}")
+        self.wiki_window.go_to_page(f"/entity?uid={uid}")

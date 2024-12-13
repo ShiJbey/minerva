@@ -447,9 +447,9 @@ class AIBehavior(ABC):
         """Get the name of the behavior."""
         return self.name
 
-    def passes_preconditions(self, gameobject: Entity) -> bool:
+    def passes_preconditions(self, entity: Entity) -> bool:
         """Check if the given character passes all the preconditions."""
-        context = gameobject.get_component(AIBrain).context.create_child()
+        context = entity.get_component(AIBrain).context.create_child()
         return self.precondition.evaluate(context)
 
     @abstractmethod

@@ -329,9 +329,6 @@ class DeclareWarBehavior(AIBehavior):
 
             if enemy_family_component.head is None:
                 continue
-                # raise RuntimeError(
-                #     f"{enemy_family_component.gameobject.name_with_uid} is missing a head."
-                # )
 
             action = StartWarSchemeAction(
                 performer=character,

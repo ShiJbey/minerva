@@ -628,7 +628,7 @@ class DynastyTracker:
 
 
 class Lifespan(StatComponent):
-    """Tracks a GameObject's lifespan."""
+    """Tracks an entity's lifespan."""
 
     def __init__(
         self,
@@ -639,7 +639,7 @@ class Lifespan(StatComponent):
 
 
 class Fertility(StatComponent):
-    """Tracks a GameObject's fertility."""
+    """Tracks an entity's fertility."""
 
     MAX_VALUE: int = 100
 
@@ -652,7 +652,7 @@ class Fertility(StatComponent):
 
 
 class Stewardship(StatComponent):
-    """Tracks a GameObject's stewardship."""
+    """Tracks an entity's stewardship."""
 
     MAX_VALUE: int = 100
 
@@ -665,7 +665,7 @@ class Stewardship(StatComponent):
 
 
 class Martial(StatComponent):
-    """Tracks a GameObject's martial."""
+    """Tracks an entity's martial."""
 
     MAX_VALUE: int = 100
 
@@ -678,7 +678,7 @@ class Martial(StatComponent):
 
 
 class Intrigue(StatComponent):
-    """Tracks a GameObject's intrigue."""
+    """Tracks an entity's intrigue."""
 
     MAX_VALUE: int = 100
 
@@ -704,7 +704,7 @@ class Intelligence(StatComponent):
 
 
 class Prowess(StatComponent):
-    """Tracks a GameObject's prowess."""
+    """Tracks an entityprowess."""
 
     MAX_VALUE: int = 100
 
@@ -717,7 +717,7 @@ class Prowess(StatComponent):
 
 
 class Sociability(StatComponent):
-    """Tracks a GameObject's sociability."""
+    """Tracks an entity's sociability."""
 
     MAX_VALUE: int = 100
 
@@ -730,7 +730,7 @@ class Sociability(StatComponent):
 
 
 class Honor(StatComponent):
-    """Tracks a GameObject's honor."""
+    """Tracks an entityhonor."""
 
     MAX_VALUE: int = 100
 
@@ -743,7 +743,7 @@ class Honor(StatComponent):
 
 
 class Boldness(StatComponent):
-    """Tracks a GameObject's boldness."""
+    """Tracks an entity's boldness."""
 
     MAX_VALUE: int = 100
 
@@ -756,7 +756,7 @@ class Boldness(StatComponent):
 
 
 class Compassion(StatComponent):
-    """Tracks a GameObject's compassion."""
+    """Tracks an entity's compassion."""
 
     MAX_VALUE: int = 100
 
@@ -769,7 +769,7 @@ class Compassion(StatComponent):
 
 
 class Diplomacy(StatComponent):
-    """Tracks a GameObject's diplomacy."""
+    """Tracks an entitydiplomacy."""
 
     MAX_VALUE: int = 100
 
@@ -782,7 +782,7 @@ class Diplomacy(StatComponent):
 
 
 class Greed(StatComponent):
-    """Tracks a GameObject's greed."""
+    """Tracks an entity's greed."""
 
     MAX_VALUE: int = 100
 
@@ -795,7 +795,7 @@ class Greed(StatComponent):
 
 
 class Rationality(StatComponent):
-    """Tracks a GameObject's rationality."""
+    """Tracks an entity's rationality."""
 
     MAX_VALUE: int = 100
 
@@ -808,7 +808,7 @@ class Rationality(StatComponent):
 
 
 class Vengefulness(StatComponent):
-    """Tracks a GameObject's vengefulness."""
+    """Tracks an entity's vengefulness."""
 
     MAX_VALUE: int = 100
 
@@ -821,7 +821,7 @@ class Vengefulness(StatComponent):
 
 
 class RomancePropensity(StatComponent):
-    """Tracks a GameObject's propensity for romantic actions."""
+    """Tracks an entity's propensity for romantic actions."""
 
     MAX_VALUE: int = 100
 
@@ -834,7 +834,7 @@ class RomancePropensity(StatComponent):
 
 
 class Luck(StatComponent):
-    """Tracks a GameObject's propensity to be successful."""
+    """Tracks an entity's propensity to be successful."""
 
     MAX_VALUE: int = 100
 

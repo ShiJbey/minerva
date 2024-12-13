@@ -14,7 +14,7 @@ from minerva.viz.constants import (
     TERRITORY_BORDER_THICKNESS,
     TILE_SIZE,
 )
-from minerva.viz.game_events import gameobject_wiki_shown
+from minerva.viz.game_events import event_wiki_shown
 from minerva.world_map.components import CompassDir, Territory
 
 
@@ -82,7 +82,7 @@ class CastleSprite(Sprite):
 
     def on_click(self) -> None:
         """Function called when this castle is clicked by the player."""
-        gameobject_wiki_shown.emit(self.territory.uid)
+        event_wiki_shown.emit(self.territory.uid)
 
 
 class BorderSprite(Sprite):

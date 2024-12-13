@@ -853,10 +853,10 @@ class Simulation:
             .with_text_column("relationship_status")
         )
 
-        def adapt_gameobject(obj: Entity) -> int:
+        def adapt_entity(obj: Entity) -> int:
             return obj.uid
 
-        def convert_gameobject(s: bytes):
+        def convert_entity(s: bytes):
             uid = int(str(s))
 
             return self.world.get_entity(uid)
@@ -885,8 +885,8 @@ class Simulation:
         def convert_war_role(s: bytes):
             return WarRole(str(s))
 
-        sqlite3.register_adapter(Entity, adapt_gameobject)
-        sqlite3.register_converter("GameObject", convert_gameobject)
+        sqlite3.register_adapter(Entity, adapt_entity)
+        sqlite3.register_converter("Entity", convert_entity)
         sqlite3.register_adapter(Sex, adapt_sex)
         sqlite3.register_converter("Sex", convert_sex)
         sqlite3.register_adapter(LifeStage, adapt_life_stage)

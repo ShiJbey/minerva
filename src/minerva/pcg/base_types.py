@@ -11,10 +11,10 @@ from minerva.ecs import Entity, World
 
 
 class NameFactory(ABC):
-    """Generates a name for a GameObject."""
+    """Generates a name for an entity."""
 
     @abstractmethod
-    def generate_name(self, gameobject: Entity) -> str:
+    def generate_name(self, entity: Entity) -> str:
         """Generate a name for the given game object."""
         raise NotImplementedError()
 
@@ -35,7 +35,7 @@ class CharacterGenOptions:
 
 
 class CharacterFactory(ABC):
-    """Generates Character GameObjects."""
+    """Generates Character entities."""
 
     @abstractmethod
     def generate_character(self, world: World, options: CharacterGenOptions) -> Entity:
@@ -63,7 +63,7 @@ class FamilyGenOptions:
 
 
 class FamilyFactory(ABC):
-    """Generates family GameObjects."""
+    """Generates family entities."""
 
     @abstractmethod
     def generate_family(self, world: World, options: FamilyGenOptions) -> Entity:
@@ -79,7 +79,7 @@ class TerritoryGenOptions:
 
 
 class TerritoryFactory(ABC):
-    """Generates territory GameObjects."""
+    """Generates territory entities."""
 
     @abstractmethod
     def generate_territory(self, world: World, options: TerritoryGenOptions) -> Entity:

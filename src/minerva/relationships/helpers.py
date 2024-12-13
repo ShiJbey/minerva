@@ -23,7 +23,7 @@ def get_relationship(
     owner: Entity,
     target: Entity,
 ) -> Entity:
-    """Get a relationship from one GameObject to another.
+    """Get a relationship from one entity to another.
 
     This function will create a new instance of a relationship if one does not exist.
 
@@ -59,7 +59,7 @@ def has_relationship(owner: Entity, target: Entity) -> bool:
     Returns
     -------
     bool
-        True if there is an existing Relationship between the GameObjects,
+        True if there is an existing Relationship between the entities,
         False otherwise.
     """
     relationships = owner.get_component(RelationshipManager)
@@ -73,9 +73,9 @@ def add_relationship(owner: Entity, target: Entity) -> Entity:
     Parameters
     ----------
     owner
-        The GameObject that owns the relationship
+        The entity that owns the relationship
     target
-        The GameObject that the Relationship is directed toward
+        The entity that the Relationship is directed toward
 
     Returns
     -------
@@ -104,7 +104,7 @@ def add_relationship(owner: Entity, target: Entity) -> Entity:
 
 
 def destroy_relationship(owner: Entity, target: Entity) -> bool:
-    """Destroy the relationship GameObject to the target.
+    """Destroy the relationship entity to the target.
 
     Parameters
     ----------
@@ -128,10 +128,10 @@ def destroy_relationship(owner: Entity, target: Entity) -> bool:
     return False
 
 
-def deactivate_relationships(gameobject: Entity) -> None:
+def deactivate_relationships(entity: Entity) -> None:
     """Deactivates all an objects incoming and outgoing relationships."""
 
-    relationships = gameobject.get_component(RelationshipManager)
+    relationships = entity.get_component(RelationshipManager)
 
     for _, relationship in relationships.outgoing_relationships.items():
         relationship.deactivate()
@@ -146,7 +146,7 @@ def _add_outgoing_relationship(character: Entity, relationship: Entity) -> None:
     Parameters
     ----------
     character
-        The GameObject that the Relationship is directed toward.
+        The entity that the Relationship is directed toward.
     relationship
         The relationship.
     """

@@ -257,24 +257,6 @@ def remove_character_from_play(character: Entity, pass_crown: bool = True) -> No
 
     heir: Optional[Entity] = character_component.heir
 
-    # depth_chart = get_succession_depth_chart(character)
-
-    # Get top 3 the eligible heirs
-    # eligible_heirs = [entry.character_id for entry in depth_chart if entry.is_eligible][
-    #     :3
-    # ]
-
-    # if eligible_heirs:
-    #     # Add selection weights to heirs
-    #     # The second bracket slices the proceeding list to the number of
-    #     # eligible heirs
-    #     heir_weights = [0.8, 0.15, 0.5][: len(eligible_heirs)]
-
-    #     # Select a random heir from the top 3 with most emphasis on the first
-    #     heir_id = rng.choices(eligible_heirs, heir_weights, k=1)[0]
-
-    #     heir = world.get_gameobject(heir_id)
-
     if character.has_component(HeadOfFamily):
         family_head_component = character.get_component(HeadOfFamily)
         # Perform succession

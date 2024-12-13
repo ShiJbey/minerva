@@ -38,7 +38,7 @@ def _recalculate_stat(stat: StatComponent) -> float:
 
 
 def add_status_effect(target: Entity, status_effect: StatusEffect) -> None:
-    """Add a status effect to a GameObject."""
+    """Add a status effect to an entity."""
 
     target.get_component(StatusEffectManager).status_effects.append(status_effect)
 
@@ -46,7 +46,7 @@ def add_status_effect(target: Entity, status_effect: StatusEffect) -> None:
 
 
 def remove_status_effect(target: Entity, status_effect: StatusEffect) -> bool:
-    """Remove a status effect from a GameObject.
+    """Remove a status effect from an entity.
 
     Returns
     -------

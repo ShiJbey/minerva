@@ -22,7 +22,7 @@ _logger = logging.getLogger(__name__)
 
 
 class LifeEvent(ABC):
-    """An event of significant importance in a GameObject's life"""
+    """An event of significant importance in an entity's life"""
 
     _next_life_event_id: ClassVar[count[int]] = count()
 
@@ -96,7 +96,7 @@ class LifeEvent(ABC):
 
 
 class LifeEventHistory(Component):
-    """Stores a record of all past life events for a specific GameObject."""
+    """Stores a record of all past life events for a specific entity."""
 
     __slots__ = ("_history", "_event_emitter")
 

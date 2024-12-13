@@ -28,7 +28,7 @@ class TraitEffect(ABC):
 
 
 class Trait:
-    """Additional state associated with characters, businesses, and other GameObjects."""
+    """Additional state associated with characters and other entities."""
 
     __slots__ = (
         "trait_id",
@@ -98,12 +98,12 @@ class Trait:
 
 
 class TraitManager(Component):
-    """Tracks the traits attached to a GameObject."""
+    """Tracks the traits attached to an entity."""
 
     __slots__ = ("traits",)
 
     traits: dict[str, Trait]
-    """References to traits attached to the GameObject."""
+    """References to traits attached to the entity."""
 
     def __init__(
         self,

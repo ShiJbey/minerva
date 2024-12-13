@@ -32,7 +32,7 @@ from minerva.traits.helpers import add_trait, has_trait, remove_trait
 
 
 class Hunger(StatComponent):
-    """Tracks a GameObject's hunger."""
+    """Tracks an entity's hunger."""
 
     MAX_VALUE: int = 1000
 
