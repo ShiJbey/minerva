@@ -43,15 +43,15 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "ordered-set==4.*",
-    "tqdm==4.*",
-    "pydantic==2.*",
-    "pygame-ce==2.5.*",
-    "pygame-gui==0.6.12",
-    "numpy==2.0.1",
+    "ordered-set>=4.1.0",
+    "tqdm>=4.66.0",
+    "pydantic>=2.0.0",
+    "pygame-ce>=2.5.0",
+    "pygame-gui>=0.6.12",
+    "numpy>=2.0.0",
     "tracery3==1.0.1",
-    "rich==13.9.2",
-    "jinja2==3.1.4",
+    "rich>=13.9.2",
+    "jinja2>=3.1.4",
 ]
 
 [project.optional-dependencies]
