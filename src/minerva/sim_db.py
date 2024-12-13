@@ -59,13 +59,15 @@ class DbTable:
     """Configuration settings for a SQLite Table."""
 
     table_name: str
+    is_strict: bool
     columns: list[DbColumnConfig]
     foreign_keys: list[DbForeignKey] = pydantic.Field(default_factory=lambda: [])
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, is_strict: bool = True) -> None:
         self.table_name = name
         self.columns = []
         self.foreign_keys = []
+        self.is_strict = is_strict
 
     def _add_column(
         self,
@@ -225,7 +227,8 @@ class DbTable:
 
             output_arr.append(line)
 
-        output_arr.append(");")
+        ending = ");" if not self.is_strict else ") STRICT;"
+        output_arr.append(ending)
 
         output_str = "\n".join(output_arr)
 
@@ -290,7 +293,7 @@ CREATE TABLE characters (
     FOREIGN KEY (uid) REFERENCES entities(uid),
     FOREIGN KEY (family) REFERENCES families(uid),
     FOREIGN KEY (birth_family) REFERENCES families(uid)
-);
+) STRICT;
 
 CREATE TABLE character_traits (
     character_id INT NOT NULL,
@@ -304,7 +307,7 @@ CREATE TABLE territories (
     name TEXT,
     controlling_family INT,
     FOREIGN KEY (controlling_family) REFERENCES families(uid)
-);
+) STRICT;
 
 CREATE TABLE families (
     uid INT PRIMARY KEY,
@@ -319,7 +322,7 @@ CREATE TABLE families (
     FOREIGN KEY (alliance_id) REFERENCES alliances(uid),
     FOREIGN KEY (home_base_id) REFERENCES territories(uid),
     FOREIGN KEY (parent_id) REFERENCES families(uid)
-);
+) STRICT;
 
 CREATE TABLE family_heads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -331,7 +334,7 @@ CREATE TABLE family_heads (
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (family) REFERENCES families(uid),
     FOREIGN KEY (predecessor) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE siblings (
     character_id INT,
@@ -339,7 +342,7 @@ CREATE TABLE siblings (
     PRIMARY KEY (character_id, sibling_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (sibling_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE marriages (
     uid INT NOT NULL PRIMARY KEY,
@@ -348,11 +351,11 @@ CREATE TABLE marriages (
     start_date TEXT NOT NULL,
     end_date TEXT,
     times_cheated INT,
-    last_cheat_partner_id,
+    last_cheat_partner_id INT,
     FOREIGN KEY (last_cheat_partner_id) REFERENCES characters(uid),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (spouse_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE betrothals (
     uid INT NOT NULL PRIMARY KEY,
@@ -362,7 +365,7 @@ CREATE TABLE betrothals (
     end_date TEXT,
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (betrothed_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE romantic_affairs (
     uid INT NOT NULL PRIMARY KEY,
@@ -372,7 +375,7 @@ CREATE TABLE romantic_affairs (
     end_date TEXT,
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (lover_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE children (
     character_id INT,
@@ -380,7 +383,7 @@ CREATE TABLE children (
     PRIMARY KEY(character_id, child_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (child_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE life_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -388,16 +391,16 @@ CREATE TABLE life_events (
     event_type TEXT,
     timestamp TEXT,
     description TEXT
-);
+) STRICT;
 
 CREATE TABLE life_stage_change_events (
     event_id INT NOT NULL PRIMARY KEY,
     character_id INT,
-    life_stage INT,
+    life_stage TEXT,
     timestamp TEXT,
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE became_family_head_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -407,7 +410,7 @@ CREATE TABLE became_family_head_events (
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (family_id) REFERENCES families(uid)
-);
+) STRICT;
 
 CREATE TABLE became_emperor_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -415,7 +418,7 @@ CREATE TABLE became_emperor_events (
     timestamp TEXT,
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE death_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -424,7 +427,7 @@ CREATE TABLE death_events (
     cause TEXT,
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE marriage_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -434,7 +437,7 @@ CREATE TABLE marriage_events (
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (spouse_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE pregnancy_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -442,7 +445,7 @@ CREATE TABLE pregnancy_events (
     timestamp TEXT,
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE born_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -450,7 +453,7 @@ CREATE TABLE born_events (
     timestamp TEXT,
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE give_birth_events (
     event_id INT NOT NULL PRIMARY KEY,
@@ -460,7 +463,7 @@ CREATE TABLE give_birth_events (
     FOREIGN KEY (event_id) REFERENCES life_events(event_id),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (child_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE rulers (
     character_id INT NOT NULL,
@@ -472,7 +475,7 @@ CREATE TABLE rulers (
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (dynasty_id) REFERENCES dynasties(uid),
     FOREIGN KEY (predecessor_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE dynasties (
     uid INT PRIMARY KEY,
@@ -484,7 +487,7 @@ CREATE TABLE dynasties (
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (founder_id) REFERENCES characters(uid),
     FOREIGN KEY (previous_dynasty_id) REFERENCES dynasties(uid)
-);
+) STRICT;
 
 CREATE TABLE alliances (
     uid INT NOT NULL PRIMARY KEY,
@@ -494,7 +497,7 @@ CREATE TABLE alliances (
     end_date TEXT,
     FOREIGN KEY (founder_id) REFERENCES characters(uid),
     FOREIGN KEY (founder_family_id) REFERENCES families(uid)
-);
+) STRICT;
 
 CREATE TABLE alliance_members (
     family_id INT NOT NULL,
@@ -504,7 +507,7 @@ CREATE TABLE alliance_members (
     PRIMARY KEY (family_id, alliance_id),
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (alliance_id) REFERENCES alliances(uid)
-);
+) STRICT;
 
 CREATE TABLE wars (
     uid INT NOT NULL PRIMARY KEY,
@@ -516,7 +519,7 @@ CREATE TABLE wars (
     FOREIGN KEY (aggressor_id) REFERENCES families(uid),
     FOREIGN KEY (defender_id) REFERENCES families(uid),
     FOREIGN KEY (winner_id) REFERENCES families(uid)
-);
+) STRICT;
 
 CREATE TABLE war_participants (
     row_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -526,7 +529,7 @@ CREATE TABLE war_participants (
     date_joined TEXT,
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (war_id) REFERENCES wars(uid)
-);
+) STRICT;
 
 CREATE TABLE schemes (
     uid INT PRIMARY KEY,
@@ -535,7 +538,7 @@ CREATE TABLE schemes (
     initiator_id INT,
     description TEXT,
     FOREIGN KEY (initiator_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE scheme_members (
     scheme_id INT,
@@ -543,7 +546,7 @@ CREATE TABLE scheme_members (
     PRIMARY KEY (scheme_id, member_id),
     FOREIGN KEY (scheme_id) REFERENCES schemes(uid),
     FOREIGN KEY (member_id) REFERENCES characters(uid)
-);
+) STRICT;
 
 CREATE TABLE scheme_targets (
     scheme_id INT,
@@ -551,7 +554,7 @@ CREATE TABLE scheme_targets (
     PRIMARY KEY (scheme_id, target_id),
     FOREIGN KEY (scheme_id) REFERENCES schemes(uid),
     FOREIGN KEY (target_id) REFERENCES characters(uid)
-);
+) STRICT;
 """
 
 
