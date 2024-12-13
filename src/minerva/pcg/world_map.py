@@ -8,7 +8,7 @@ from typing import Any, Generator
 
 from minerva.config import Config
 from minerva.ecs import Entity, World
-from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.territory_pcg import spawn_territory
 from minerva.world_map.components import (
     CartesianGrid,
     CompassDir,
@@ -252,10 +252,8 @@ def generate_world_map(world: World) -> None:
     territory_id_to_gameobject: dict[int, Entity] = {}
     territories: dict[int, Entity] = {}
 
-    pcg_factories = world.get_resource(PCGFactories)
-
     for territory_info in territory_generator.territories:
-        territory = pcg_factories.territory_factory.generate_territory(world)
+        territory = spawn_territory(world)
         territory_id_to_gameobject[territory_info.uid] = territory
         territories[territory_info.uid] = territory
         world_map.territories.append(territory)

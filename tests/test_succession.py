@@ -14,92 +14,106 @@ from minerva.characters.helpers import (
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
 from minerva.data import japanese_city_names, japanese_names
-from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.base_types import CharacterGenOptions
+from minerva.pcg.character import spawn_character
 from minerva.simulation import Simulation
 
 
 @pytest.fixture
-def test_sim() -> Simulation:
+def sim() -> Simulation:
     """Create a test simulation."""
-    sim = Simulation()
+    test_sim = Simulation()
 
-    japanese_city_names.load_names(sim.world)
-    japanese_names.load_names(sim.world)
+    japanese_city_names.load_names(test_sim.world)
+    japanese_names.load_names(test_sim.world)
 
-    return sim
+    return test_sim
 
 
-def test_get_succession_depth_chart(test_sim: Simulation):
+def test_get_succession_depth_chart(sim: Simulation):
     """Test depth chart calculations."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    alicent = character_factory.generate_character(
-        test_sim.world,
-        first_name="Alicent",
-        surname="Hightower",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
+    alicent = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Alicent",
+            surname="Hightower",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+        ),
     )
 
-    daemon = character_factory.generate_character(
-        test_sim.world,
-        first_name="Daemon",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    daemon = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Daemon",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    aegon_2 = character_factory.generate_character(
-        test_sim.world,
-        first_name="Aegon",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        age=20,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    aegon_2 = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Aegon",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            age=20,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    aemond = character_factory.generate_character(
-        test_sim.world,
-        first_name="Aemond",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        age=16,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    aemond = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Aemond",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            age=16,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    rhaenys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenys",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    rhaenys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenys",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     # Configure Relationships

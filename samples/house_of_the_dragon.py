@@ -13,8 +13,8 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.characters.succession_helpers import set_heir
-from minerva.config import Config
-from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.base_types import CharacterGenOptions
+from minerva.pcg.character import spawn_character
 from minerva.simulation import Simulation
 
 
@@ -39,181 +39,213 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
 
-    sim = Simulation(Config(n_initial_families=0))
+    sim = Simulation()
 
-    character_factory = sim.world.get_resource(PCGFactories).character_factory
-
-    rhaenyra = character_factory.generate_character(
+    rhaenyra = spawn_character(
         sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    leanor = character_factory.generate_character(
+    leanor = spawn_character(
         sim.world,
-        first_name="Leanor",
-        surname="Velaryon",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HOMOSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Leanor",
+            surname="Velaryon",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HOMOSEXUAL,
+            species="human",
+        ),
     )
 
-    harwin = character_factory.generate_character(
+    harwin = spawn_character(
         sim.world,
-        first_name="Harwin",
-        surname="Strong",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Harwin",
+            surname="Strong",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    jace = character_factory.generate_character(
+    jace = spawn_character(
         sim.world,
-        first_name="Jacaerys",
-        surname="Velaryon",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADOLESCENT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Jacaerys",
+            surname="Velaryon",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADOLESCENT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    addam = character_factory.generate_character(
+    addam = spawn_character(
         sim.world,
-        first_name="Addam",
-        surname="Of Hull",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADOLESCENT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Addam",
+            surname="Of Hull",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADOLESCENT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    corlys = character_factory.generate_character(
+    corlys = spawn_character(
         sim.world,
-        first_name="Corlys",
-        surname="Velaryon",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Corlys",
+            surname="Velaryon",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    marilda = character_factory.generate_character(
+    marilda = spawn_character(
         sim.world,
-        first_name="Marilda",
-        surname="Of Hull",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Marilda",
+            surname="Of Hull",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    alyn = character_factory.generate_character(
+    alyn = spawn_character(
         sim.world,
-        first_name="Alyn",
-        surname="Of Hull",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADOLESCENT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Alyn",
+            surname="Of Hull",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADOLESCENT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    rhaenys = character_factory.generate_character(
+    rhaenys = spawn_character(
         sim.world,
-        first_name="Rhaenys",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Rhaenys",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     set_character_alive(rhaenys, False)
 
-    laena = character_factory.generate_character(
+    laena = spawn_character(
         sim.world,
-        first_name="Laena",
-        surname="Velaryon",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Laena",
+            surname="Velaryon",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     set_character_alive(laena, False)
 
-    daemon = character_factory.generate_character(
+    daemon = spawn_character(
         sim.world,
-        first_name="Daemon",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Daemon",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    baela = character_factory.generate_character(
+    baela = spawn_character(
         sim.world,
-        first_name="Baela",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADOLESCENT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Baela",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADOLESCENT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    viserys = character_factory.generate_character(
+    viserys = spawn_character(
         sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    alicent = character_factory.generate_character(
+    alicent = spawn_character(
         sim.world,
-        first_name="Alicent",
-        surname="Hightower",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
+        CharacterGenOptions(
+            first_name="Alicent",
+            surname="Hightower",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+        ),
     )
 
-    otto = character_factory.generate_character(
+    otto = spawn_character(
         sim.world,
-        first_name="Otto",
-        surname="Hightower",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Otto",
+            surname="Hightower",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    aegon_2 = character_factory.generate_character(
+    aegon_2 = spawn_character(
         sim.world,
-        first_name="Aegon",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADOLESCENT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Aegon",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADOLESCENT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    cole = character_factory.generate_character(
+    cole = spawn_character(
         sim.world,
-        first_name="Cristen",
-        surname="Cole",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+        CharacterGenOptions(
+            first_name="Cristen",
+            surname="Cole",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     set_character_alive(viserys, False)

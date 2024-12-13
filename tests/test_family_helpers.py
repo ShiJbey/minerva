@@ -30,7 +30,9 @@ from minerva.characters.helpers import (
     unassign_family_member_from_roles,
 )
 from minerva.data import japanese_city_names, japanese_names
-from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
+from minerva.pcg.character import spawn_character, spawn_family
+from minerva.pcg.territory_pcg import spawn_territory
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
@@ -48,12 +50,11 @@ def test_sim() -> Simulation:
 
 def test_add_branch_family(test_sim: Simulation):
     """Test adding a branch to a family."""
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
-    family_0 = family_factory.generate_family(test_sim.world)
-    family_1 = family_factory.generate_family(test_sim.world)
-    family_2 = family_factory.generate_family(test_sim.world)
-    family_3 = family_factory.generate_family(test_sim.world)
+    family_0 = spawn_family(test_sim.world)
+    family_1 = spawn_family(test_sim.world)
+    family_2 = spawn_family(test_sim.world)
+    family_3 = spawn_family(test_sim.world)
 
     add_branch_family(family_0, family_1)
     add_branch_family(family_0, family_2)
@@ -74,13 +75,11 @@ def test_add_branch_family(test_sim: Simulation):
 
 def test_set_family_head(test_sim: Simulation):
     """Test updating who is the head of a family."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
+    test_family = spawn_family(test_sim.world, FamilyGenOptions(name="Test Family"))
 
-    test_family = family_factory.generate_family(test_sim.world, "Test Family")
-    c0 = character_factory.generate_character(test_sim.world)
-    c1 = character_factory.generate_character(test_sim.world)
+    c0 = spawn_character(test_sim.world)
+    c1 = spawn_character(test_sim.world)
     db = test_sim.world.get_resource(SimDB).db
 
     family_component = test_family.get_component(Family)
@@ -140,9 +139,7 @@ def test_set_family_head(test_sim: Simulation):
 def test_set_family_name(test_sim: Simulation):
     """Test updating the name of the family."""
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
-
-    test_family = family_factory.generate_family(test_sim.world, "Test Family")
+    test_family = spawn_family(test_sim.world, FamilyGenOptions(name="Test Family"))
 
     assert test_family.name == "Test Family"
 
@@ -169,12 +166,9 @@ def test_set_family_name(test_sim: Simulation):
 
 def test_add_character_to_family(test_sim: Simulation):
     """Test adding a character to a family."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
-
-    test_family = family_factory.generate_family(test_sim.world)
-    c0 = character_factory.generate_character(test_sim.world)
+    test_family = spawn_family(test_sim.world)
+    c0 = spawn_character(test_sim.world)
 
     character_component = c0.get_component(Character)
     family_component = test_family.get_component(Family)
@@ -191,12 +185,9 @@ def test_add_character_to_family(test_sim: Simulation):
 
 def test_remove_character_from_family(test_sim: Simulation):
     """Test removing a character from a family."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
-
-    test_family = family_factory.generate_family(test_sim.world)
-    c0 = character_factory.generate_character(test_sim.world)
+    test_family = spawn_family(test_sim.world)
+    c0 = spawn_character(test_sim.world)
 
     character_component = c0.get_component(Character)
     family_component = test_family.get_component(Family)
@@ -221,19 +212,12 @@ def test_remove_character_from_family(test_sim: Simulation):
 
 def test_merge_family_with(test_sim: Simulation):
     """Test merging families into one group."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
+    f0 = spawn_family(test_sim.world)
+    og_f0_members = [spawn_character(test_sim.world) for _ in range(5)]
 
-    f0 = family_factory.generate_family(test_sim.world)
-    og_f0_members = [
-        character_factory.generate_character(test_sim.world) for _ in range(5)
-    ]
-
-    f1 = family_factory.generate_family(test_sim.world)
-    og_f1_members = [
-        character_factory.generate_character(test_sim.world) for _ in range(5)
-    ]
+    f1 = spawn_family(test_sim.world)
+    og_f1_members = [spawn_character(test_sim.world) for _ in range(5)]
 
     for character in og_f0_members:
         set_character_family(character, f0)
@@ -254,12 +238,9 @@ def test_merge_family_with(test_sim: Simulation):
 
 def test_remove_family_from_play(test_sim: Simulation):
     """Test removing a family from the active simulation."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
-
-    test_family = family_factory.generate_family(test_sim.world)
-    c0 = character_factory.generate_character(test_sim.world)
+    test_family = spawn_family(test_sim.world)
+    c0 = spawn_character(test_sim.world)
 
     set_character_family(c0, test_family)
 
@@ -271,12 +252,9 @@ def test_remove_family_from_play(test_sim: Simulation):
 
 def test_set_family_home_base(test_sim: Simulation):
     """Test updating what territory a family uses as their home base."""
-    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
-
-    s0 = territory_factory.generate_territory(test_sim.world)
-    f0 = family_factory.generate_family(test_sim.world)
+    s0 = spawn_territory(test_sim.world)
+    f0 = spawn_family(test_sim.world)
 
     family_component = f0.get_component(Family)
 
@@ -291,39 +269,41 @@ def test_set_family_home_base(test_sim: Simulation):
 
 def test_get_warrior_candidates(test_sim: Simulation):
     """Test getting potential candidates for warrior roles in a family."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
+    test_family = spawn_family(test_sim.world)
 
-    test_family = family_factory.generate_family(test_sim.world)
-
-    c0 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c0 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c0.get_component(Martial).base_value = 30
     set_character_family(c0, test_family)
 
-    c1 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c1 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c1.get_component(Prowess).base_value = 50
     set_character_family(c1, test_family)
 
-    c2 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c2 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c2.get_component(Martial).base_value = 10
     set_character_family(c2, test_family)
 
-    c3 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c3 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c3.get_component(Martial).base_value = 15
     c3.get_component(Prowess).base_value = 30
     set_character_family(c3, test_family)
 
-    c4 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c4 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c4.get_component(Martial).base_value = 20
     set_character_family(c4, test_family)
@@ -339,39 +319,41 @@ def test_get_warrior_candidates(test_sim: Simulation):
 
 def test_get_advisor_candidates(test_sim: Simulation):
     """Test getting potential advisors for advisor roles in a family."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
+    test_family = spawn_family(test_sim.world)
 
-    test_family = family_factory.generate_family(test_sim.world)
-
-    c0 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c0 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c0.get_component(Stewardship).base_value = 30
     set_character_family(c0, test_family)
 
-    c1 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c1 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c1.get_component(Diplomacy).base_value = 50
     set_character_family(c1, test_family)
 
-    c2 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c2 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c2.get_component(Stewardship).base_value = 10
     set_character_family(c2, test_family)
 
-    c3 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c3 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c3.get_component(Stewardship).base_value = 15
     c3.get_component(Diplomacy).base_value = 30
     set_character_family(c3, test_family)
 
-    c4 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT, randomize_stats=False
+    c4 = spawn_character(
+        test_sim.world,
+        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
     c4.get_component(Stewardship).base_value = 20
     set_character_family(c4, test_family)
@@ -387,24 +369,21 @@ def test_get_advisor_candidates(test_sim: Simulation):
 
 def test_set_family_role(test_sim: Simulation):
     """Test setting a character to have a given role in their family."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
+    test_family = spawn_family(test_sim.world)
 
-    test_family = family_factory.generate_family(test_sim.world)
-
-    c0 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT
+    c0 = spawn_character(
+        test_sim.world, CharacterGenOptions(life_stage=LifeStage.ADULT)
     )
     set_character_family(c0, test_family)
 
-    c1 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT
+    c1 = spawn_character(
+        test_sim.world, CharacterGenOptions(life_stage=LifeStage.ADULT)
     )
     set_character_family(c1, test_family)
 
-    c2 = character_factory.generate_character(
-        test_sim.world, life_stage=LifeStage.ADULT
+    c2 = spawn_character(
+        test_sim.world, CharacterGenOptions(life_stage=LifeStage.ADULT)
     )
     set_character_family(c2, test_family)
 

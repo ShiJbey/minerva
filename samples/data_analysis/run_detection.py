@@ -13,8 +13,6 @@ from minerva.characters.components import Character, FormerFamilyHead, HeadOfFam
 from minerva.config import Config
 from minerva.data import ck3_traits, japanese_city_names, japanese_names
 from minerva.inspection import SimulationInspector
-from minerva.pcg.character import generate_initial_families
-from minerva.pcg.world_map import generate_world_map
 from minerva.simulation import Simulation
 
 SEED = 12345
@@ -37,9 +35,6 @@ def create_and_run_simulation() -> Simulation:
     ck3_traits.load_traits(sim.world)
 
     print(f"Running simulation with seed: {SEED}")
-
-    generate_world_map(sim.world)
-    generate_initial_families(sim.world)
 
     for _ in tqdm.trange(YEARS_TO_SIMULATE * 12):
         sim.step()

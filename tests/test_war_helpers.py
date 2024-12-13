@@ -17,7 +17,8 @@ from minerva.characters.war_helpers import (
 )
 from minerva.data import japanese_city_names, japanese_names
 from minerva.datetime import SimDate
-from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.character import spawn_character, spawn_family
+from minerva.pcg.territory_pcg import spawn_territory
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
@@ -35,15 +36,12 @@ def test_sim() -> Simulation:
 
 def test_start_alliance(test_sim: Simulation):
     """Test starting new alliances."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
+    character_0 = spawn_character(test_sim.world)
+    character_1 = spawn_character(test_sim.world)
 
-    character_0 = character_factory.generate_character(test_sim.world)
-    character_1 = character_factory.generate_character(test_sim.world)
-
-    family_0 = family_factory.generate_family(test_sim.world)
-    family_1 = family_factory.generate_family(test_sim.world)
+    family_0 = spawn_family(test_sim.world)
+    family_1 = spawn_family(test_sim.world)
 
     set_family_head(family_0, character_0)
     set_family_head(family_1, character_1)
@@ -64,17 +62,14 @@ def test_start_alliance(test_sim: Simulation):
 
 def test_end_alliance(test_sim: Simulation):
     """Test terminating an existing alliance."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
-
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     db = test_sim.world.get_resource(SimDB).db
 
-    character_0 = character_factory.generate_character(test_sim.world)
-    character_1 = character_factory.generate_character(test_sim.world)
+    character_0 = spawn_character(test_sim.world)
+    character_1 = spawn_character(test_sim.world)
 
-    family_0 = family_factory.generate_family(test_sim.world)
-    family_1 = family_factory.generate_family(test_sim.world)
+    family_0 = spawn_family(test_sim.world)
+    family_1 = spawn_family(test_sim.world)
 
     set_family_head(family_0, character_0)
     set_family_head(family_1, character_1)
@@ -105,16 +100,13 @@ def test_end_alliance(test_sim: Simulation):
 
 def test_start_war(test_sim: Simulation):
     """Test starting a war."""
-    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
-
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     db = test_sim.world.get_resource(SimDB).db
 
-    family_0 = family_factory.generate_family(test_sim.world)
-    family_1 = family_factory.generate_family(test_sim.world)
+    family_0 = spawn_family(test_sim.world)
+    family_1 = spawn_family(test_sim.world)
 
-    territory = territory_factory.generate_territory(test_sim.world)
+    territory = spawn_territory(test_sim.world)
 
     war = start_war(family_0, family_1, territory)
 
@@ -130,18 +122,15 @@ def test_start_war(test_sim: Simulation):
 
 def test_end_war(test_sim: Simulation):
     """Test ending a war."""
-    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
-
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     db = test_sim.world.get_resource(SimDB).db
 
-    family_0 = family_factory.generate_family(test_sim.world)
-    family_1 = family_factory.generate_family(test_sim.world)
-    family_2 = family_factory.generate_family(test_sim.world)
-    family_3 = family_factory.generate_family(test_sim.world)
+    family_0 = spawn_family(test_sim.world)
+    family_1 = spawn_family(test_sim.world)
+    family_2 = spawn_family(test_sim.world)
+    family_3 = spawn_family(test_sim.world)
 
-    territory = territory_factory.generate_territory(test_sim.world)
+    territory = spawn_territory(test_sim.world)
 
     war = start_war(family_0, family_1, territory)
 
@@ -166,18 +155,15 @@ def test_end_war(test_sim: Simulation):
 
 def test_join_war_as(test_sim: Simulation):
     """Test character's joining a war on a specific side."""
-    territory_factory = test_sim.world.get_resource(PCGFactories).territory_factory
-
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
 
     db = test_sim.world.get_resource(SimDB).db
 
-    family_0 = family_factory.generate_family(test_sim.world)
-    family_1 = family_factory.generate_family(test_sim.world)
-    family_2 = family_factory.generate_family(test_sim.world)
-    family_3 = family_factory.generate_family(test_sim.world)
+    family_0 = spawn_family(test_sim.world)
+    family_1 = spawn_family(test_sim.world)
+    family_2 = spawn_family(test_sim.world)
+    family_3 = spawn_family(test_sim.world)
 
-    territory = territory_factory.generate_territory(test_sim.world)
+    territory = spawn_territory(test_sim.world)
 
     war = start_war(family_0, family_1, territory)
     war_component = war.get_component(War)

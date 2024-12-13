@@ -14,69 +14,73 @@ from minerva.characters.helpers import set_character_family
 from minerva.characters.succession_helpers import set_current_ruler
 from minerva.data import japanese_city_names, japanese_names
 from minerva.ecs import Entity
-from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
+from minerva.pcg.character import spawn_character, spawn_family
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
 
 @pytest.fixture
-def test_sim() -> Simulation:
+def sim() -> Simulation:
     """Create a test simulation."""
-    sim = Simulation()
+    test_sim = Simulation()
 
-    japanese_city_names.load_names(sim.world)
-    japanese_names.load_names(sim.world)
+    japanese_city_names.load_names(test_sim.world)
+    japanese_names.load_names(test_sim.world)
 
-    return sim
+    return test_sim
 
 
-def test_set_current_ruler(test_sim: Simulation):
+def test_set_current_ruler(sim: Simulation):
     """Test setting the current ruler."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
-
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    corlys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Corlys",
-        surname="Velaryon",
-        sex=Sex.MALE,
-        age=54,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    corlys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Corlys",
+            surname="Velaryon",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    targaryen_family = family_factory.generate_family(test_sim.world, name="Targaryen")
-    velaryon_family = family_factory.generate_family(test_sim.world, name="Velaryon")
+    targaryen_family = spawn_family(sim.world, FamilyGenOptions(name="Targaryen"))
+    velaryon_family = spawn_family(sim.world, FamilyGenOptions(name="Velaryon"))
 
     set_character_family(viserys, targaryen_family)
     set_character_family(rhaenyra, targaryen_family)
     set_character_family(corlys, velaryon_family)
 
-    dynasty_tracker = test_sim.world.get_resource(DynastyTracker)
-    db = test_sim.world.get_resource(SimDB).db
+    dynasty_tracker = sim.world.get_resource(DynastyTracker)
+    db = sim.world.get_resource(SimDB).db
 
-    set_current_ruler(test_sim.world, viserys)
+    set_current_ruler(sim.world, viserys)
 
     assert dynasty_tracker.current_dynasty is not None
     assert dynasty_tracker.last_dynasty is None
@@ -108,7 +112,7 @@ def test_set_current_ruler(test_sim: Simulation):
     assert current_dynasty_component.current_ruler == viserys
 
     # Set the next ruler to come from the same family
-    set_current_ruler(test_sim.world, rhaenyra)
+    set_current_ruler(sim.world, rhaenyra)
 
     # Verify that the dynasty has not changed
     result = db.execute(
@@ -138,7 +142,7 @@ def test_set_current_ruler(test_sim: Simulation):
     assert result == ("0001-01", "0001-01", None)
 
     # Set the next ruler to come from a different family, ending the current dynasty.
-    set_current_ruler(test_sim.world, corlys)
+    set_current_ruler(sim.world, corlys)
 
     result = db.execute(
         """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
@@ -170,7 +174,7 @@ def test_set_current_ruler(test_sim: Simulation):
     assert current_dynasty_component.current_ruler == corlys
 
     # Remove the final rule from power and do not place anyone as a replacement.
-    set_current_ruler(test_sim.world, None)
+    set_current_ruler(sim.world, None)
 
     assert dynasty_tracker.current_dynasty is None
     assert len(dynasty_tracker.previous_dynasties) == 2

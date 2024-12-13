@@ -12,8 +12,6 @@ from feature_extraction import get_default_vector_factory
 from minerva.characters.components import Character
 from minerva.config import Config
 from minerva.data import ck3_traits, japanese_city_names, japanese_names
-from minerva.pcg.character import generate_initial_families
-from minerva.pcg.world_map import generate_world_map
 from minerva.simulation import Simulation
 
 # How many simulations to aggregate
@@ -53,9 +51,6 @@ def main():
         ck3_traits.load_traits(sim.world)
 
         print(f"Running simulation with seed: {seed}")
-
-        generate_world_map(sim.world)
-        generate_initial_families(sim.world)
 
         try:
             for _ in tqdm.trange(YEAR_TO_SIMULATE * 12):

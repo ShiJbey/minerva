@@ -30,39 +30,40 @@ from minerva.characters.helpers import (
 )
 from minerva.data import japanese_city_names, japanese_names
 from minerva.datetime import SimDate
-from minerva.pcg.base_types import PCGFactories
+from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
+from minerva.pcg.character import spawn_character, spawn_family
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 
 
 @pytest.fixture
-def test_sim() -> Simulation:
+def sim() -> Simulation:
     """Create a test simulation."""
-    sim = Simulation()
+    test_sim = Simulation()
 
-    japanese_city_names.load_names(sim.world)
-    japanese_names.load_names(sim.world)
+    japanese_city_names.load_names(test_sim.world)
+    japanese_names.load_names(test_sim.world)
 
-    return sim
+    return test_sim
 
 
-def test_set_first_name(test_sim: Simulation):
+def test_set_first_name(sim: Simulation):
     """Test updating a character's first name."""
 
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
-
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.first_name == "Rhaenyra"
 
@@ -85,23 +86,23 @@ def test_set_first_name(test_sim: Simulation):
     assert result[0] == "Daenerys"
 
 
-def test_set_surname(test_sim: Simulation):
+def test_set_surname(sim: Simulation):
     """Test updating a character's surname."""
 
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
-
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.surname == "Targaryen"
 
@@ -120,22 +121,23 @@ def test_set_surname(test_sim: Simulation):
     assert result[0] == "Baratheon"
 
 
-def test_set_birth_surname(test_sim: Simulation):
+def test_set_birth_surname(sim: Simulation):
     """Test updating a character's birth surname."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.birth_surname == "Targaryen"
 
@@ -158,22 +160,23 @@ def test_set_birth_surname(test_sim: Simulation):
     assert result[0] == "Baratheon"
 
 
-def test_set_sex(test_sim: Simulation):
+def test_set_sex(sim: Simulation):
     """Test updating a character's sex."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.sex == Sex.FEMALE
 
@@ -192,22 +195,23 @@ def test_set_sex(test_sim: Simulation):
     assert result[0] == Sex.MALE.name
 
 
-def test_set_sexual_orientation(test_sim: Simulation):
+def test_set_sexual_orientation(sim: Simulation):
     """Test updating a character's sexual orientation."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.sexual_orientation == SexualOrientation.BISEXUAL
 
@@ -230,22 +234,23 @@ def test_set_sexual_orientation(test_sim: Simulation):
     assert result[0] == SexualOrientation.HETEROSEXUAL.name
 
 
-def test_set_life_stage(test_sim: Simulation):
+def test_set_life_stage(sim: Simulation):
     """Test updating a character's life stage."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.life_stage == LifeStage.ADULT
     cur = db.execute(
@@ -267,22 +272,23 @@ def test_set_life_stage(test_sim: Simulation):
     assert result[0] == LifeStage.ADOLESCENT.name
 
 
-def test_set_age(test_sim: Simulation):
+def test_set_age(sim: Simulation):
     """Test updating a character's age."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        age=16,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            age=16,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.age == 16
 
@@ -301,22 +307,23 @@ def test_set_age(test_sim: Simulation):
     assert result[0] == 35
 
 
-def test_set_birth_date(test_sim: Simulation):
+def test_set_birth_date(sim: Simulation):
     """Test updating a character's birth date."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.birth_date is None
 
@@ -339,22 +346,23 @@ def test_set_birth_date(test_sim: Simulation):
     assert result[0] == "0016-01"
 
 
-def test_set_death_date(test_sim: Simulation):
+def test_set_death_date(sim: Simulation):
     """Test updating a character's death date."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.death_date is None
 
@@ -377,32 +385,35 @@ def test_set_death_date(test_sim: Simulation):
     assert result[0] == "0078-01"
 
 
-def test_set_mother(test_sim: Simulation):
+def test_set_mother(sim: Simulation):
     """Test updating a character's mother reference."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    aemma = character_factory.generate_character(
-        test_sim.world,
-        first_name="Aemma",
-        surname="Arryn",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    aemma = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Aemma",
+            surname="Arryn",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.mother is None
 
@@ -421,32 +432,34 @@ def test_set_mother(test_sim: Simulation):
     assert result[0] == aemma.uid
 
 
-def test_set_father(test_sim: Simulation):
+def test_set_father(sim: Simulation):
     """Test updating a character's father reference."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
-
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.father is None
 
@@ -465,32 +478,35 @@ def test_set_father(test_sim: Simulation):
     assert result[0] == viserys.uid
 
 
-def test_set_biological_father(test_sim: Simulation):
+def test_set_biological_father(sim: Simulation):
     """Test updating a character's biological father reference."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.biological_father is None
 
@@ -513,22 +529,23 @@ def test_set_biological_father(test_sim: Simulation):
     assert result[0] == viserys.uid
 
 
-def test_set_alive(test_sim: Simulation):
+def test_set_alive(sim: Simulation):
     """Test updating a character's living status."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.is_alive is True
 
@@ -551,26 +568,25 @@ def test_set_alive(test_sim: Simulation):
     assert bool(result[0]) is False
 
 
-def test_set_character_birth_family(test_sim: Simulation):
+def test_set_character_birth_family(sim: Simulation):
     """Test updating a character's birth family."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    family_factory = test_sim.world.get_resource(PCGFactories).family_factory
-
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    targaryen_family = family_factory.generate_family(test_sim.world, "Targaryen")
+    targaryen_family = spawn_family(sim.world, FamilyGenOptions(name="Targaryen"))
 
     character_component = rhaenyra.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert character_component.birth_family is None
 
@@ -593,32 +609,35 @@ def test_set_character_birth_family(test_sim: Simulation):
     assert result[0] == targaryen_family.uid
 
 
-def test_set_relation_sibling(test_sim: Simulation):
+def test_set_relation_sibling(sim: Simulation):
     """Test updating a sibling reference from on character to another."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    daemon = character_factory.generate_character(
-        test_sim.world,
-        first_name="Daemon",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    daemon = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Daemon",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     character_component = viserys.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert daemon not in character_component.siblings
 
@@ -641,32 +660,35 @@ def test_set_relation_sibling(test_sim: Simulation):
     assert result[0] == daemon.uid
 
 
-def test_set_relation_child(test_sim: Simulation):
+def test_set_relation_child(sim: Simulation):
     """Test updating child reference from a parent to their child."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    rhaenyra = character_factory.generate_character(
-        test_sim.world,
-        first_name="Rhaenyra",
-        surname="Targaryen",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.BISEXUAL,
-        species="human",
+    rhaenyra = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Rhaenyra",
+            surname="Targaryen",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+            species="human",
+        ),
     )
 
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     character_component = viserys.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert rhaenyra not in character_component.children
 
@@ -689,33 +711,36 @@ def test_set_relation_child(test_sim: Simulation):
     assert result[0] == rhaenyra.uid
 
 
-def test_start_marriage(test_sim: Simulation):
+def test_start_marriage(sim: Simulation):
     """Test starting marriages and updating spousal references."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    aemma = character_factory.generate_character(
-        test_sim.world,
-        first_name="Aemma",
-        surname="Arryn",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    aemma = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Aemma",
+            surname="Arryn",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     aemma_character_component = aemma.get_component(Character)
     viserys_character_component = viserys.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
@@ -742,33 +767,36 @@ def test_start_marriage(test_sim: Simulation):
     assert result[0] == viserys.uid
 
 
-def test_end_marriage(test_sim: Simulation):
+def test_end_marriage(sim: Simulation):
     """Test ending marriages and updating spousal references."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    aemma = character_factory.generate_character(
-        test_sim.world,
-        first_name="Aemma",
-        surname="Arryn",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    aemma = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Aemma",
+            surname="Arryn",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
-    viserys = character_factory.generate_character(
-        test_sim.world,
-        first_name="Viserys",
-        surname="Targaryen",
-        sex=Sex.MALE,
-        life_stage=LifeStage.SENIOR,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    viserys = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Viserys",
+            surname="Targaryen",
+            sex=Sex.MALE,
+            life_stage=LifeStage.SENIOR,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     aemma_character_component = aemma.get_component(Character)
     viserys_character_component = viserys.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
@@ -815,33 +843,35 @@ def test_end_marriage(test_sim: Simulation):
     assert result[0] == "0001-01"
 
 
-def test_start_romantic_affair(test_sim: Simulation):
+def test_start_romantic_affair(sim: Simulation):
     """Test starting a romantic lover relationship and updating lover references."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    alicent = character_factory.generate_character(
-        test_sim.world,
-        first_name="Alicent",
-        surname="Hightower",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    alicent = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Alicent",
+            surname="Hightower",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+        ),
     )
 
-    cole = character_factory.generate_character(
-        test_sim.world,
-        first_name="Cristen",
-        surname="Cole",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    cole = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Cristen",
+            surname="Cole",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     alicent_character_component = alicent.get_component(Character)
     cole_character_component = cole.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert cole_character_component.lover is None
     assert alicent_character_component.lover is None
@@ -868,33 +898,35 @@ def test_start_romantic_affair(test_sim: Simulation):
     assert result[0] == alicent.uid
 
 
-def test_end_romantic_affair(test_sim: Simulation):
+def test_end_romantic_affair(sim: Simulation):
     """Test ending romantic lover relationships and updating lover references."""
-    character_factory = test_sim.world.get_resource(PCGFactories).character_factory
 
-    alicent = character_factory.generate_character(
-        test_sim.world,
-        first_name="Alicent",
-        surname="Hightower",
-        sex=Sex.FEMALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    alicent = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Alicent",
+            surname="Hightower",
+            sex=Sex.FEMALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.BISEXUAL,
+        ),
     )
 
-    cole = character_factory.generate_character(
-        test_sim.world,
-        first_name="Cristen",
-        surname="Cole",
-        sex=Sex.MALE,
-        life_stage=LifeStage.ADULT,
-        sexual_orientation=SexualOrientation.HETEROSEXUAL,
-        species="human",
+    cole = spawn_character(
+        sim.world,
+        CharacterGenOptions(
+            first_name="Cristen",
+            surname="Cole",
+            sex=Sex.MALE,
+            life_stage=LifeStage.ADULT,
+            sexual_orientation=SexualOrientation.HETEROSEXUAL,
+            species="human",
+        ),
     )
 
     alicent_character_component = alicent.get_component(Character)
     cole_character_component = cole.get_component(Character)
-    db = test_sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).db
 
     assert cole_character_component.spouse is None
     assert alicent_character_component.spouse is None

@@ -102,8 +102,8 @@ from minerva.life_events.events import (
     UsurpEvent,
 )
 from minerva.life_events.succession import BecameFamilyHeadEvent
-from minerva.pcg.base_types import PCGFactories
-from minerva.pcg.character import generate_family
+from minerva.pcg.base_types import FamilyGenOptions
+from minerva.pcg.character import spawn_baby_from, spawn_family
 from minerva.pcg.world_map import generate_world_map
 from minerva.relationships.base_types import Attraction, Opinion
 from minerva.relationships.helpers import get_relationship
@@ -1040,8 +1040,6 @@ class ChildBirthSystem(System):
     def on_update(self, world: World) -> None:
         current_date = world.get_resource(SimDate)
 
-        baby_factory = world.get_resource(PCGFactories).baby_factory
-
         for _, (character, pregnancy, fertility, _) in world.query_components(
             (Character, Pregnancy, Fertility, Active)
         ):
@@ -1050,7 +1048,7 @@ class ChildBirthSystem(System):
 
             father = pregnancy.actual_father
 
-            baby = baby_factory.generate_child(
+            baby = spawn_baby_from(
                 mother=character.entity,
                 father=father,
             )
@@ -1657,7 +1655,7 @@ class FamilyRefillSystem(System):
         current_date = world.get_resource(SimDate)
         for _, (territory, _) in world.query_components((Territory, Active)):
             if len(territory.families) < 3:
-                family = generate_family(world)
+                family = spawn_family(world, FamilyGenOptions(spawn_members=True))
                 family_component = family.get_component(Family)
                 set_family_home_base(family, territory.entity)
                 family_component.territories.add(territory.entity)
