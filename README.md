@@ -109,7 +109,8 @@ python ./samples/shogun.py -s 123abc -y 75
 python ./samples/shogun.py -y 100 --db-out ./sample123.db
 ```
 
-![WARNING]: The pygame visualization is not fully supported, and is missing many crucial features. Currently, users can see the layout of the map, and explore the world wiki by pressing the `F1` key on their keyboard.
+> [!WARNING]
+> The pygame visualization is not fully supported, and is missing many crucial features. Currently, users can see the layout of the map, and explore the world wiki by pressing the `F1` key on their keyboard.
 
 ## 🧭 Exploring the SQL Data
 
