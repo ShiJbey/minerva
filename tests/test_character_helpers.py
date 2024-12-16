@@ -28,7 +28,6 @@ from minerva.characters.helpers import (
     start_marriage,
     start_romantic_affair,
 )
-from minerva.data import japanese_city_names, japanese_names
 from minerva.datetime import SimDate
 from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
 from minerva.pcg.character import spawn_character, spawn_family
@@ -40,9 +39,6 @@ from minerva.simulation import Simulation
 def sim() -> Simulation:
     """Create a test simulation."""
     test_sim = Simulation()
-
-    japanese_city_names.load_names(test_sim.world)
-    japanese_names.load_names(test_sim.world)
 
     return test_sim
 

@@ -7,7 +7,6 @@ import pytest
 
 from minerva.characters.betrothal_helpers import init_betrothal, terminate_betrothal
 from minerva.characters.components import Character
-from minerva.data import japanese_city_names, japanese_names
 from minerva.pcg.character import spawn_character
 from minerva.simulation import Simulation
 
@@ -16,9 +15,6 @@ from minerva.simulation import Simulation
 def test_sim() -> Simulation:
     """Create a test simulation."""
     sim = Simulation()
-
-    japanese_city_names.load_names(sim.world)
-    japanese_names.load_names(sim.world)
 
     return sim
 

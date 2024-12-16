@@ -29,7 +29,6 @@ from minerva.characters.helpers import (
     set_family_name,
     unassign_family_member_from_roles,
 )
-from minerva.data import japanese_city_names, japanese_names
 from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
 from minerva.pcg.character import spawn_character, spawn_family
 from minerva.pcg.territory_pcg import spawn_territory
@@ -41,9 +40,6 @@ from minerva.simulation import Simulation
 def test_sim() -> Simulation:
     """Create a test simulation."""
     sim = Simulation()
-
-    japanese_city_names.load_names(sim.world)
-    japanese_names.load_names(sim.world)
 
     return sim
 

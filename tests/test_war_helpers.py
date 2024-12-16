@@ -15,7 +15,6 @@ from minerva.characters.war_helpers import (
     start_alliance,
     start_war,
 )
-from minerva.data import japanese_city_names, japanese_names
 from minerva.datetime import SimDate
 from minerva.pcg.character import spawn_character, spawn_family
 from minerva.pcg.territory_pcg import spawn_territory
@@ -27,9 +26,6 @@ from minerva.simulation import Simulation
 def test_sim() -> Simulation:
     """Create a test simulation."""
     sim = Simulation()
-
-    japanese_city_names.load_names(sim.world)
-    japanese_names.load_names(sim.world)
 
     return sim
 

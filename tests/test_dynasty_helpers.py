@@ -12,7 +12,6 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import set_character_family
 from minerva.characters.succession_helpers import set_current_ruler
-from minerva.data import japanese_city_names, japanese_names
 from minerva.ecs import Entity
 from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
 from minerva.pcg.character import spawn_character, spawn_family
@@ -24,9 +23,6 @@ from minerva.simulation import Simulation
 def sim() -> Simulation:
     """Create a test simulation."""
     test_sim = Simulation()
-
-    japanese_city_names.load_names(test_sim.world)
-    japanese_names.load_names(test_sim.world)
 
     return test_sim
 

@@ -13,7 +13,6 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
-from minerva.data import japanese_city_names, japanese_names
 from minerva.pcg.base_types import CharacterGenOptions
 from minerva.pcg.character import spawn_character
 from minerva.simulation import Simulation
@@ -23,9 +22,6 @@ from minerva.simulation import Simulation
 def sim() -> Simulation:
     """Create a test simulation."""
     test_sim = Simulation()
-
-    japanese_city_names.load_names(test_sim.world)
-    japanese_names.load_names(test_sim.world)
 
     return test_sim
 

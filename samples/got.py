@@ -1,13 +1,13 @@
-"""Minerva Sample: Shogun.
+"""Minerva Sample: Game of Thrones.
 
-This minerva sample generates a world inspired by the Shogun board game, based on the
-novel of the same name. This sample is the core testing script for the headless and
+This minerva sample generates a world inspired by Game of Thrones.
+This sample is the core testing script for the headless and
 pygame version.
 
 Usage:
-    "python path/to/shogun.py -h".............Show commandline help
-    "python path/to/shogun.py"................Run headless sim
-    "python path/to/shogun.py --pygame".......Run the pygame visualization
+    "python path/to/got.py -h".............Show commandline help
+    "python path/to/got.py"................Run headless sim
+    "python path/to/got.py --pygame".......Run the pygame visualization
 """
 
 import argparse
@@ -34,8 +34,8 @@ def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
 
     parser = argparse.ArgumentParser(
-        prog="Shogun Minerva Sample",
-        description="Minerva simulation sample based on the Shogun board game.",
+        prog="Game of Thrones Minerva Sample",
+        description="Minerva simulation sample based Game of Thrones.",
     )
 
     parser.add_argument(
@@ -133,22 +133,17 @@ if __name__ == "__main__":
     # Load name custom data
     load_tracery_file(
         sim.world,
-        DATA_DIR / "female_japanese_first_names.tracery.json",
+        DATA_DIR / "english_first_names.tracery.json",
     )
 
     load_tracery_file(
         sim.world,
-        DATA_DIR / "male_japanese_first_names.tracery.json",
+        DATA_DIR / "got_house_names.tracery.json",
     )
 
     load_tracery_file(
         sim.world,
-        DATA_DIR / "japanese_surnames.tracery.json",
-    )
-
-    load_tracery_file(
-        sim.world,
-        DATA_DIR / "japanese_city_names.tracery.json",
+        DATA_DIR / "got_seat_names.tracery.json",
     )
 
     # Load custom trait definitions

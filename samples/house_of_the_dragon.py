@@ -1,4 +1,10 @@
-"""Minerva Sample: House of the Dragon/Game of Thrones."""
+"""Minerva Sample: House of the Dragon
+
+This sample just demonstrates how to manually create a family
+tree and export it as a SQLite database file. The code below
+uses characters from HBO's House of the Dragon.
+
+"""
 
 import argparse
 import pathlib

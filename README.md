@@ -111,6 +111,17 @@ python ./samples/shogun.py -y 100 --db-out ./sample123.db
 
 ![WARNING]: The pygame visualization is not fully supported, and is missing many crucial features. Currently, users can see the layout of the map, and explore the world wiki by pressing the `F1` key on their keyboard.
 
+### 👑 Game of Thrones Sample
+
+`samples/got.py` contains a sample simulation inspired by Game of Thrones. It runs the full simulation like the Shōgun sample. However, family and territory names have been customized based on those listed in the [Song of Ice and Fire Wiki](https://awoiaf.westeros.org/index.php/List_of_Houses).
+
+This sample can be run the exact same way as the shogun sample. Use the `--help` argument for more information about command line usage.
+
+```bash
+# Run the simulation with the seed "123abc" for 125 in-game years
+python ./samples/got.py -s 123abc -y 125
+```
+
 ## 🧭 Exploring the SQL Data
 
 Running Minerva's samples will produce `*.db` SQLite database files for external data analysis. These files can be loaded into other script using `sqlite`, `pandas`, `polars`, or any other data analysis library that supports SQLite.
