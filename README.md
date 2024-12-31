@@ -16,6 +16,28 @@ I started this project as a fork of Neighborly because I felt that Neighborly wa
 >
 > It does not have any official releases. Most of the simulation infrastructure is built but still needs tweaks. I still need to create all the various character behaviors and some associated systems. I will try to always keep the samples functional. However, you may notice breaking changes between updates.
 
+## Table of Contents
+
+- [Minerva Dynasty Simulator](#minerva-dynasty-simulator)
+  - [Table of Contents](#table-of-contents)
+  - [🚀 How Does Minerva Work?](#-how-does-minerva-work)
+  - [📦 Download and Installation](#-download-and-installation)
+  - [🍪 Running the Samples](#-running-the-samples)
+    - [🐲 House of the Dragon Sample](#-house-of-the-dragon-sample)
+    - [🏯 Shōgun Sample](#-shōgun-sample)
+    - [👑 Game of Thrones Sample](#-game-of-thrones-sample)
+  - [Using the Simulation Inspector CLI](#using-the-simulation-inspector-cli)
+    - [Getting Started](#getting-started)
+    - [Inspecting Characters](#inspecting-characters)
+    - [Inspecting Families](#inspecting-families)
+    - [Inspecting Territories](#inspecting-territories)
+    - [Inspecting Dynasties](#inspecting-dynasties)
+  - [🧭 Exploring the SQL Data](#-exploring-the-sql-data)
+    - [Database Configuration and Naming Conventions](#database-configuration-and-naming-conventions)
+  - [🧪 Running the Tests](#-running-the-tests)
+  - [☝️ License](#️-license)
+  - [🍾 Acknowledgements](#-acknowledgements)
+
 ## 🚀 How Does Minerva Work?
 
 Minerva is designed to operate like a board game. The base design is adapted from the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun), and I added additional simulation elements as needed for more character-driven emergent stories. Over decades of simulated time, Minerva generates a history for the simulated world, containing records of royal dynasties, conflicts between families, intermarriages, and conquests. We use this generated history for data analysis.
@@ -45,9 +67,7 @@ python -m pip install -e ".[development]"
 
 ## 🍪 Running the Samples
 
-Minerva has two main sample scripts, one inspired by [House of the Dragon](https://en.wikipedia.org/wiki/House_of_the_Dragon) and another inspired by the [Shōgun board game](https://boardgamegeek.com/boardgame/2690/james-clavells-shogun) (based on the novel by James Clavell).
-
-Before running any samples, please ensure that you have installed Minerva locally.
+Before running any samples, please ensure that you have installed Minerva locally. It's recommended that you run the Shogun and Game of Thrones samples using `python -i` so that you can explore the generated data using Minerva's inspector tool.
 
 > [!NOTE]
 > Minerva is developed and tested using Python version 3.12. While it should be compatible with most Python versions 3.10 or later, it has not been tested on those.
@@ -69,7 +89,7 @@ python ./samples/house_of_the_dragon.py
 
 The Shōgun sample runs the full simulation. It procedurally generates a map with multiple territories, characters, and families. It then simulates decades of political and martial strife between families as they compete for power and influence. As with the House of the Dragon sample, the Shōgun sample also exports the generated world data to a SQLite file for later data analysis.
 
-The Shōgun sample has a CLI interface to facilitate running the full visualization in PyGame or running the simulation in headless mode (no PyGame window).
+The Shōgun sample has a CLI interface to facilitate running the full visualization in PyGame or running the simulation in headless mode (no PyGame window). The recommended way to explore the generated data is using the `-i` python flag and the `--enable-logging` minerva flag. `-i` starts the Python REPL after the simulation is complete. Inside the REPL you will have access to an `inspector` object that pretty prints information about characters, families, dynasties, and territories.
 
 > [!NOTE]
 > The commands below assume that you're running them from the root directory of this project.
@@ -110,7 +130,7 @@ python ./samples/shogun.py -y 100 --db-out ./sample123.db
 ```
 
 > [!WARNING]
-> The pygame visualization is not fully supported, and is missing many crucial features. Currently, users can see the layout of the map, and explore the world wiki by pressing the `F1` key on their keyboard.
+> The pygame visualization is not fully supported and is missing many crucial features. Currently, users can see the layout of the map and explore the world wiki by pressing the `F1` key on their keyboard.
 
 ### 👑 Game of Thrones Sample
 
@@ -123,9 +143,68 @@ This sample can be run the exact same way as the shogun sample. Use the `--help`
 python ./samples/got.py -s 123abc -y 125
 ```
 
+## Using the Simulation Inspector CLI
+
+When running the GoT and Shogun samples above, you can use `python -i` to enter the python REPL after world generation completes. Minerva comes with an Inspector tool that prints information about the simulation and various entities.
+
+The inspector is accessed using the `inspector` variable, which provides multiple methods for finding and viewing data.
+
+- `inspector.print_status()`: Print version and date information about the simulation.
+- `inspector.inspect(entity_id)`: Print information about an entity. This function accepts the ID number of an entity. An entity's ID number is always printed next to its name inside parentheses. For example, to inspect a character, `Hiroka Fuji (216)`, you would enter `inspector.inspect(216)` into the Python REPL.
+- `inspector.list_dynasties()`: List the past and current dynasties
+- `inspector.list_territories()`: List all territories
+- `inspector.list_characters()`: List all active characters
+- `inspector.list_families()`: List all active families
+- `inspector.list_alliances()`: List all active alliances between families
+- `inspector.list_wars()`: List all active wars
+
+### Getting Started
+
+Start by running one of the sample simulations. Then run `inspector.print_status()` to print general information about the current simulation state.
+
+![Python REPL after world generation](https://github.com/user-attachments/assets/d9ed0c06-b120-40e5-b7c3-9b247c03b94e)
+
+![Print Sim Status](https://github.com/user-attachments/assets/c18e8505-63c9-4ba4-bcfb-69d83af13b34)
+
+Now that we know the inspector is working, you're free to explore all the other world data Minerva has generated.
+
+### Inspecting Characters
+
+Characters are the base of the simulation. They perform actions and experience virtual lives. We record their relationships and life events as their emergent backstories. When inspecting characters, it helps to first print them. Sometimes, there may be too many, but this is a good way to see who is available.
+
+![List Characters](https://github.com/user-attachments/assets/22669e1f-33ed-413f-87e1-0e3445cecd58)
+
+Once you find someone who looks interesting, take note of their ID number and use the `inspect` function to see more information about them.
+
+![Inspect Character](https://github.com/user-attachments/assets/59f38bc6-9e1b-4c0f-8b67-68dc223aaa31)
+
+### Inspecting Families
+
+Characters are organized into families. Each family has a single family head who works to expand the power and influence of the family. Families are comprised of parents, siblings, cousins, adopted children, and in-laws. Characters can marry into families and join families under a single banner (if the married couple were both heads of their respective families).
+
+![List Families](https://github.com/user-attachments/assets/94aff879-3b88-48a0-bbb4-e8a184bb2334)
+
+![Inspect Family](https://github.com/user-attachments/assets/beac037c-5259-4d14-9c21-387de874f176)
+
+### Inspecting Territories
+
+Families fight for territory. Each territory has a name and is home base to one or more families. During the course of the simulation, families will try to take control of a territory if it is currently uncontrolled. Families that currently control a territory must maintain the happiness of the local population, or they could be ousted by a revolt.
+
+![List Territories](https://github.com/user-attachments/assets/086c3fc7-28cc-47df-975d-ae1e61a79ad1)
+
+![Inspect Territory](https://github.com/user-attachments/assets/7b2157db-d3ca-45a0-abc8-b5a4c69a0bcf)
+
+### Inspecting Dynasties
+
+Dynasties are started when a family head takes control of the throne. Power is passed from one ruler to the next until there are no eligible heirs or the ruling family is ousted by a coup.
+
+![List Dynasties](https://github.com/user-attachments/assets/9b5ec405-19a0-4e4c-8fab-a748520c7887)
+
+![Inspect Dynasty](https://github.com/user-attachments/assets/809bd1fe-c642-4d86-8eb6-930951d4961d)
+
 ## 🧭 Exploring the SQL Data
 
-Running Minerva's samples will produce `*.db` SQLite database files for external data analysis. These files can be loaded into other script using `sqlite`, `pandas`, `polars`, or any other data analysis library that supports SQLite.
+Running Minerva's samples will produce `*.db` SQLite database files for external data analysis. These files can be loaded into other scripts using `sqlite`, `pandas`, `polars`, or any other data analysis library that supports SQLite.
 
 I use [DB Browser for SQLite](https://sqlitebrowser.org) on MacOS to explore the generated data and run queries. In the future, I might include examples of how to perform data analysis using Pandas.
 
