@@ -67,7 +67,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--db-out",
         type=str,
-        default=str(pathlib.Path(__file__).parent / "shogun.db"),
+        default=str(pathlib.Path(__file__).parent / "got.db"),
         help="The output location for the simulation database.",
     )
 
