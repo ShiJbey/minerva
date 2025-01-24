@@ -42,18 +42,18 @@ class BecameFamilyHeadEvent(LifeEvent):
         )
 
 
-class BecameEmperorEvent(LifeEvent):
-    """Event dispatched when a character becomes emperor."""
+class BecameRulerEvent(LifeEvent):
+    """Event dispatched when a character becomes the ruler."""
 
     def get_event_type(self) -> str:
-        return "BecameEmperor"
+        return "BecameRuler"
 
     def on_event_logged(self) -> None:
         db = self.world.get_resource(SimDB).db
         cur = db.cursor()
         cur.execute(
             """
-            INSERT INTO became_emperor_events
+            INSERT INTO became_ruler_events
             (event_id, character_id, timestamp)
             VALUES (?, ?, ?);
             """,
@@ -66,7 +66,7 @@ class BecameEmperorEvent(LifeEvent):
         db.commit()
 
     def get_description(self) -> str:
-        return f"{self.subject.name_with_uid} became emperor."
+        return f"{self.subject.name_with_uid} became ruler."
 
 
 class FamilyRemovedFromPlay(LifeEvent):

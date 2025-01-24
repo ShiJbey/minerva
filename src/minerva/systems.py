@@ -20,7 +20,7 @@ from minerva.characters.components import (
     Character,
     Diplomacy,
     DynastyTracker,
-    Emperor,
+    Ruler,
     Family,
     FamilyPrestige,
     FamilyRoleFlags,
@@ -298,8 +298,8 @@ class FallbackFamilySuccessionSystem(System):
                 remove_family_from_play(family.entity)
 
 
-class FallbackEmperorSuccessionSystem(System):
-    """If no emperor exists select one of the family heads."""
+class FallbackRulerSuccessionSystem(System):
+    """If no ruler exists select one of the family heads."""
 
     __system_group__ = "LateUpdateSystems"
 
@@ -316,8 +316,8 @@ class FallbackEmperorSuccessionSystem(System):
                 eligible_family_heads.append(family.head)
 
         if eligible_family_heads:
-            chosen_emperor = rng.choice(eligible_family_heads)
-            set_current_ruler(world, chosen_emperor)
+            chosen_ruler = rng.choice(eligible_family_heads)
+            set_current_ruler(world, chosen_ruler)
 
 
 class EmptyFamilyCleanUpSystem(System):
@@ -663,7 +663,7 @@ class InfluencePointGainSystem(System):
         for _, (character, _) in world.query_components((Character, Active)):
             influence_gain: int = 1
 
-            if character.entity.has_component(Emperor):
+            if character.entity.has_component(Ruler):
                 influence_gain += 5
 
             if character.entity.has_component(HeadOfFamily):

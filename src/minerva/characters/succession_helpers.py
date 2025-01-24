@@ -26,13 +26,13 @@ from minerva.characters.components import (
     Character,
     Dynasty,
     DynastyTracker,
-    Emperor,
+    Ruler,
     LifeStage,
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.datetime import SimDate
 from minerva.ecs import Entity, World
-from minerva.life_events.succession import BecameEmperorEvent
+from minerva.life_events.succession import BecameRulerEvent
 from minerva.sim_db import SimDB
 
 
@@ -263,7 +263,7 @@ def set_current_ruler(world: World, character: Optional[Entity]) -> None:
     current_date = world.get_resource(SimDate)
 
     # Check if there is a current dynasty and that it has a current ruler. If it
-    # does, remove the ruler/emperor component and update their ruler entry in the
+    # does, remove the ruler component and update their ruler entry in the
     # database
     if dynasty_tracker.current_dynasty is not None:
         current_dynasty_component = dynasty_tracker.current_dynasty.get_component(
@@ -272,7 +272,7 @@ def set_current_ruler(world: World, character: Optional[Entity]) -> None:
 
         # Remove the current ruler
         if current_dynasty_component.current_ruler is not None:
-            current_dynasty_component.current_ruler.remove_component(Emperor)
+            current_dynasty_component.current_ruler.remove_component(Ruler)
             cur.execute(
                 """
                 UPDATE rulers
@@ -342,8 +342,8 @@ def set_current_ruler(world: World, character: Optional[Entity]) -> None:
             current_dynasty_component.current_ruler = character
             last_ruler = dynasty_tracker.last_ruler
             dynasty_tracker.all_rulers.add(character)
-            character.add_component(Emperor())
-            BecameEmperorEvent(character).log_event()
+            character.add_component(Ruler())
+            BecameRulerEvent(character).log_event()
 
             cur.execute(
                 """
@@ -412,8 +412,8 @@ def _start_new_dynasty(founding_character: Entity) -> Entity:
     dynasty_tracker.current_dynasty = dynasty_obj
     dynasty_component.current_ruler = founding_character
     dynasty_component.previous_dynasty = dynasty_tracker.last_dynasty
-    founding_character.add_component(Emperor())
-    BecameEmperorEvent(founding_character).log_event()
+    founding_character.add_component(Ruler())
+    BecameRulerEvent(founding_character).log_event()
     dynasty_tracker.all_rulers.add(founding_character)
 
     previous_ruler: Optional[Entity] = None

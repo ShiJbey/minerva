@@ -12,7 +12,7 @@ from minerva.actions.scheme_helpers import remove_member_from_scheme
 from minerva.characters.components import (
     Character,
     Diplomacy,
-    Emperor,
+    Ruler,
     Family,
     FamilyRoleFlags,
     FormerFamilyHead,
@@ -265,7 +265,7 @@ def remove_character_from_play(character: Entity, pass_crown: bool = True) -> No
         if heir is not None:
             BecameFamilyHeadEvent(heir, family).log_event()
 
-    if character.has_component(Emperor):
+    if character.has_component(Ruler):
         if pass_crown and heir:
             set_current_ruler(world, heir)
             heir.get_component(CharacterMetrics).data.directly_inherited_throne = True

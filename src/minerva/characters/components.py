@@ -527,8 +527,8 @@ class FormerFamilyHead(Component):
         self.family = family
 
 
-class Emperor(TagComponent):
-    """Tags the character as the emperor of the land."""
+class Ruler(TagComponent):
+    """Tags the character as the ruler of the land."""
 
 
 class Dynasty(Component):

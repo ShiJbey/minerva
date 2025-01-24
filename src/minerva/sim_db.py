@@ -192,7 +192,7 @@ CREATE TABLE became_family_head_events (
     FOREIGN KEY (family_id) REFERENCES families(uid)
 ) STRICT;
 
-CREATE TABLE became_emperor_events (
+CREATE TABLE became_ruler_events (
     event_id INT NOT NULL PRIMARY KEY,
     character_id INT,
     timestamp TEXT,

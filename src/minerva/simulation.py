@@ -169,7 +169,7 @@ class Simulation:
             minerva.systems.FallbackFamilySuccessionSystem(),
         )
         self.world.add_system(
-            minerva.systems.FallbackEmperorSuccessionSystem(),
+            minerva.systems.FallbackRulerSuccessionSystem(),
         )
         self.world.add_system(
             minerva.systems.EmptyFamilyCleanUpSystem(),

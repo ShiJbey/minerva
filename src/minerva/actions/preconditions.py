@@ -7,7 +7,7 @@ from __future__ import annotations
 from minerva.actions.base_types import AIContext, AIPrecondition, Scheme, SchemeManager
 from minerva.actions.scheme_helpers import get_character_schemes_of_type
 from minerva.actions.scheme_types import CoupScheme
-from minerva.characters.components import Character, Emperor, Family, HeadOfFamily
+from minerva.characters.components import Character, Ruler, Family, HeadOfFamily
 from minerva.characters.war_data import Alliance, WarTracker
 from minerva.ecs import Active, Entity
 
@@ -74,7 +74,7 @@ class IsRulerPrecondition(AIPrecondition):
     """Evaluates to true if the character is the current ruler."""
 
     def evaluate(self, context: AIContext) -> bool:
-        return context.character.has_component(Emperor)
+        return context.character.has_component(Ruler)
 
 
 class AreCoupSchemesActive(AIPrecondition):

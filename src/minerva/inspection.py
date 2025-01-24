@@ -22,7 +22,7 @@ from minerva.characters.components import (
     Diplomacy,
     Dynasty,
     DynastyTracker,
-    Emperor,
+    Ruler,
     Family,
     FamilyRoleFlags,
     Fertility,
@@ -293,8 +293,8 @@ class SimulationInspector:
 
         title_list: list[str] = []
 
-        if character.has_component(Emperor):
-            title_list.append("Emperor")
+        if character.has_component(Ruler):
+            title_list.append("Ruler")
 
         if character.has_component(HeadOfFamily):
             head_of_family_comp = character.get_component(HeadOfFamily)
@@ -365,7 +365,7 @@ class SimulationInspector:
             )
             renderable_objs.append(pregnancy_panel)
 
-        if character.has_component(Emperor):
+        if character.has_component(Ruler):
             dynasty_tracker = self.sim.world.get_resource(DynastyTracker)
             current_dynasty = dynasty_tracker.current_dynasty
             assert current_dynasty
