@@ -166,7 +166,7 @@ class Simulation:
             minerva.systems.CharacterLifespanSystem(),
         )
         self.world.add_system(
-            minerva.systems.FallbackFamilySuccessionSystem(),
+            minerva.systems.FamilyHeadSuccessionSystem(),
         )
         self.world.add_system(
             minerva.systems.FallbackRulerSuccessionSystem(),

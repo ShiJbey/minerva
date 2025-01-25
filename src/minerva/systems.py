@@ -275,27 +275,68 @@ class SuccessionDepthChartUpdateSystem(System):
             chart_cache.get_chart_for(character.entity, recalculate=True)
 
 
-class FallbackFamilySuccessionSystem(System):
-    """Appoint oldest person as head of a family after a failed succession."""
+class FamilyHeadSuccessionSystem(System):
+    """Appoints new family heads to families without one.
+
+    This system will remove families from play that are unable to find a successor.
+    """
 
     __system_group__ = "LateUpdateSystems"
 
+    def try_pass_power_to_heir(self, family_head: Entity, family: Entity) -> bool:
+        """Attempt to pass power over the family to their heir."""
+
+        heir = family_head.get_component(Character).heir
+
+        if heir is not None:
+
+            heir_character = heir.get_component(Character)
+
+            if heir_character.is_alive and heir_character.family == family:
+                set_family_head(family, heir)
+                BecameFamilyHeadEvent(heir, family).log_event()
+                return True
+
+        return False
+
+    def try_pass_power_to_descendent(self, family_head: Entity, family: Entity) -> bool:
+        """Attempt to pass power to someone in their succession chart."""
+        world = family_head.world
+
+        depth_chart = get_succession_depth_chart(family_head)
+
+        if len(depth_chart) > 0:
+            for row in depth_chart:
+                if row.is_eligible:
+                    heir_id = row.character_id
+                    heir = world.get_entity(heir_id)
+                    heir_character = heir.get_component(Character)
+
+                    if heir_character.is_alive and heir_character.family == family:
+                        set_family_head(family, heir)
+                        BecameFamilyHeadEvent(heir, family).log_event()
+                        return True
+
+        return False
+
     def on_update(self, world: World) -> None:
         for _, (family, _) in world.query_components((Family, Active)):
+
             if family.head is not None:
                 continue
 
-            former_head = family.former_heads[-1]
+            if len(family.former_heads) == 0:
+                continue
 
-            depth_chart = get_succession_depth_chart(former_head)
+            last_family_head = family.former_heads[-1]
 
-            if len(depth_chart) > 0:
-                heir_id = depth_chart[-1].character_id
-                heir = world.get_entity(heir_id)
-                set_family_head(family.entity, heir)
-                BecameFamilyHeadEvent(heir, family.entity).log_event()
-            else:
-                remove_family_from_play(family.entity)
+            if self.try_pass_power_to_heir(last_family_head, family.entity):
+                continue
+
+            if self.try_pass_power_to_descendent(last_family_head, family.entity):
+                continue
+
+            remove_family_from_play(family.entity)
 
 
 class FallbackRulerSuccessionSystem(System):

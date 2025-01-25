@@ -32,7 +32,7 @@ from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Entity
-from minerva.life_events.succession import BecameFamilyHeadEvent, FamilyRemovedFromPlay
+from minerva.life_events.succession import FamilyRemovedFromPlay
 from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
 from minerva.world_map.components import Territory
@@ -257,13 +257,11 @@ def remove_character_from_play(character: Entity, pass_crown: bool = True) -> No
 
     heir: Optional[Entity] = character_component.heir
 
+    # Remove the character from head of their family if applicable
     if character.has_component(HeadOfFamily):
         family_head_component = character.get_component(HeadOfFamily)
-        # Perform succession
         family = family_head_component.family
-        set_family_head(family, heir)
-        if heir is not None:
-            BecameFamilyHeadEvent(heir, family).log_event()
+        set_family_head(family, None)
 
     if character.has_component(Ruler):
         if pass_crown and heir:
