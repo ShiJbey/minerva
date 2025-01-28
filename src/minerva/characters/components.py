@@ -161,6 +161,24 @@ class SpeciesLibrary:
         return self.species[definition_id]
 
 
+class RelationType(enum.Enum):
+    """Describes how two characters are related."""
+
+    MOTHER = enum.auto()
+    FATHER = enum.auto()
+    BIOLOGICAL_FATHER = enum.auto()
+    SIBLING = enum.auto()
+    CHILD = enum.auto()
+    GRANDPARENT = enum.auto()
+    GRANDCHILD = enum.auto()
+    SPOUSE = enum.auto()
+    EX_SPOUSE = enum.auto()
+    BETROTHED = enum.auto()
+    LOVER = enum.auto()
+    HEIR = enum.auto()
+    HEIR_TO = enum.auto()
+
+
 class Character(Component):
     """A character that inhabits the world."""
 

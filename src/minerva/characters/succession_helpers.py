@@ -131,61 +131,6 @@ class SuccessionChartCache:
         return False
 
 
-def set_heir(character: Entity, heir: Entity) -> None:
-    """Set a character's heir."""
-    character_component = character.get_component(Character)
-    heir_character = heir.get_component(Character)
-
-    if character_component.heir is not None:
-        raise TypeError("Character already has a heir declared.")
-
-    character_component.heir = heir
-    heir_character.heir_to = character
-
-    db = character.world.get_resource(SimDB).db
-
-    db.execute(
-        """UPDATE characters SET heir=? WHERE uid=?;""",
-        (heir, character),
-    )
-
-    db.execute(
-        """UPDATE characters SET heir_to=? WHERE uid=?;""",
-        (character, heir),
-    )
-
-    db.commit()
-
-
-def remove_heir(character: Entity) -> None:
-    """Remove the declared heir from this character."""
-
-    character_component = character.get_component(Character)
-
-    if character_component.heir is None:
-        return
-
-    heir = character_component.heir
-    heir_character = heir.get_component(Character)
-
-    character_component.heir = None
-    heir_character.heir_to = None
-
-    db = character.world.get_resource(SimDB).db
-
-    db.execute(
-        """UPDATE characters SET heir=? WHERE uid=?;""",
-        (None, character),
-    )
-
-    db.execute(
-        """UPDATE characters SET heir_to=? WHERE uid=?;""",
-        (None, heir),
-    )
-
-    db.commit()
-
-
 def get_succession_depth_chart(character: Entity) -> SuccessionDepthChart:
     """Calculate the succession depth chart for the given character."""
 

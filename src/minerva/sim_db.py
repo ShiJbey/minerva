@@ -12,8 +12,6 @@ DROP TABLE IF EXISTS relations;
 DROP TABLE IF EXISTS territories;
 DROP TABLE IF EXISTS families;
 DROP TABLE IF EXISTS family_heads;
-DROP TABLE IF EXISTS siblings;
-DROP TABLE IF EXISTS children;
 DROP TABLE IF EXISTS marriages;
 DROP TABLE IF EXISTS romantic_affairs;
 DROP TABLE IF EXISTS life_events;
@@ -41,36 +39,20 @@ CREATE TABLE characters (
     sex TEXT,
     sexual_orientation TEXT,
     life_stage TEXT,
-    mother INT,
-    father INT,
-    heir INT,
-    heir_to INT,
-    biological_father INT,
-    spouse INT,
-    lover INT,
     is_alive INT,
     family INT,
     birth_family INT,
     birth_date TEXT,
     death_date TEXT,
-    FOREIGN KEY (mother) REFERENCES characters(uid),
-    FOREIGN KEY (father) REFERENCES characters(uid),
-    FOREIGN KEY (heir) REFERENCES characters(uid),
-    FOREIGN KEY (heir_to) REFERENCES characters(uid),
-    FOREIGN KEY (biological_father) REFERENCES characters(uid),
-    FOREIGN KEY (spouse) REFERENCES characters(uid),
-    FOREIGN KEY (lover) REFERENCES characters(uid),
     FOREIGN KEY (uid) REFERENCES entities(uid),
     FOREIGN KEY (family) REFERENCES families(uid),
     FOREIGN KEY (birth_family) REFERENCES families(uid)
 ) STRICT;
 
 CREATE TABLE relations (
-    uid INT PRIMARY KEY NOT NULL,
     character_id INT NOT NULL,
     target_id INT NOT NULL,
-    familial_relation TEXT,
-    relationship_status TEXT,
+    relation_type TEXT,
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (target_id) REFERENCES characters(uid)
 ) STRICT;
@@ -116,14 +98,6 @@ CREATE TABLE family_heads (
     FOREIGN KEY (predecessor) REFERENCES characters(uid)
 ) STRICT;
 
-CREATE TABLE siblings (
-    character_id INT,
-    sibling_id INT,
-    PRIMARY KEY (character_id, sibling_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (sibling_id) REFERENCES characters(uid)
-) STRICT;
-
 CREATE TABLE marriages (
     uid INT NOT NULL PRIMARY KEY,
     character_id INT NOT NULL,
@@ -155,14 +129,6 @@ CREATE TABLE romantic_affairs (
     end_date TEXT,
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (lover_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE children (
-    character_id INT,
-    child_id INT,
-    PRIMARY KEY(character_id, child_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (child_id) REFERENCES characters(uid)
 ) STRICT;
 
 CREATE TABLE life_events (

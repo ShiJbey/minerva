@@ -5,7 +5,7 @@
 
 import pytest
 
-from minerva.characters.betrothal_helpers import init_betrothal, terminate_betrothal
+from minerva.characters.helpers import init_betrothal, terminate_betrothal
 from minerva.characters.components import Character
 from minerva.pcg.character import spawn_character
 from minerva.simulation import Simulation

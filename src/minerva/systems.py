@@ -60,7 +60,7 @@ from minerva.characters.helpers import (
     set_relation_child,
     set_relation_sibling,
     start_marriage,
-    update_grandparent_relations,
+    update_grandparent_relations, set_heir, remove_heir,
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.stat_helpers import StatLevel, get_luck_level
@@ -69,9 +69,7 @@ from minerva.characters.succession_helpers import (
     end_current_dynasty,
     get_current_ruler,
     get_succession_depth_chart,
-    remove_heir,
     set_current_ruler,
-    set_heir,
 )
 from minerva.characters.war_data import Alliance, War, WarRole
 from minerva.characters.war_helpers import (

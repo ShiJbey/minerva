@@ -17,8 +17,8 @@ from minerva.characters.helpers import (
     set_character_mother,
     set_relation_sibling,
     start_marriage,
+    set_heir,
 )
-from minerva.characters.succession_helpers import set_heir
 from minerva.pcg.base_types import CharacterGenOptions
 from minerva.pcg.character import spawn_character
 from minerva.simulation import Simulation

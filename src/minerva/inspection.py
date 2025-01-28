@@ -22,6 +22,7 @@ from minerva.characters.components import (
     Diplomacy,
     Dynasty,
     DynastyTracker,
+    RelationType,
     Ruler,
     Family,
     FamilyRoleFlags,
@@ -44,6 +45,7 @@ from minerva.characters.components import (
     Stewardship,
     Vengefulness,
 )
+from minerva.characters.helpers import get_relations
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
@@ -275,10 +277,10 @@ class SimulationInspector:
             if character_component.birth_family
             else "None"
         )
+
+        sibling_list = get_relations(character, RelationType.SIBLING)
         siblings = (
-            ", ".join(s.name_with_uid for s in character_component.siblings)
-            if character_component.siblings
-            else None
+            ", ".join(s.name_with_uid for s in sibling_list) if sibling_list else None
         )
         children = (
             ", ".join(s.name_with_uid for s in character_component.children)

@@ -5,10 +5,17 @@
 
 import pytest
 
-from minerva.characters.components import Character, LifeStage, Sex, SexualOrientation
+from minerva.characters.components import (
+    Character,
+    LifeStage,
+    RelationType,
+    Sex,
+    SexualOrientation,
+)
 from minerva.characters.helpers import (
     end_marriage,
     end_romantic_affair,
+    get_relations,
     set_character_age,
     set_character_alive,
     set_character_biological_father,
@@ -23,6 +30,7 @@ from minerva.characters.helpers import (
     set_character_sex,
     set_character_sexual_orientation,
     set_character_surname,
+    set_relation,
     set_relation_child,
     set_relation_sibling,
     start_marriage,
@@ -413,14 +421,18 @@ def test_set_mother(sim: Simulation):
 
     assert character_component.mother is None
 
+    assert get_relations(rhaenyra, RelationType.MOTHER) == []
+
     cur = db.execute("""SELECT mother FROM characters WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert result[0] is None
 
     set_character_mother(rhaenyra, aemma)
+    set_relation(rhaenyra, aemma, RelationType.MOTHER)
 
     assert character_component.mother == aemma
+    assert get_relations(rhaenyra, RelationType.MOTHER) == [aemma]
 
     cur = db.execute("""SELECT mother FROM characters WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
