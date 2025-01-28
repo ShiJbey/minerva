@@ -27,7 +27,10 @@ from minerva.characters.components import (
     Stewardship,
 )
 from minerva.characters.metric_data import CharacterMetrics
-from minerva.characters.succession_helpers import set_current_ruler
+from minerva.characters.succession_helpers import (
+    remove_current_ruler,
+    remove_heir,
+)
 from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.datetime import SimDate
@@ -246,16 +249,18 @@ def remove_family_from_play(family: Entity) -> None:
     FamilyRemovedFromPlay(family).log_event()
 
 
-def remove_character_from_play(character: Entity, pass_crown: bool = True) -> None:
+def remove_character_from_play(character: Entity) -> None:
     """Remove a character from play."""
     world = character.world
     current_date = world.get_resource(SimDate).copy()
-    # rng = world.get_resource(random.Random)
     character_component = character.get_component(Character)
 
     character.deactivate()
 
-    heir: Optional[Entity] = character_component.heir
+    if character_component.heir_to:
+        heir_to_character = character_component.heir_to.get_component(Character)
+        if heir_to_character.is_alive:
+            remove_heir(character_component.heir_to)
 
     # Remove the character from head of their family if applicable
     if character.has_component(HeadOfFamily):
@@ -264,11 +269,7 @@ def remove_character_from_play(character: Entity, pass_crown: bool = True) -> No
         set_family_head(family, None)
 
     if character.has_component(Ruler):
-        if pass_crown and heir:
-            set_current_ruler(world, heir)
-            heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
-        else:
-            set_current_ruler(world, None)
+        remove_current_ruler(world)
 
     if character_component.family:
         unassign_family_member_from_all_roles(character_component.family, character)

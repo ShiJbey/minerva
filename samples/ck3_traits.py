@@ -37,6 +37,16 @@ def load_traits(world: World) -> None:
 
     trait_library.add_trait(
         Trait(
+            trait_id="royal_blood",
+            name="Royal Blood",
+            spawn_frequency=0,
+            inheritance_chance_single=1.0,
+            inheritance_chance_both=1.0,
+        )
+    )
+
+    trait_library.add_trait(
+        Trait(
             trait_id="brave",
             name="Brave",
             conflicting_traits=["craven"],

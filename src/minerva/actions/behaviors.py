@@ -5,6 +5,7 @@ from __future__ import annotations
 from ordered_set import OrderedSet
 
 from minerva.actions.actions import (
+    ClaimThroneAction,
     DisbandAllianceAction,
     ExpandIntoTerritoryAction,
     ExtortLocalFamiliesAction,
@@ -29,12 +30,14 @@ from minerva.actions.base_types import (
     AIAction,
     AIBehavior,
     AIBrain,
+    AIPrecondition,
     Scheme,
     SchemeManager,
 )
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme
 from minerva.characters.components import (
     Character,
+    DynastyTracker,
     Family,
     HeadOfFamily,
     LifeStage,
@@ -69,7 +72,7 @@ class GiveToSmallFolkBehavior(AIBehavior):
 
         actions: list[AIAction] = []
 
-        for territory in family_component.territories:
+        for territory in family_component.territories_present_in:
             territory_component = territory.get_component(Territory)
             if territory_component.controlling_family == family_component.entity:
                 action = GiveBackToTerritoryAction(
@@ -93,7 +96,7 @@ class GrowPoliticalInfluenceBehavior(AIBehavior):
 
         actions: list[AIAction] = []
 
-        for territory in family_component.territories:
+        for territory in family_component.territories_present_in:
             action = GrowPoliticalInfluenceAction(
                 performer=character,
                 family=family_component.entity,
@@ -115,7 +118,7 @@ class SendGiftBehavior(AIBehavior):
         recipients: OrderedSet[Entity] = OrderedSet([])
         actions: list[AIAction] = []
 
-        for territory in family_component.territories:
+        for territory in family_component.territories_present_in:
             territory_component = territory.get_component(Territory)
             for other_family in territory_component.families:
                 # Skip your own family
@@ -174,7 +177,7 @@ class ExtortLocalFamiliesBehavior(AIBehavior):
         family_component = family_head_component.family.get_component(Family)
 
         controlled_territory_count = 0
-        for territory in family_component.territories:
+        for territory in family_component.controlled_territories:
             territory_component = territory.get_component(Territory)
             if territory_component.controlling_family == family_component.entity:
                 controlled_territory_count += 1
@@ -196,7 +199,7 @@ class QuellRevolt(AIBehavior):
 
         actions: list[AIAction] = []
 
-        for territory in family_component.territories:
+        for territory in family_component.controlled_territories:
             territory_component = territory.get_component(Territory)
 
             if territory_component.controlling_family != family_component.entity:
@@ -314,7 +317,7 @@ class DeclareWarBehavior(AIBehavior):
 
         actions: list[AIAction] = []
 
-        for territory in family_component.territories:
+        for territory in family_component.territories_present_in:
             territory_component = territory.get_component(Territory)
 
             if (
@@ -351,13 +354,7 @@ class TaxTerritory(AIBehavior):
         family_component = family_head_component.family.get_component(Family)
 
         actions: list[AIAction] = []
-        for territory in family_component.territories:
-
-            territory_component = territory.get_component(Territory)
-
-            if territory_component.controlling_family != family_component.entity:
-                continue
-
+        for territory in family_component.controlled_territories:
             action = TaxTerritoryAction(character, territory)
             actions.append(action)
 
@@ -437,7 +434,7 @@ class SeizeControlOfTerritory(AIBehavior):
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
-        for territory in family_component.territories:
+        for territory in family_component.territories_present_in:
             territory_component = territory.get_component(Territory)
             if territory_component.controlling_family is None:
                 action = SeizeTerritoryAction(character, territory)
@@ -693,3 +690,29 @@ class CheatOnSpouseBehavior(AIBehavior):
             return actions
 
         return []
+
+
+class ClaimThroneBehavior(AIBehavior):
+    """Territory-controlling family heads will try to claim the throne if empty."""
+
+    def __init__(self, precondition: AIPrecondition) -> None:
+        super().__init__("ClaimThrone", precondition)
+
+    def get_actions(self, character: Entity) -> list[AIAction]:
+
+        world = character.world
+
+        dynasty_tracker = world.get_resource(DynastyTracker)
+
+        if dynasty_tracker.current_dynasty is not None:
+            return []
+
+        family_head_component = character.get_component(HeadOfFamily)
+
+        family_component = family_head_component.family.get_component(Family)
+
+        # Check that the family owns land
+        if len(family_component.controlled_territories) == 0:
+            return []
+
+        return [ClaimThroneAction(character)]

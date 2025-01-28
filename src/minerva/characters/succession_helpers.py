@@ -242,131 +242,96 @@ def get_succession_depth_chart(character: Entity) -> SuccessionDepthChart:
     return depth_chart
 
 
-def set_current_ruler(world: World, character: Optional[Entity]) -> None:
-    """Set the character who is currently the ruler.
+def set_current_ruler(world: World, character: Entity) -> None:
+    """Sets the ruler for the current dynasty."""
 
-    Setting the ruler changes who is currently in charge and potentially
-    what dynasty is currently active. Consecutive rulers from the same
-    family constitute a single dynasty. IF the new ruler comes from a different
-    family, a new dynasty starts.
-
-    There may be times when there is no active dynasty.
-
-    Parameters
-    ----------
-    character
-        The next ruler.
-    """
     db = world.get_resource(SimDB).db
     cur = db.cursor()
     dynasty_tracker = world.get_resource(DynastyTracker)
     current_date = world.get_resource(SimDate)
 
-    # Check if there is a current dynasty and that it has a current ruler. If it
-    # does, remove the ruler component and update their ruler entry in the
-    # database
-    if dynasty_tracker.current_dynasty is not None:
-        current_dynasty_component = dynasty_tracker.current_dynasty.get_component(
-            Dynasty
+    current_dynasty = dynasty_tracker.current_dynasty
+
+    if current_dynasty is None:
+        raise RuntimeError("Cannot set current ruler without an active dynasty.")
+
+    dynasty_component = current_dynasty.get_component(Dynasty)
+
+    if dynasty_component.current_ruler is not None:
+        raise RuntimeError("Dynasty already has a ruler. Remove them first.")
+
+    character.get_component(CharacterMetrics).data.times_as_ruler += 1
+
+    dynasty_component.current_ruler = character
+
+    last_ruler = dynasty_tracker.last_ruler
+
+    dynasty_tracker.all_rulers.add(character)
+
+    character.add_component(Ruler())
+
+    BecameRulerEvent(character).log_event()
+
+    cur.execute(
+        """
+        INSERT INTO rulers
+        (
+            character_id,
+            dynasty_id,
+            start_date,
+            predecessor_id
         )
-
-        # Remove the current ruler
-        if current_dynasty_component.current_ruler is not None:
-            current_dynasty_component.current_ruler.remove_component(Ruler)
-            cur.execute(
-                """
-                UPDATE rulers
-                SET end_date=?
-                WHERE character_id=?;
-                """,
-                (
-                    current_date.to_iso_str(),
-                    current_dynasty_component.current_ruler.uid,
-                ),
-            )
-            current_dynasty_component.previous_rulers.add(
-                current_dynasty_component.current_ruler
-            )
-            current_dynasty_component.current_ruler = None
-
-        # Nobody has been assigned as the next ruler end the dynasty
-        if character is None:
-            current_dynasty_component.ending_date = current_date
-
-            cur.execute(
-                """
-                UPDATE dynasties
-                SET
-                end_date=?
-                WHERE
-                uid=?;
-                """,
-                (current_date.to_iso_str(), current_dynasty_component.entity.uid),
-            )
-
-            dynasty_tracker.previous_dynasties.add(dynasty_tracker.current_dynasty)
-            dynasty_tracker.current_dynasty = None
-
-        # Check if the new ruler is from the same family
-        else:
-            character_component = character.get_component(Character)
-            if character_component.family != current_dynasty_component.family:
-                current_dynasty_component.ending_date = current_date
-
-                cur.execute(
-                    """
-                    UPDATE dynasties
-                    SET
-                    end_date=?
-                    WHERE
-                    uid=?;
-                    """,
-                    (
-                        current_date.to_iso_str(),
-                        current_dynasty_component.entity.uid,
-                    ),
-                )
-
-                dynasty_tracker.previous_dynasties.add(dynasty_tracker.current_dynasty)
-                dynasty_tracker.current_dynasty = None
-
-    if character is not None:
-
-        character.get_component(CharacterMetrics).data.times_as_ruler += 1
-
-        if dynasty_tracker.current_dynasty is not None:
-            current_dynasty_component = dynasty_tracker.current_dynasty.get_component(
-                Dynasty
-            )
-
-            current_dynasty_component.current_ruler = character
-            last_ruler = dynasty_tracker.last_ruler
-            dynasty_tracker.all_rulers.add(character)
-            character.add_component(Ruler())
-            BecameRulerEvent(character).log_event()
-
-            cur.execute(
-                """
-                INSERT INTO rulers
-                (
-                    character_id,
-                    dynasty_id,
-                    start_date,
-                    predecessor_id
-                )
-                VALUES (?, ?, ?, ?);
-                """,
-                (
-                    character.uid,
-                    current_dynasty_component.entity.uid,
-                    current_date.to_iso_str(),
-                    last_ruler,
-                ),
-            )
-        else:
-            _start_new_dynasty(character)
+        VALUES (?, ?, ?, ?);
+        """,
+        (
+            character.uid,
+            current_dynasty.uid,
+            current_date.to_iso_str(),
+            last_ruler,
+        ),
+    )
 
     db.commit()
+
+
+def remove_current_ruler(world: World) -> bool:
+    """Attempts to remove the current ruler if there is one."""
+    db = world.get_resource(SimDB).db
+    cur = db.cursor()
+
+    dynasty_tracker = world.get_resource(DynastyTracker)
+
+    current_dynasty = dynasty_tracker.current_dynasty
+
+    if current_dynasty is None:
+        return False
+
+    dynasty_component = current_dynasty.get_component(Dynasty)
+    current_ruler = dynasty_component.current_ruler
+
+    if current_ruler is None:
+        return False
+
+    current_date = world.get_resource(SimDate)
+
+    current_ruler.remove_component(Ruler)
+    cur.execute(
+        """
+        UPDATE rulers
+        SET end_date=?
+        WHERE character_id=?;
+        """,
+        (
+            current_date.to_iso_str(),
+            current_ruler.uid,
+        ),
+    )
+
+    dynasty_component.previous_rulers.add(current_ruler)
+
+    dynasty_component.current_ruler = None
+
+    return True
 
 
 def get_current_ruler(world: World) -> Optional[Entity]:
@@ -383,7 +348,7 @@ def get_current_ruler(world: World) -> Optional[Entity]:
     return None
 
 
-def _start_new_dynasty(founding_character: Entity) -> Entity:
+def start_new_dynasty(founding_character: Entity) -> Entity:
     """Start a new dynasty and return it."""
     world = founding_character.world
 
@@ -465,3 +430,38 @@ def _start_new_dynasty(founding_character: Entity) -> Entity:
     )
 
     return dynasty_obj
+
+
+def end_current_dynasty(world: World) -> bool:
+    """Ends the current dynasty if there is one."""
+
+    db = world.get_resource(SimDB).db
+    cur = db.cursor()
+    dynasty_tracker = world.get_resource(DynastyTracker)
+    current_date = world.get_resource(SimDate)
+
+    current_dynasty = dynasty_tracker.current_dynasty
+
+    if current_dynasty is None:
+        return False
+
+    dynasty_component = current_dynasty.get_component(Dynasty)
+
+    dynasty_component.ending_date = current_date
+
+    cur.execute(
+        """
+        UPDATE dynasties
+        SET
+        end_date=?
+        WHERE
+        uid=?;
+        """,
+        (current_date.to_iso_str(), dynasty_component.entity.uid),
+    )
+
+    dynasty_tracker.previous_dynasties.add(current_dynasty)
+
+    dynasty_tracker.current_dynasty = None
+
+    return True

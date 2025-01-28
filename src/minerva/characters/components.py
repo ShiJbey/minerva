@@ -429,7 +429,8 @@ class Family(Component):
         "former_members",
         "alliance",
         "home_base",
-        "territories",
+        "territories_present_in",
+        "controlled_territories",
         "warriors",
         "advisors",
         "color_primary",
@@ -456,7 +457,9 @@ class Family(Component):
     """The alliance this family belongs to."""
     home_base: Optional[Entity]
     """The territory this family belongs to."""
-    territories: OrderedSet[Entity]
+    territories_present_in: OrderedSet[Entity]
+    """The territories this family has any political influence in."""
+    controlled_territories: OrderedSet[Entity]
     """The territories this family has control over."""
     active_members: OrderedSet[Entity]
     """Characters actively a part of this family."""
@@ -489,7 +492,8 @@ class Family(Component):
         self.head = None
         self.alliance = None
         self.home_base = None
-        self.territories = OrderedSet([])
+        self.territories_present_in = OrderedSet([])
+        self.controlled_territories = OrderedSet([])
         self.active_members = OrderedSet([])
         self.former_members = OrderedSet([])
         self.warriors = OrderedSet([])

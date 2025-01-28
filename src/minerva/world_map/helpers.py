@@ -48,12 +48,12 @@ def set_territory_controlling_family(
     if territory_component.controlling_family is not None:
         former_sovereign = territory_component.controlling_family
         family_component = former_sovereign.get_component(Family)
-        family_component.territories.remove(territory)
+        family_component.controlled_territories.remove(territory)
         territory_component.controlling_family = None
 
     if family is not None:
         family_component = family.get_component(Family)
-        family_component.territories.add(territory)
+        family_component.controlled_territories.add(territory)
         territory_component.controlling_family = family
 
     db = territory.world.get_resource(SimDB).db

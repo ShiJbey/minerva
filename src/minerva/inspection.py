@@ -47,7 +47,7 @@ from minerva.characters.components import (
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
-from minerva.ecs import Active, Entity
+from minerva.ecs import Active
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.simulation import Simulation
 from minerva.stats.base_types import StatusEffectManager
@@ -609,20 +609,14 @@ class SimulationInspector:
         )
 
         territories = (
-            ", ".join(t.name_with_uid for t in family_component.territories)
-            if family_component.territories
+            ", ".join(t.name_with_uid for t in family_component.territories_present_in)
+            if family_component.territories_present_in
             else "None"
         )
 
-        controlled_territories_list: list[Entity] = []
-        for t in family_component.territories:
-            territory_component = t.get_component(Territory)
-            if territory_component.controlling_family == family:
-                controlled_territories_list.append(t)
-
         controlled_territories = (
-            ", ".join(t.name_with_uid for t in controlled_territories_list)
-            if controlled_territories_list
+            ", ".join(t.name_with_uid for t in family_component.controlled_territories)
+            if family_component.controlled_territories
             else "None"
         )
 

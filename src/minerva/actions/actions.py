@@ -19,6 +19,7 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import remove_character_from_play, set_character_alive
 from minerva.characters.metric_data import CharacterMetrics
+from minerva.characters.succession_helpers import start_new_dynasty
 from minerva.characters.war_data import Alliance
 from minerva.characters.war_helpers import (
     create_alliance_scheme,
@@ -53,6 +54,7 @@ from minerva.life_events.events import (
 )
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
+from minerva.traits.helpers import add_trait
 from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
 from minerva.world_map.helpers import (
     increment_political_influence,
@@ -144,11 +146,8 @@ class GetMarriedAction(AIAction):
 class DieAction(AIAction):
     """Instance of an action where a character dies."""
 
-    def __init__(
-        self, performer: Entity, cause_of_death: str = "", pass_crown: bool = True
-    ) -> None:
+    def __init__(self, performer: Entity, cause_of_death: str = "") -> None:
         super().__init__(performer, "Die")
-        self.pass_crown = pass_crown
         self.cause_of_death = cause_of_death
 
     def execute(self) -> bool:
@@ -160,7 +159,7 @@ class DieAction(AIAction):
 
         DeathEvent(character, cause=self.cause_of_death).log_event()
 
-        remove_character_from_play(character, pass_crown=self.pass_crown)
+        remove_character_from_play(character)
 
         return True
 
@@ -276,21 +275,21 @@ class ExtortLocalFamiliesAction(AIAction):
         family_head_component = self.performer.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
-        for territory in family_component.territories:
+        for territory in family_component.controlled_territories:
             territory_component = territory.get_component(Territory)
-            if territory_component.controlling_family == family_component.entity:
-                for other_family in territory_component.families:
-                    if other_family == family_component.entity:
-                        continue
 
-                    other_family_component = other_family.get_component(Family)
-                    if other_family_component.head:
-                        other_family_head = other_family_component.head
-                        other_family_head.get_component(Character).influence_points -= 5
-                        get_relationship(
-                            other_family_head, self.performer
-                        ).get_component(Opinion).base_value -= 10
-                        self.performer.get_component(Character).influence_points += 5
+            for other_family in territory_component.families:
+                if other_family == family_component.entity:
+                    continue
+
+                other_family_component = other_family.get_component(Family)
+                if other_family_component.head:
+                    other_family_head = other_family_component.head
+                    other_family_head.get_component(Character).influence_points -= 5
+                    get_relationship(other_family_head, self.performer).get_component(
+                        Opinion
+                    ).base_value -= 10
+                    self.performer.get_component(Character).influence_points += 5
 
         _logger.info(
             "[%s]: %s extorted the families in their territories.",
@@ -567,7 +566,9 @@ class ExpandIntoTerritoryAction(AIAction):
 
         territory_component = territory.get_component(Territory)
         territory_component.political_influence[family_head_component.family] = 50
-        family_head_component.family.get_component(Family).territories.add(territory)
+        family_head_component.family.get_component(Family).territories_present_in.add(
+            territory
+        )
 
         ExpandedTerritoryEvent(
             subject=family_head_component.family,
@@ -710,5 +711,31 @@ class SexAction(AIAction):
                 self.performer.get_component(Fertility).base_value -= 25
 
                 PregnancyEvent(self.performer).log_event()
+
+        return True
+
+
+class ClaimThroneAction(AIAction):
+    """A family head claims the throne and right to rule."""
+
+    def __init__(self, performer: Entity) -> None:
+        super().__init__(performer, "ClaimThrone")
+
+    def execute(self) -> bool:
+
+        # Start a new dynasty with this person
+        start_new_dynasty(self.performer)
+
+        # Give the ruler and their existing children the royal blood trait
+        add_trait(self.performer, "royal_blood")
+
+        character_component = self.performer.get_component(Character)
+        for child in character_component.children:
+            add_trait(child, "royal_blood")
+
+        # Increase the prestige of their family
+        family = character_component.family
+        assert family
+        family.get_component(FamilyPrestige).base_value += 20
 
         return True

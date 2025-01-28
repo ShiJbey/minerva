@@ -11,7 +11,10 @@ from minerva.characters.components import (
     SexualOrientation,
 )
 from minerva.characters.helpers import set_character_family
-from minerva.characters.succession_helpers import set_current_ruler
+from minerva.characters.succession_helpers import (
+    remove_current_ruler,
+    set_current_ruler,
+)
 from minerva.ecs import Entity
 from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
 from minerva.pcg.character import spawn_character, spawn_family
@@ -170,7 +173,7 @@ def test_set_current_ruler(sim: Simulation):
     assert current_dynasty_component.current_ruler == corlys
 
     # Remove the final rule from power and do not place anyone as a replacement.
-    set_current_ruler(sim.world, None)
+    remove_current_ruler(sim.world)
 
     assert dynasty_tracker.current_dynasty is None
     assert len(dynasty_tracker.previous_dynasties) == 2

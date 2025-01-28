@@ -169,7 +169,7 @@ class Simulation:
             minerva.systems.FamilyHeadSuccessionSystem(),
         )
         self.world.add_system(
-            minerva.systems.FallbackRulerSuccessionSystem(),
+            minerva.systems.RulerSuccessionSystem(),
         )
         self.world.add_system(
             minerva.systems.EmptyFamilyCleanUpSystem(),
@@ -564,6 +564,21 @@ class Simulation:
             )
         )
 
+        action_library.add_action(
+            AIActionType(
+                name="ClaimThrone",
+                cost=600,
+                cooldown=6,
+                utility_consideration=AIUtilityConsiderationGroup(
+                    AIUtilityConsiderationGroup(
+                        BoldnessConsideration(), DiplomacyConsideration(), op="max"
+                    ),
+                    StewardshipConsideration(),
+                    ConstantUtilityConsideration(1.0),
+                ),
+            )
+        )
+
     def initialize_behaviors(self) -> None:
         """Initialize behaviors."""
         behavior_library = self.world.get_resource(AIBehaviorLibrary)
@@ -753,11 +768,21 @@ class Simulation:
         )
 
         behavior_library.add_behavior(
-            behaviors.CheatOnSpouseBehavior(
-                name="CheatOnSpouse",
-                precondition=AIPreconditionGroup(ConstantPrecondition(True)),
+            behaviors.ClaimThroneBehavior(
+                precondition=AIPreconditionGroup(
+                    IsFamilyHeadPrecondition(),
+                    Not(IsRulerPrecondition()),
+                    Not(IsCurrentlyAtWar()),
+                )
             )
         )
+
+        # behavior_library.add_behavior(
+        #     behaviors.CheatOnSpouseBehavior(
+        #         name="CheatOnSpouse",
+        #         precondition=AIPreconditionGroup(ConstantPrecondition(True)),
+        #     )
+        # )
 
     def initialize_social_rules(self) -> None:
         """Initialize social rules"""

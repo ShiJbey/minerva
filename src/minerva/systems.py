@@ -7,7 +7,12 @@ from typing import Callable, ClassVar, Optional
 
 from ordered_set import OrderedSet
 
-from minerva.actions.actions import CheatOnSpouseAction, DieAction, SexAction
+from minerva.actions.actions import (
+    CheatOnSpouseAction,
+    ClaimThroneAction,
+    DieAction,
+    SexAction,
+)
 from minerva.actions.base_types import AIAction, AIBehaviorLibrary, AIBrain, Scheme
 from minerva.actions.scheme_helpers import destroy_scheme
 from minerva.actions.scheme_types import (
@@ -19,6 +24,7 @@ from minerva.actions.scheme_types import (
 from minerva.characters.components import (
     Character,
     Diplomacy,
+    Dynasty,
     DynastyTracker,
     Ruler,
     Family,
@@ -60,6 +66,7 @@ from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.stat_helpers import StatLevel, get_luck_level
 from minerva.characters.succession_helpers import (
     SuccessionChartCache,
+    end_current_dynasty,
     get_current_ruler,
     get_succession_depth_chart,
     remove_heir,
@@ -339,26 +346,60 @@ class FamilyHeadSuccessionSystem(System):
             remove_family_from_play(family.entity)
 
 
-class FallbackRulerSuccessionSystem(System):
-    """If no ruler exists select one of the family heads."""
+class RulerSuccessionSystem(System):
+    """Attempts to place the last ruler's heir in power.
+
+    If the system fails to appoint the successor, then the dynasty is ended and the
+    thrown is left empty for someone to claim.
+    """
 
     __system_group__ = "LateUpdateSystems"
 
+    def try_pass_crown_to_heir(self, last_ruler: Entity) -> bool:
+        """Attempt to pass the crown from the previous ruler to their heir."""
+        world = last_ruler.world
+        heir = last_ruler.get_component(Character).heir
+
+        if heir is None:
+            return False
+
+        heir_character = heir.get_component(Character)
+
+        if not heir_character.is_alive:
+            return False
+
+        set_current_ruler(world, heir)
+        heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
+
+        return True
+
     def on_update(self, world: World) -> None:
         dynasty_tracker = world.get_resource(DynastyTracker)
-        rng = world.get_resource(random.Random)
+        current_dynasty = dynasty_tracker.current_dynasty
 
-        if dynasty_tracker.current_dynasty is not None:
+        # Skip there is not a current dynasty
+        if current_dynasty is None:
             return
 
-        eligible_family_heads: list[Entity] = []
-        for _, (family, _) in world.query_components((Family, Active)):
-            if family.head is not None:
-                eligible_family_heads.append(family.head)
+        dynasty_component = current_dynasty.get_component(Dynasty)
 
-        if eligible_family_heads:
-            chosen_ruler = rng.choice(eligible_family_heads)
-            set_current_ruler(world, chosen_ruler)
+        # Skip if the current dynasty has a ruler
+        if dynasty_component.current_ruler is not None:
+            return
+
+        last_ruler = dynasty_component.last_ruler
+
+        if last_ruler is None:
+            # Generally we should never reach a point where a dynasty does not have
+            # a last ruler. However, in the weird case that we do, just end the dynasty
+            # and return
+            end_current_dynasty(world)
+            return
+
+        if self.try_pass_crown_to_heir(last_ruler):
+            return
+
+        end_current_dynasty(world)
 
 
 class EmptyFamilyCleanUpSystem(System):
@@ -1408,25 +1449,20 @@ class CoupSchemeUpdateSystem(System):
 
                     current_ruler.get_component(Character).killed_by = scheme.initiator
 
-                    DieAction(
-                        current_ruler, pass_crown=False, cause_of_death="assassination"
-                    ).execute()
+                    DieAction(current_ruler, cause_of_death="assassination").execute()
+                    end_current_dynasty(world)
 
                     if ruler_family is not None:
                         # Remove the rulers family from being in control of their home
                         # base
                         family_component = ruler_family.get_component(Family)
 
-                        for territory in family_component.territories:
-                            territory_component = territory.get_component(Territory)
-                            if territory_component.controlling_family == ruler_family:
-                                set_territory_controlling_family(territory, None)
+                        for territory in family_component.controlled_territories:
+                            set_territory_controlling_family(territory, None)
 
-                    # They are discovered and put to death
                     for member in scheme.members:
                         member_character_comp = member.get_component(Character)
 
-                        # Reduce traitor family prestige
                         assert member_character_comp.family
 
                         member_character_comp.family.get_component(
@@ -1438,7 +1474,7 @@ class CoupSchemeUpdateSystem(System):
                                 Opinion
                             ).base_value += 30
 
-                    set_current_ruler(world, scheme.initiator)
+                    ClaimThroneAction(scheme.initiator).execute()
 
                 scheme.is_valid = False
                 destroy_coup_scheme(scheme.entity)
@@ -1699,7 +1735,7 @@ class FamilyRefillSystem(System):
                 family = spawn_family(world, FamilyGenOptions(spawn_members=True))
                 family_component = family.get_component(Family)
                 set_family_home_base(family, territory.entity)
-                family_component.territories.add(territory.entity)
+                family_component.territories_present_in.add(territory.entity)
                 _logger.info(
                     "[%s] The %s family has risen to prominence in the %s territory.",
                     current_date.to_iso_str(),
@@ -1754,7 +1790,7 @@ class HeirDeclarationSystem(System):
                     "[%s]: %s declared %s their heir.",
                     current_date.to_iso_str(),
                     character.entity.name_with_uid,
-                    oldest_child,
+                    oldest_child.name_with_uid,
                 )
 
 

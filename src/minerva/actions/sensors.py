@@ -22,7 +22,7 @@ class TerritoriesInRevoltSensor(AISensor):
             family_head_component = context.character.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
-            for territory in family_component.territories:
+            for territory in family_component.controlled_territories:
                 if territory.has_component(InRevolt):
                     territories_in_revolt.append(territory)
 
@@ -39,10 +39,13 @@ class UnexpandedTerritoriesSensor(AISensor):
         if context.character.has_component(HeadOfFamily):
             family_head_component = context.character.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
-            for territory in family_component.territories:
+            for territory in family_component.controlled_territories:
                 territory_component = territory.get_component(Territory)
                 for neighboring_territory in territory_component.neighbors:
-                    if neighboring_territory not in family_component.territories:
+                    if (
+                        neighboring_territory
+                        not in family_component.controlled_territories
+                    ):
                         unexpanded_territories.add(neighboring_territory)
 
         context["unexpanded_territories"] = list(unexpanded_territories)
@@ -59,7 +62,7 @@ class UnControlledTerritoriesSensor(AISensor):
             family_head_component = context.character.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
-            for territory in family_component.territories:
+            for territory in family_component.territories_present_in:
                 territory_component = territory.get_component(Territory)
                 if territory_component.controlling_family is None:
                     uncontrolled_territories.add(territory)
@@ -87,7 +90,7 @@ class TerritoriesControlledByOpps(AISensor):
                 for member in alliance_component.member_families:
                     allies.add(member)
 
-            for territory in family_component.territories:
+            for territory in family_component.territories_present_in:
                 territory_component = territory.get_component(Territory)
                 if (
                     territory_component.controlling_family is not None
