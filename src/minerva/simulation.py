@@ -151,9 +151,6 @@ class Simulation:
         """Initialize built-in systems."""
 
         self.world.add_system(
-            minerva.systems.TickStatusEffectSystem(),
-        )
-        self.world.add_system(
             minerva.systems.TimeSystem(),
         )
         self.world.add_system(

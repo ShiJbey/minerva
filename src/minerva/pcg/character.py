@@ -72,7 +72,6 @@ from minerva.pcg.base_types import (
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
 from minerva.simulation_events import SimulationEvents
-from minerva.stats.base_types import StatusEffectManager
 from minerva.stats.helpers import default_stat_calc_strategy
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
 from minerva.traits.helpers import (
@@ -226,7 +225,6 @@ class DefaultCharacterFactory(CharacterFactory):
         obj.name = character.full_name
 
         obj.add_component(TraitManager())
-        obj.add_component(StatusEffectManager())
         obj.add_component(CharacterMetrics())
         obj.add_component(RelationshipManager())
         obj.add_component(LifeEventHistory())

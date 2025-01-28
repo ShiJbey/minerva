@@ -19,7 +19,6 @@ from minerva.stats.base_types import (
     StatComponent,
     StatModifier,
     StatModifierType,
-    StatusEffectManager,
 )
 from minerva.stats.helpers import default_stat_calc_strategy
 from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
@@ -114,7 +113,6 @@ def create_test_character(world: World) -> Entity:
     return world.entity(
         components=[
             RelationshipManager(),
-            StatusEffectManager(),
             TraitManager(),
             Hunger(0),
             Sociability(default_stat_calc_strategy),

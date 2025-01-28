@@ -14,7 +14,6 @@ from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import (
     StatComponent,
     StatModifierType,
-    StatusEffectManager,
 )
 from minerva.traits.base_types import TraitManager
 
@@ -88,7 +87,6 @@ def add_relationship(owner: Entity, target: Entity) -> Entity:
     relationship = owner.world.entity()
 
     relationship.add_component(Relationship(owner=owner, target=target))
-    relationship.add_component(StatusEffectManager())
     relationship.add_component(TraitManager())
     relationship.add_component(Opinion(opinion_calc_strategy))
     relationship.add_component(Attraction(attraction_calc_strategy))

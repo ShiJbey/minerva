@@ -52,7 +52,6 @@ from minerva.characters.war_data import Alliance, War
 from minerva.ecs import Active
 from minerva.life_events.base_types import LifeEventHistory
 from minerva.simulation import Simulation
-from minerva.stats.base_types import StatusEffectManager
 from minerva.traits.base_types import TraitManager
 from minerva.world_map.components import PopulationHappiness, Territory
 
@@ -428,17 +427,6 @@ class SimulationInspector:
             highlight=True,
         )
         renderable_objs.append(relations_panel)
-
-        status_effect_manager = character.get_component(StatusEffectManager)
-        effect_names = ", ".join(e.name for e in status_effect_manager.status_effects)
-        status_effects_panel = rich.panel.Panel(
-            f"[orange1 bold]Active Effects[/orange1 bold]: {effect_names}",
-            title="Status Effects",
-            title_align="left",
-            expand=False,
-            highlight=True,
-        )
-        renderable_objs.append(status_effects_panel)
 
         stat_columns: list[str] = []
         stat_columns.append(

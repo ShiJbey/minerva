@@ -113,8 +113,6 @@ from minerva.pcg.world_map import generate_world_map
 from minerva.relationships.base_types import Attraction, Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.simulation_events import SimulationEvents
-from minerva.stats.base_types import StatusEffect, StatusEffectManager
-from minerva.stats.helpers import remove_status_effect
 from minerva.world_map.components import (
     InRevolt,
     PopulationHappiness,
@@ -135,28 +133,6 @@ class TimeSystem(System):
     def on_update(self, world: World) -> None:
         current_date = world.get_resource(SimDate)
         current_date.increment_month()
-
-
-class TickStatusEffectSystem(System):
-    """Tick all status effects."""
-
-    __system_group__ = "EarlyUpdateSystems"
-
-    def on_update(self, world: World) -> None:
-        for uid, (status_effect_manager, _) in world.query_components(
-            (StatusEffectManager, Active)
-        ):
-            entity = world.get_entity(uid)
-            effects_to_remove: list[StatusEffect] = []
-
-            for status_effect in status_effect_manager.status_effects:
-                if status_effect.is_expired():
-                    effects_to_remove.append(status_effect)
-                else:
-                    status_effect.update(entity)
-
-            for status_effect in effects_to_remove:
-                remove_status_effect(entity, status_effect)
 
 
 class CharacterAgingSystem(System):

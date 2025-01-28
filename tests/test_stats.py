@@ -23,15 +23,10 @@ from minerva.stats.base_types import (
     StatComponent,
     StatModifier,
     StatModifierType,
-    StatusEffect,
-    StatusEffectManager,
 )
 from minerva.stats.helpers import (
-    add_status_effect,
     default_stat_calc_strategy,
-    remove_status_effect,
 )
-from minerva.systems import TickStatusEffectSystem
 
 
 class Hunger(StatComponent):
@@ -92,20 +87,6 @@ class _OpinionState(Component):
         self.value = value
 
 
-class HighMetabolismStatusEffect(StatusEffect):
-    """Increases hunger."""
-
-    def __init__(self, duration: int = 0) -> None:
-        super().__init__("High Metabolism", "Increases hunger", duration)
-        self.modifier = StatModifier(value=70, modifier_type=StatModifierType.FLAT)
-
-    def apply(self, target: Entity) -> None:
-        target.get_component(Hunger).add_modifier(self.modifier)
-
-    def remove(self, target: Entity) -> None:
-        target.get_component(Hunger).remove_modifier(self.modifier)
-
-
 class RivalClansPrecondition(RelationshipPrecondition):
     """Checks if two characters belong to the same clan."""
 
@@ -158,7 +139,6 @@ def test_stat_change_listener() -> None:
     character = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             HungerState(),
         ]
     )
@@ -220,92 +200,17 @@ def test_remove_stat_modifier() -> None:
     assert hunger.value == 10
 
 
-def test_status_effect() -> None:
-    """Test add status effect."""
-
-    world = World()
-
-    character = world.entity(components=[Hunger(0), StatusEffectManager()])
-
-    hunger = character.get_component(Hunger)
-
-    hunger.base_value = 10
-
-    assert hunger.value == 10
-
-    add_status_effect(character, HighMetabolismStatusEffect())
-
-    assert hunger.value == 80
-
-
-def test_remove_status_effect() -> None:
-    """Test manually removing a status effect."""
-
-    world = World()
-
-    character = world.entity(components=[Hunger(0), StatusEffectManager()])
-
-    hunger = character.get_component(Hunger)
-
-    hunger.base_value = 10
-
-    assert hunger.value == 10
-
-    status_effect = HighMetabolismStatusEffect()
-
-    add_status_effect(character, status_effect)
-
-    assert hunger.value == 80
-
-    remove_status_effect(character, status_effect)
-
-    assert hunger.value == 10
-
-
-def test_status_effect_system() -> None:
-    """Test that status effects are removed properly."""
-
-    world = World()
-
-    world.add_system(TickStatusEffectSystem())
-    world.add_resource(SimulationEvents())
-
-    character = world.entity(components=[Hunger(0), StatusEffectManager()])
-
-    hunger = character.get_component(Hunger)
-
-    hunger.base_value = 10
-
-    assert hunger.value == 10
-
-    status_effect = HighMetabolismStatusEffect(duration=1)
-
-    add_status_effect(character, status_effect)
-
-    assert hunger.value == 80
-
-    world.step()
-
-    world.step()
-
-    world.step()
-
-    assert hunger.value == 10
-
-
 def test_get_relationship_stat() -> None:
     """Test getting stat of relationship and changing base value."""
 
     world = World()
 
-    world.add_system(TickStatusEffectSystem())
     world.add_resource(SocialRuleLibrary())
     world.add_resource(SimulationEvents())
 
     c1 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )
@@ -313,7 +218,6 @@ def test_get_relationship_stat() -> None:
     c2 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )
@@ -333,14 +237,12 @@ def test_get_modifier_to_relationship_stat() -> None:
 
     world = World()
 
-    world.add_system(TickStatusEffectSystem())
     world.add_resource(SocialRuleLibrary())
     world.add_resource(SimulationEvents())
 
     c1 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )
@@ -348,7 +250,6 @@ def test_get_modifier_to_relationship_stat() -> None:
     c2 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )
@@ -368,14 +269,12 @@ def test_relationship_modifiers() -> None:
 
     world = World()
 
-    world.add_system(TickStatusEffectSystem())
     world.add_resource(SocialRuleLibrary())
     world.add_resource(SimulationEvents())
 
     c1 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )
@@ -383,7 +282,6 @@ def test_relationship_modifiers() -> None:
     c2 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )
@@ -421,7 +319,6 @@ def test_social_rules() -> None:
     world = World()
     world.add_resource(SimulationEvents())
 
-    world.add_system(TickStatusEffectSystem())
     social_rule_library = SocialRuleLibrary()
     world.add_resource(social_rule_library)
     social_rule_library.add_rule(
@@ -437,7 +334,6 @@ def test_social_rules() -> None:
     c1 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
             _ClanInfo(clan_name="EagleClan", clan_rivals=["BadgerClan"]),
         ]
@@ -446,7 +342,6 @@ def test_social_rules() -> None:
     c2 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
             _ClanInfo(clan_name="BadgerClan", clan_rivals=["EagleClan"]),
         ]
@@ -497,14 +392,12 @@ def test_relationship_stat_listener() -> None:
 
     world = World()
 
-    world.add_system(TickStatusEffectSystem())
     world.add_resource(SocialRuleLibrary())
     world.add_resource(SimulationEvents())
 
     c1 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )
@@ -512,7 +405,6 @@ def test_relationship_stat_listener() -> None:
     c2 = world.entity(
         components=[
             Hunger(0),
-            StatusEffectManager(),
             RelationshipManager(),
         ]
     )

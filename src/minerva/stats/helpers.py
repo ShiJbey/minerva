@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from minerva.ecs import Entity
 from minerva.stats.base_types import (
     StatComponent,
     StatModifierType,
-    StatusEffect,
-    StatusEffectManager,
 )
 
 
@@ -35,31 +32,3 @@ def _recalculate_stat(stat: StatComponent) -> float:
     final_value = final_value + (final_value * sum_percent_add)
 
     return final_value
-
-
-def add_status_effect(target: Entity, status_effect: StatusEffect) -> None:
-    """Add a status effect to an entity."""
-
-    target.get_component(StatusEffectManager).status_effects.append(status_effect)
-
-    status_effect.apply(target)
-
-
-def remove_status_effect(target: Entity, status_effect: StatusEffect) -> bool:
-    """Remove a status effect from an entity.
-
-    Returns
-    -------
-    bool
-        True if removed successfully.
-    """
-
-    try:
-        target.get_component(StatusEffectManager).status_effects.remove(status_effect)
-
-        status_effect.remove(target)
-
-        return True
-
-    except ValueError:
-        return False
