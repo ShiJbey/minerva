@@ -9,24 +9,82 @@ they were emitted.
 from __future__ import annotations
 
 import logging
-from abc import ABC, abstractmethod
-from itertools import count
-from typing import Callable, ClassVar, Iterable
+from abc import ABC
+from typing import ClassVar, Iterable, Optional
 
 from minerva.datetime import SimDate
 from minerva.ecs import Component, Entity, World
 from minerva.sim_db import SimDB
-from minerva.viz.game_events import EventEmitter
 
 _logger = logging.getLogger(__name__)
+
+
+class LifeEventType:
+    """Configuration data about a type of life event.
+
+    This data is pre-registered with the simulation's database to save
+    memory and help with data visualization.
+
+    The description template uses a simple string substitution function.
+    For example, the string '{subject_name} ({subject_id}) became ruler.',
+    would expand to 'Rhaenyra (13) became ruler.' Assuming subject_name and
+    subject_id are arguments associated with the event in the event_args table
+    of the database.
+    """
+
+    __slots__ = ("name", "display_name", "description")
+
+    name: str
+    """A unique text name for this life event."""
+    display_name: str
+    """The name of the event when displayed in a GUI."""
+    description: str
+    """A text template used to generate a textual description of this event type."""
+
+    def __init__(
+        self,
+        name: str,
+        display_name: str,
+        description: str,
+    ) -> None:
+        self.name = name
+        self.display_name = display_name
+        self.description = description
+
+
+def register_life_event_type(world: World, life_event_type: LifeEventType) -> None:
+    """Registers a life event type with the simulation's database."""
+    db = world.get_resource(SimDB).db
+    cursor = db.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO life_event_types (name, display_name, description)
+        VALUES (?, ?, ?);
+        """,
+        (
+            life_event_type.name,
+            life_event_type.display_name,
+            life_event_type.description,
+        ),
+    )
+
+    db.commit()
 
 
 class LifeEvent(ABC):
     """An event of significant importance in an entity's life"""
 
-    _next_life_event_id: ClassVar[count[int]] = count()
+    _next_life_event_id: ClassVar[int] = 1
 
-    __slots__ = ("world", "subject", "event_id", "timestamp")
+    __slots__ = (
+        "world",
+        "subject",
+        "event_id",
+        "event_type",
+        "timestamp",
+        "event_args",
+    )
 
     world: World
     """The simulation's world instance."""
@@ -34,28 +92,21 @@ class LifeEvent(ABC):
     """What/Who is the event about."""
     event_id: int
     """Numerical ID of this life event."""
+    event_type: str
+    """Name of the life event type in teh database."""
     timestamp: SimDate
-    """The timestamp of the event"""
+    """The timestamp of the event."""
+    event_args: dict[str, str]
+    """Arguments passed to the database."""
 
-    def __init__(self, subject: Entity) -> None:
+    def __init__(self, event_type: str, subject: Entity) -> None:
         self.world = subject.world
         self.subject = subject
-        self.event_id = next(self._next_life_event_id)
+        self.event_id = LifeEvent._next_life_event_id
+        LifeEvent._next_life_event_id += 1
+        self.event_type = event_type
         self.timestamp = subject.world.get_resource(SimDate).copy()
-
-    @abstractmethod
-    def get_event_type(self) -> str:
-        """Get the name of this type of event."""
-        raise NotImplementedError()
-
-    def on_event_logged(self) -> None:
-        """Called when logging the event."""
-        return
-
-    @abstractmethod
-    def get_description(self) -> str:
-        """Get a text description of the life event."""
-        raise NotImplementedError()
+        self.event_args = {"subject_name": subject.name, "subject_id": str(subject.uid)}
 
     def log_event(self) -> None:
         """Dispatches the event to the proper listeners."""
@@ -63,24 +114,35 @@ class LifeEvent(ABC):
 
         db = self.world.get_resource(SimDB).db
         cur = db.cursor()
+
         cur.execute(
             """
-            INSERT INTO life_events (event_id, subject_id, event_type, timestamp, description)
-            VALUES (?, ?, ?, ?, ?);
+            INSERT INTO life_events (event_id, subject_id, event_type, timestamp)
+            VALUES (?, ?, ?, ?);
             """,
             (
                 self.event_id,
                 self.subject.uid,
-                self.get_event_type(),
+                self.event_type,
                 self.timestamp.to_iso_str(),
-                self.get_description(),
             ),
         )
+
+        cur.executemany(
+            """
+            INSERT INTO life_event_args (event_id, name, value)
+            VALUES (?, ?, ?);
+            """,
+            [(self.event_id, k, v) for k, v in self.event_args.items()],
+        )
+
         db.commit()
 
-        _logger.info("[%s]: %s", str(self.timestamp), self.get_description())
-
-        self.on_event_logged()
+        _logger.info(
+            "[%s]: %s",
+            str(self.timestamp),
+            get_life_event_description(self.world, self.event_id),
+        )
 
     def __repr__(self) -> str:
         return (
@@ -95,39 +157,84 @@ class LifeEvent(ABC):
         )
 
 
+def get_life_event_timestamp(world: World, event_id: int) -> SimDate:
+    """Get the timestamp for the life event with the given event ID."""
+
+    db = world.get_resource(SimDB).db
+    cursor = db.cursor()
+
+    # First get the event information
+    timestamp: str = cursor.execute(
+        """
+        SELECT
+            timestamp
+        FROM life_events
+        WHERE life_events.event_id=?;
+        """,
+        (event_id,),
+    ).fetchone()[0]
+
+    return SimDate.from_iso_str(timestamp)
+
+
+def get_life_event_description(world: World, event_id: int) -> str:
+    """Get the description for the life event with the given event ID."""
+
+    db = world.get_resource(SimDB).db
+    cursor = db.cursor()
+
+    # First get the event information
+    result: Optional[tuple[str,]] = cursor.execute(
+        """
+        SELECT
+            life_event_types.description
+        FROM life_events
+        JOIN life_event_types ON life_events.event_type=life_event_types.name
+        WHERE life_events.event_id=?;
+        """,
+        (event_id,),
+    ).fetchone()
+
+    if result is None:
+        raise ValueError(f"Cannot find description template for: {event_id}")
+
+    description_template = result[0]
+
+    event_args: list[tuple[str, str]] = cursor.execute(
+        """
+        SELECT
+            name,
+            value
+        FROM life_event_args
+        WHERE event_id=?;
+        """,
+        (event_id,),
+    ).fetchall()
+
+    final_description = description_template
+    for k, v in event_args:
+        final_description = final_description.replace("{" + k + "}", v)
+
+    return final_description
+
+
 class LifeEventHistory(Component):
     """Stores a record of all past life events for a specific entity."""
 
-    __slots__ = ("_history", "_event_emitter")
+    __slots__ = ("_history",)
 
-    _history: list[LifeEvent]
+    _history: list[int]
     """A list of events in chronological-order."""
-    _event_emitter: EventEmitter[LifeEvent]
-    """Emitter invoked whenever a life event is logged."""
 
     def __init__(self) -> None:
         super().__init__()
         self._history = []
-        self._event_emitter = EventEmitter()
 
     def log_event(self, life_event: LifeEvent) -> None:
         """Log an event to the event history."""
-        self._history.append(life_event)
-        self._event_emitter.emit(life_event)
+        self._history.append(life_event.event_id)
 
-    def add_listener(self, listener: Callable[[LifeEvent], None]) -> None:
-        """Add a listener to this life event history."""
-        self._event_emitter.add_listener(listener)
-
-    def remove_listener(self, listener: Callable[[LifeEvent], None]) -> None:
-        """Add a listener to this life event history."""
-        self._event_emitter.remove_listener(listener)
-
-    def remove_all_listeners(self) -> None:
-        """Add a listener to this life event history."""
-        self._event_emitter.remove_all_listeners()
-
-    def get_history(self) -> Iterable[LifeEvent]:
+    def get_history(self) -> Iterable[int]:
         """Get all life events for this character."""
         return self._history
 

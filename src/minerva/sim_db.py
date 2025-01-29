@@ -14,11 +14,9 @@ DROP TABLE IF EXISTS families;
 DROP TABLE IF EXISTS family_heads;
 DROP TABLE IF EXISTS marriages;
 DROP TABLE IF EXISTS romantic_affairs;
+DROP TABLE IF EXISTS life_event_types;
 DROP TABLE IF EXISTS life_events;
-DROP TABLE IF EXISTS life_stage_change_events;
-DROP TABLE IF EXISTS death_events;
-DROP TABLE IF EXISTS marriage_events;
-DROP TABLE IF EXISTS pregnancy_events;
+DROP TABLE IF EXISTS life_event_args;
 DROP TABLE IF EXISTS rulers;
 DROP TABLE IF EXISTS dynasties;
 DROP TABLE IF EXISTS betrothals;
@@ -131,84 +129,24 @@ CREATE TABLE romantic_affairs (
     FOREIGN KEY (lover_id) REFERENCES characters(uid)
 ) STRICT;
 
+CREATE TABLE life_event_types (
+    name TEXT NOT NULL PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    description TEXT NOT NULL
+) STRICT;
+
 CREATE TABLE life_events (
     event_id INT NOT NULL PRIMARY KEY,
     subject_id INT NOT NULL,
     event_type TEXT,
-    timestamp TEXT,
-    description TEXT
+    timestamp TEXT
 ) STRICT;
 
-CREATE TABLE life_stage_change_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    life_stage TEXT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE became_family_head_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    family_id INT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (family_id) REFERENCES families(uid)
-) STRICT;
-
-CREATE TABLE became_ruler_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE death_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    timestamp TEXT,
-    cause TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE marriage_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    spouse_id INT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (spouse_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE pregnancy_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE born_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE give_birth_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    character_id INT,
-    child_id INT,
-    timestamp TEXT,
-    FOREIGN KEY (event_id) REFERENCES life_events(event_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (child_id) REFERENCES characters(uid)
+CREATE TABLE life_event_args (
+    event_id INT NOT NULL,
+    name TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (event_id, name)
 ) STRICT;
 
 CREATE TABLE rulers (

@@ -60,7 +60,9 @@ from minerva.characters.helpers import (
     set_relation_child,
     set_relation_sibling,
     start_marriage,
-    update_grandparent_relations, set_heir, remove_heir,
+    update_grandparent_relations,
+    set_heir,
+    remove_heir,
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.stat_helpers import StatLevel, get_luck_level

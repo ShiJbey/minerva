@@ -7,6 +7,7 @@ Time is represented as 12-month years, where each time step is a single month.
 from __future__ import annotations
 
 import copy
+import re
 from typing import Any
 
 MONTHS_PER_YEAR = 12
@@ -116,6 +117,19 @@ class SimDate:
     def copy(self) -> SimDate:
         """Create a copy of this date."""
         return copy.copy(self)
+
+    @staticmethod
+    def from_iso_str(iso_date: str) -> SimDate:
+        """Create SimDate instance from YYYY-MM date string."""
+        match = re.match(r"(\d\d\d\d)-(\d\d)", iso_date)
+
+        if match is None:
+            raise ValueError(f"{iso_date} is not valid. Must be in YYYY-MM format.")
+
+        year = int(match.group(0))
+        month = int(match.group(1))
+
+        return SimDate(month=month, year=year)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(month={self.month}, year={self.year})"

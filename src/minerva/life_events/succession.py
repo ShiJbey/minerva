@@ -2,7 +2,6 @@
 
 from minerva.ecs import Entity
 from minerva.life_events.base_types import LifeEvent
-from minerva.sim_db import SimDB
 
 
 class BecameFamilyHeadEvent(LifeEvent):
@@ -11,72 +10,14 @@ class BecameFamilyHeadEvent(LifeEvent):
     __slots__ = ("family",)
 
     def __init__(self, subject: Entity, family: Entity) -> None:
-        super().__init__(subject)
+        super().__init__("BecameFamilyHead", subject)
         self.family = family
-
-    def get_event_type(self) -> str:
-        return "BecameFamilyHead"
-
-    def on_event_logged(self) -> None:
-        db = self.world.get_resource(SimDB).db
-        cur = db.cursor()
-        cur.execute(
-            """
-            INSERT INTO became_family_head_events
-            (event_id, character_id, family_id, timestamp)
-            VALUES (?, ?, ?, ?);
-            """,
-            (
-                self.event_id,
-                self.subject.uid,
-                self.family.uid,
-                self.timestamp.to_iso_str(),
-            ),
-        )
-        db.commit()
-
-    def get_description(self) -> str:
-        return (
-            f"{self.subject.name_with_uid} became the head of the "
-            f"{self.family.name_with_uid} family."
-        )
+        self.event_args["family_name"] = family.name
+        self.event_args["family_id"] = str(family.uid)
 
 
 class BecameRulerEvent(LifeEvent):
     """Event dispatched when a character becomes the ruler."""
 
-    def get_event_type(self) -> str:
-        return "BecameRuler"
-
-    def on_event_logged(self) -> None:
-        db = self.world.get_resource(SimDB).db
-        cur = db.cursor()
-        cur.execute(
-            """
-            INSERT INTO became_ruler_events
-            (event_id, character_id, timestamp)
-            VALUES (?, ?, ?);
-            """,
-            (
-                self.event_id,
-                self.subject.uid,
-                self.timestamp.to_iso_str(),
-            ),
-        )
-        db.commit()
-
-    def get_description(self) -> str:
-        return f"{self.subject.name_with_uid} became ruler."
-
-
-class FamilyRemovedFromPlay(LifeEvent):
-    """Event dispatched when a family is removed from play."""
-
-    def get_event_type(self) -> str:
-        return "FamilyRemovedFromPlay"
-
-    def on_event_logged(self) -> None:
-        pass
-
-    def get_description(self) -> str:
-        return f"The {self.subject.name_with_uid} family has been removed from play."
+    def __init__(self, subject: Entity) -> None:
+        super().__init__("BecameRuler", subject)

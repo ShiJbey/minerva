@@ -37,7 +37,6 @@ from minerva.life_events.events import (
     CheatOnSpouseEvent,
     DisbandedAllianceEvent,
     ExpandedFamilyTerritoryEvent,
-    ExpandedTerritoryEvent,
     FamilyJoinedAllianceEvent,
     GiveBackToSmallFolkEvent,
     GrowPoliticalInfluenceEvent,
@@ -521,8 +520,6 @@ class DisbandAllianceAction(AIAction):
 
         alliance_component = self.alliance.get_component(Alliance)
 
-        founding_family = alliance_component.founder_family
-
         for member_family in alliance_component.member_families:
             if member_family == family_component.entity:
                 continue
@@ -544,7 +541,7 @@ class DisbandAllianceAction(AIAction):
         self.performer.get_component(CharacterMetrics).data.num_alliances_disbanded += 1
 
         DisbandedAllianceEvent(
-            subject=self.performer, founding_family=founding_family
+            subject=self.performer, alliance=self.alliance
         ).log_event()
 
         return True
@@ -569,11 +566,6 @@ class ExpandIntoTerritoryAction(AIAction):
         family_head_component.family.get_component(Family).territories_present_in.add(
             territory
         )
-
-        ExpandedTerritoryEvent(
-            subject=family_head_component.family,
-            territory=territory,
-        ).log_event()
 
         ExpandedFamilyTerritoryEvent(
             subject=family_head,
@@ -647,8 +639,15 @@ class CheatOnSpouseAction(AIAction):
         self.context["accomplice"] = accomplice
 
     def execute(self) -> bool:
-        CheatOnSpouseEvent(self.performer, self.accomplice).log_event()
         performing_character = self.performer.get_component(Character)
+
+        assert performing_character.spouse
+
+        CheatOnSpouseEvent(
+            subject=self.performer,
+            spouse=performing_character.spouse,
+            accomplice=self.accomplice,
+        ).log_event()
 
         if performing_character.sex == Sex.FEMALE:
             SexAction(self.performer, self.accomplice).execute()

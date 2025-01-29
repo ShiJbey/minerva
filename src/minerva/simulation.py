@@ -62,6 +62,7 @@ from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Entity, World
+from minerva.life_events.base_types import register_life_event_type, LifeEventType
 from minerva.pcg.base_types import PCGFactories
 from minerva.pcg.character import (
     DefaultBabyFactory,
@@ -113,6 +114,7 @@ class Simulation:
         self.initialize_behaviors()
         self.initialize_social_rules()
         self.initialize_species_types()
+        self.initialize_life_event_types()
 
     def initialize_resources(self) -> None:
         """Initialize built-in resources."""
@@ -894,6 +896,435 @@ class Simulation:
         sqlite3.register_converter("SexualOrientation", convert_sexual_orientation)
         sqlite3.register_adapter(WarRole, adapt_war_role)
         sqlite3.register_converter("WarRole", convert_war_role)
+
+    def initialize_life_event_types(self) -> None:
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="LifeStageChange",
+                display_name="Life Stage Change",
+                description="{subject_name} ({subject_id}) became a(n) {life_stage}.",
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="Death",
+                display_name="Death",
+                description="{subject_name} ({subject_id}) died (cause: {cause}).",
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="BecameFamilyHead",
+                display_name="Became Family Head",
+                description=(
+                    "{subject_name} ({subject_id}) became head of the "
+                    "{family_name} ({family_id}) family."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="Marriage",
+                display_name="Marriage",
+                description=(
+                    "{subject_name} ({subject_id}) married "
+                    "{spouse_name} ({spouse_id})."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="Pregnancy",
+                display_name="Pregnancy",
+                description="{subject_name} ({subject_id}) became pregnant.",
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="ChildBirth",
+                display_name="ChildBirth",
+                description=(
+                    "{subject_name} ({subject_id}) gave birth to "
+                    "{child_name} ({child_id})."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="Birth",
+                display_name="Birth",
+                description="{subject_name} ({subject_id}) was born.",
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="TakeOverTerritory",
+                display_name="Take Over Territory",
+                description=(
+                    "{subject_name} ({subject_id}) tool control of the "
+                    "{territory_name} ({territory_id}) territory for the "
+                    "{family_name} ({family_id}) family."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="ExpandedFamilyTerritory",
+                display_name="Expanded Family Territory",
+                description=(
+                    "{subject_name} ({subject_id}) started building influence in the "
+                    "{territory_name} ({territory_id}) for the "
+                    "{family_name} ({family_id}) family."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="DisbandedAlliance",
+                display_name="Disbanded Alliance",
+                description=(
+                    "{subject_name} ({subject_id}) disbanded their alliance ({alliance_id})."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="LeftDisbandedAlliance",
+                display_name="Left Disbanded Alliance",
+                description=(
+                    "{subject_name} ({subject_id}) left their alliance ({alliance_id}) "
+                    "after it was disbanded."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="JoinedAlliance",
+                display_name="Joined Alliance",
+                description=(
+                    "{subject_name} ({subject_id}) joined an alliance ({alliance_id})."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="FamilyJoinedAlliance",
+                display_name="Family Joined Alliance",
+                description=(
+                    "The {subject_name} ({subject_id}) family joined "
+                    "a alliance ({alliance_id})."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="AttemptingFormAlliance",
+                display_name="Attempting to Form An Alliance",
+                description=(
+                    "{subject_name} ({subject_id}) is attempting to form a alliance."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="JoinAllianceScheme",
+                display_name="JoinAllianceScheme",
+                description=(
+                    "{subject_name} ({subject_id}) joined "
+                    "{initiator_name}'s ({initiator_id}) alliance scheme."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="GiveBackToSmallFolk",
+                display_name="GiveBackToSmallFolk",
+                description=(
+                    "{subject_name} ({subject_id}) gave back to the small folk of the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="GrowPoliticalInfluence",
+                display_name="GrowPoliticalInfluence",
+                description=(
+                    "{subject_name} ({subject_id}) grew the political influence of the "
+                    "{family_name} ({family_id}) family in the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="JoinCoupScheme",
+                display_name="Join Coup Scheme",
+                description=(
+                    "{subject_name} ({subject_id}) joined "
+                    "{initiator_name}'s ({initiator_id}) coup scheme."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="StartCoupScheme",
+                display_name="Start Coup Scheme",
+                description=(
+                    "{subject_name} ({subject_id}) started a new coup scheme against "
+                    "{ruler_name} ({ruler_id})."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="LostTerritory",
+                display_name="Lost Territory",
+                description=(
+                    "{subject_name} ({subject_id}) lost control of the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="RemovedFromPower",
+                display_name="Removed From Power",
+                description=(
+                    "{subject_name} ({subject_id}) was removed from power over the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="StartWarScheme",
+                display_name="Start War Scheme",
+                description=(
+                    "{subject_name} ({subject_id}) started a war scheme against "
+                    "{target_name} ({target_id}) for the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="DeclareWar",
+                display_name="DeclareWar",
+                description=(
+                    "{subject_name} ({subject_id}) declared war against "
+                    "{target_name} ({target_id}) for the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="DefendingTerritory",
+                display_name="DefendingTerritory",
+                description=(
+                    "{subject_name} ({subject_id}) is defending the  "
+                    "{territory_name} ({territory_id}) territory from "
+                    "{opponent_name} ({opponent_id})."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="QuellRevolt",
+                display_name="QuellRevolt",
+                description=(
+                    "{subject_name} ({subject_id}) quelled a revolt in the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="TaxTerritory",
+                display_name="TaxTerritory",
+                description=(
+                    "{subject_name} ({subject_id}) taxed the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="Revolt",
+                display_name="Revolt",
+                description=(
+                    "{territory_name} ({territory_id}) is revolting against the "
+                    "{subject_name} ({subject_id}) family."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="WarLost",
+                display_name="WarLost",
+                description=(
+                    "{subject_name} ({subject_id}) lost their war against "
+                    "{winner_name} ({winner_id}) for the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="WarWon",
+                display_name="WarWon",
+                description=(
+                    "{subject_name} ({subject_id}) won their war against "
+                    "{loser_name} ({loser_id}) for the "
+                    "{territory_name} ({territory_id}) territory."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="BecameRuler",
+                display_name="Became Ruler",
+                description="{subject_name} ({subject_id}) became ruler.",
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="AllianceSchemeFailed",
+                display_name="Failed to Form Alliance",
+                description="{subject} ({subject_id}) failed to start an alliance.",
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="AllianceFounded",
+                display_name="Founded Alliance",
+                description="{subject} ({subject_id}) founded a new alliance.",
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="CoupSchemeDiscovered",
+                display_name="Coup Scheme Discovered",
+                description=(
+                    "{subject_name}'s ({subject_id}) coup scheme was discovered."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="SentencedToDeath",
+                display_name="Sentenced to Death",
+                description=(
+                    "{subject_name} ({subject_id}) was sentenced to death for {reason}."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="Usurp",
+                display_name="Usurp",
+                description=(
+                    "{subject_name} ({subject_id}) usurped "
+                    "{former_ruler_name} ({former_ruler_id}) for the throne."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="RuleOverthrown",
+                display_name="Rule Overthrown",
+                description=(
+                    "{subject_name} ({subject_id}) was overthrown by "
+                    "{usurper_name} ({usurper_id}) for the throne."
+                ),
+            ),
+        )
+
+        register_life_event_type(
+            self.world,
+            LifeEventType(
+                name="CheatedOnSpouse",
+                display_name="Cheated on Spouse",
+                description=(
+                    "{subject_name} ({subject_id}) cheated on "
+                    "{spouse_name} ({spouse_id}) with "
+                    "{accomplice_name} ({accomplice_id})."
+                ),
+            ),
+        )
 
     @property
     def date(self) -> SimDate:

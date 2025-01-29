@@ -50,7 +50,11 @@ from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
 from minerva.ecs import Active
-from minerva.life_events.base_types import LifeEventHistory
+from minerva.life_events.base_types import (
+    LifeEventHistory,
+    get_life_event_timestamp,
+    get_life_event_description,
+)
 from minerva.simulation import Simulation
 from minerva.traits.base_types import TraitManager
 from minerva.world_map.components import PopulationHappiness, Territory
@@ -519,8 +523,11 @@ class SimulationInspector:
         life_event_history = character.get_component(LifeEventHistory)
 
         life_event_table = rich.table.Table("Timestamp", "Description", highlight=True)
-        for event in life_event_history.get_history():
-            life_event_table.add_row(str(event.timestamp), event.get_description())
+        for event_id in life_event_history.get_history():
+            life_event_table.add_row(
+                str(get_life_event_timestamp(self.sim.world, event_id)),
+                get_life_event_description(self.sim.world, event_id),
+            )
 
         life_event_panel = rich.panel.Panel(
             life_event_table,
