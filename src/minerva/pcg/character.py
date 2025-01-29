@@ -59,7 +59,6 @@ from minerva.characters.war_data import WarTracker
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Entity, World
-from minerva.life_events.base_types import LifeEventHistory
 from minerva.pcg.base_types import (
     BabyFactory,
     CharacterFactory,
@@ -227,7 +226,6 @@ class DefaultCharacterFactory(CharacterFactory):
         obj.add_component(TraitManager())
         obj.add_component(CharacterMetrics())
         obj.add_component(RelationshipManager())
-        obj.add_component(LifeEventHistory())
         obj.add_component(
             AIBrain(
                 context=AIContext(
@@ -594,7 +592,6 @@ class DefaultFamilyFactory(FamilyFactory):
                 banner_symbol=banner_symbol,
             )
         )
-        family.add_component(LifeEventHistory())
         family.add_component(WarTracker())
         family.add_component(FamilyPrestige(default_stat_calc_strategy))
         family.name = f"{family_name}"

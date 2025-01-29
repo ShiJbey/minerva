@@ -126,8 +126,8 @@ class SimDate:
         if match is None:
             raise ValueError(f"{iso_date} is not valid. Must be in YYYY-MM format.")
 
-        year = int(match.group(0))
-        month = int(match.group(1))
+        year = int(match.group(1))
+        month = int(match.group(2))
 
         return SimDate(month=month, year=year)
 

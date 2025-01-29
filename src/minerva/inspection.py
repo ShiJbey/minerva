@@ -51,7 +51,7 @@ from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
 from minerva.ecs import Active
 from minerva.life_events.base_types import (
-    LifeEventHistory,
+    get_life_event_ids,
     get_life_event_timestamp,
     get_life_event_description,
 )
@@ -520,10 +520,8 @@ class SimulationInspector:
         )
         renderable_objs.append(scheme_panel)
 
-        life_event_history = character.get_component(LifeEventHistory)
-
         life_event_table = rich.table.Table("Timestamp", "Description", highlight=True)
-        for event_id in life_event_history.get_history():
+        for event_id in get_life_event_ids(character):
             life_event_table.add_row(
                 str(get_life_event_timestamp(self.sim.world, event_id)),
                 get_life_event_description(self.sim.world, event_id),

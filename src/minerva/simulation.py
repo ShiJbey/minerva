@@ -977,7 +977,7 @@ class Simulation:
                 name="TakeOverTerritory",
                 display_name="Take Over Territory",
                 description=(
-                    "{subject_name} ({subject_id}) tool control of the "
+                    "{subject_name} ({subject_id}) took control of the "
                     "{territory_name} ({territory_id}) territory for the "
                     "{family_name} ({family_id}) family."
                 ),

@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
-from typing import ClassVar, Iterable, Optional
+from typing import ClassVar, Optional
 
 from minerva.datetime import SimDate
-from minerva.ecs import Component, Entity, World
+from minerva.ecs import Entity, World
 from minerva.sim_db import SimDB
 
 _logger = logging.getLogger(__name__)
@@ -110,7 +110,6 @@ class LifeEvent(ABC):
 
     def log_event(self) -> None:
         """Dispatches the event to the proper listeners."""
-        self.subject.get_component(LifeEventHistory).log_event(self)
 
         db = self.world.get_resource(SimDB).db
         cur = db.cursor()
@@ -218,28 +217,18 @@ def get_life_event_description(world: World, event_id: int) -> str:
     return final_description
 
 
-class LifeEventHistory(Component):
-    """Stores a record of all past life events for a specific entity."""
+def get_life_event_ids(entity: Entity) -> list[int]:
+    """Get the IDs for all life events related"""
 
-    __slots__ = ("_history",)
+    world = entity.world
+    db = world.get_resource(SimDB).db
+    cursor = db.cursor()
 
-    _history: list[int]
-    """A list of events in chronological-order."""
+    result: list[tuple[int,]] = cursor.execute(
+        """
+        SELECT event_id FROM life_events WHERE subject_id=?;
+        """,
+        (entity.uid,),
+    ).fetchall()
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._history = []
-
-    def log_event(self, life_event: LifeEvent) -> None:
-        """Log an event to the event history."""
-        self._history.append(life_event.event_id)
-
-    def get_history(self) -> Iterable[int]:
-        """Get all life events for this character."""
-        return self._history
-
-    def __str__(self) -> str:
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self._history})"
+    return [r[0] for r in result]
