@@ -62,7 +62,7 @@ from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Entity, World
-from minerva.life_events.base_types import register_life_event_type, LifeEventType
+from minerva.life_events.base_types import LifeEventType, register_life_event_type
 from minerva.pcg.base_types import PCGFactories
 from minerva.pcg.character import (
     DefaultBabyFactory,
@@ -1254,7 +1254,7 @@ class Simulation:
             LifeEventType(
                 name="AllianceSchemeFailed",
                 display_name="Failed to Form Alliance",
-                description="{subject} ({subject_id}) failed to start an alliance.",
+                description="{subject_name} ({subject_id}) failed to start an alliance.",
             ),
         )
 
@@ -1263,7 +1263,7 @@ class Simulation:
             LifeEventType(
                 name="AllianceFounded",
                 display_name="Founded Alliance",
-                description="{subject} ({subject_id}) founded a new alliance.",
+                description="{subject_name} ({subject_id}) founded a new alliance.",
             ),
         )
 
