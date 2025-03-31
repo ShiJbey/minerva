@@ -8,6 +8,7 @@ from typing import Optional
 
 import minerva.systems
 from minerva.actions import behaviors
+from minerva.actions.actions import DieAction, handle_character_death
 from minerva.actions.base_types import (
     ActionTypeDatabase,
     AIActionType,
@@ -94,6 +95,7 @@ class Simulation:
         action_system = self.world.get_resource(ActionSystem)
         action_system.attach_performer(SpawnCharacter, generate_character)
         action_system.attach_performer(SpawnFamily, generate_family)
+        action_system.attach_performer(DieAction, handle_character_death)
 
     def initialize_brains(self) -> None:
         """Initialize built-in brains."""

@@ -11,11 +11,12 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, Callable, ClassVar, DefaultDict, Iterable, Iterator, Optional
+from typing import Any, Callable, DefaultDict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet
 
 from minerva.ecs import Component, Entity, World
+from minerva.game_action import GameAction
 from minerva.game_state import GameState
 from minerva.pcg.text_gen import render_string
 from minerva.sim_db import SimDB
@@ -275,6 +276,15 @@ class AIPreconditionGroup(AIPrecondition):
         return all(p.evaluate(entity) for p in self.preconditions)
 
 
+def get_next_event_uid(world: World) -> int:
+    """Get next UID for event."""
+
+    game_state = world.get_resource(GameState)
+    uid = game_state.next_event_uid
+    game_state.next_event_uid += 1
+    return uid
+
+
 class CharacterController(Component):
     """Manages character-specific AI information."""
 
@@ -334,7 +344,7 @@ class AIActionType:
         self.tags = set(tags if tags else [])
 
 
-class AIAction(ABC):
+class AIAction(GameAction):
     """An action that a character can take."""
 
     __slots__ = (
@@ -347,8 +357,6 @@ class AIAction(ABC):
         "timestamp",
         "context",
     )
-
-    _next_uid: ClassVar[int] = 1
 
     uid: int
     """The unique ID for this event."""
@@ -406,23 +414,20 @@ class AIAction(ABC):
 
     def log_event(self, *entities: Entity) -> int:
         """Dispatches the event to the proper listeners."""
-        self.uid = AIAction._next_uid
-        AIAction._next_uid += 1
+        self.uid = get_next_event_uid(self.world)
 
-        _logger.info(
-            "[%04d]: %s",
-            self.timestamp,
-            render_string(
-                self.action_type.description,
-                {
-                    "initiator": self.initiator.name_with_uid,
-                    "subject": self.initiator.name_with_uid,
-                    "target": self.target.name_with_uid if self.target else "",
-                    "recipient": self.recipient.name_with_uid if self.recipient else "",
-                    **self.context,
-                },
-            ),
+        description = render_string(
+            self.action_type.description,
+            {
+                "initiator": self.initiator.name_with_uid,
+                "subject": self.initiator.name_with_uid,
+                "target": self.target.name_with_uid if self.target else "",
+                "recipient": self.recipient.name_with_uid if self.recipient else "",
+                **self.context,
+            },
         )
+
+        _logger.info("[%04d]: %s", self.timestamp, description)
 
         db = self.world.get_resource(SimDB).conn
         cursor = db.cursor()
@@ -430,9 +435,9 @@ class AIAction(ABC):
         cursor.execute(
             """
             INSERT INTO events
-                (uid, event_type, initiator, recipient, target, timestamp)
+                (uid, event_type, initiator, recipient, target, timestamp, description)
             VALUES
-                (?, ?, ?, ?, ?, ?);
+                (?, ?, ?, ?, ?, ?, ?);
             """,
             (
                 self.uid,
@@ -441,6 +446,7 @@ class AIAction(ABC):
                 self.recipient.uid if self.recipient else None,
                 self.target.uid if self.target else None,
                 self.timestamp,
+                description,
             ),
         )
 
@@ -595,37 +601,17 @@ def get_event_description(world: World, event_id: int) -> str:
     db = world.get_resource(SimDB).conn
     cursor = db.cursor()
 
-    event_type: str = cursor.execute(
+    description: str = cursor.execute(
         """
         SELECT
-            event_type
+            description
         FROM events
         WHERE uid=?;
         """,
         (event_id,),
-    ).fetchone()[0]
+    ).fetchone()
 
-    action_database = world.get_resource(ActionTypeDatabase)
-    action_type = action_database.get_action_with_name(event_type)
-
-    # First get the event information
-
-    event_args: list[tuple[str, str]] = cursor.execute(
-        """
-        SELECT
-            name,
-            value
-        FROM event_args
-        WHERE uid=?;
-        """,
-        (event_id,),
-    ).fetchall()
-
-    final_description = action_type.description
-    for k, v in event_args:
-        final_description = final_description.replace("[" + k + "]", v)
-
-    return final_description
+    return description
 
 
 class SchemeData(Component, ABC):

@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS scheme_members;
 DROP TABLE IF EXISTS scheme_targets;
 DROP TABLE IF EXISTS events;
 DROP TABLE IF EXISTS event_args;
+DROP TABLE IF EXISTS deaths;
 
 CREATE TABLE characters (
     uid INT NOT NULL PRIMARY KEY,
@@ -133,6 +134,7 @@ CREATE TABLE events (
     initiator INT NOT NULL,
     recipient INT,
     target INT,
+    description TEXT,
     timestamp INT NOT NULL
 ) STRICT;
 
@@ -141,6 +143,15 @@ CREATE TABLE event_args (
     name TEXT NOT NULL,
     value TEXT NOT NULL,
     PRIMARY KEY (uid, name)
+) STRICT;
+
+CREATE TABLE deaths (
+    uid INTEGER NOT NULL PRIMARY KEY,
+    character INT NOT NULL,
+    year INT NOT NULL,
+    cause TEXT,
+    FOREIGN KEY (uid) REFERENCES events (uid),
+    FOREIGN KEY (character) REFERENCES characters (uid)
 ) STRICT;
 
 CREATE TABLE rulers (

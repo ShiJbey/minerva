@@ -33,7 +33,7 @@ from minerva.pcg.character import (
     spawn_character,
     spawn_family,
 )
-from minerva.pcg.territory_pcg import spawn_territory
+from minerva.pcg.world_map import spawn_territory
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 

@@ -16,6 +16,7 @@ class GameState:
         "alliances",
         "current_dynasty",
         "previous_dynasties",
+        "next_event_uid",
     )
 
     year: int
@@ -32,6 +33,8 @@ class GameState:
     """The dynasty of the current ruler."""
     previous_dynasties: list[Entity]
     """Previous dynasties."""
+    next_event_uid: int
+    """The UID assigned to the next recorded event. (do not modify directly!)"""
 
     def __init__(self) -> None:
         self.year = 1
@@ -41,3 +44,4 @@ class GameState:
         self.alliances = []
         self.current_dynasty = None
         self.previous_dynasties = []
+        self.next_event_uid = 1

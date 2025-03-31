@@ -5,7 +5,13 @@ from __future__ import annotations
 import logging
 import random
 
-from minerva.actions.base_types import AIAction, Scheme, get_proclivity_score
+from minerva.actions.base_types import (
+    AIAction,
+    EventHistory,
+    Scheme,
+    get_next_event_uid,
+    get_proclivity_score,
+)
 from minerva.actions.scheme_helpers import add_member_to_scheme
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme
 from minerva.characters.components import (
@@ -49,15 +55,18 @@ from minerva.characters.war_helpers import (
     join_alliance,
 )
 from minerva.config import Config
-from minerva.ecs import Active, Entity
+from minerva.ecs import Active, Entity, World
+from minerva.game_action import ActionSystem, GameAction
 from minerva.game_state import GameState
 from minerva.pcg.character import spawn_baby_from
+from minerva.pcg.text_gen import render_string
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import (
     get_relationship,
     increment_attraction_base,
     increment_opinion_base,
 )
+from minerva.sim_db import SimDB
 from minerva.traits.helpers import add_trait
 from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
 from minerva.world_map.helpers import (
@@ -257,26 +266,77 @@ class BecomeChildAction(AIAction):
         self.log_event(self.character)
 
 
-class DieAction(AIAction):
+class DieAction(GameAction):
     """Instance of an action where a character dies."""
 
-    __slots__ = ("character", "cause")
+    name = "Die"
+    display_name = "Die"
+    description = "[character] died (cause: [cause])."
+
+    __slots__ = ("world", "character", "cause", "timestamp")
+
+    world: World
+    character: Entity
+    cause: str
+    timestamp: int
 
     def __init__(self, character: Entity, cause: str = "") -> None:
-        super().__init__("Die", character)
+        super().__init__()
+        self.world = character.world
         self.character = character
         self.cause = cause
-        self.context["cause"] = cause
+        self.timestamp = character.world.get_resource(GameState).year
 
     def execute(self) -> None:
-        """Have a character die."""
-        set_character_alive(self.character, False)
+        """Execute the action."""
+        self.world.get_resource(ActionSystem).perform(self)
 
-        self.character.deactivate()
 
-        remove_character_from_play(self.character)
+def handle_character_death(action: DieAction) -> None:
+    """Have a character die."""
 
-        self.log_event(self.character)
+    set_character_alive(action.character, False)
+
+    action.character.deactivate()
+
+    remove_character_from_play(action.character)
+
+    event_id = get_next_event_uid(action.world)
+
+    description = render_string(
+        DieAction.description,
+        {"character": action.character.name_with_uid, "cause": action.cause},
+    )
+
+    _logger.info("[%04d]: %s", action.timestamp, description)
+
+    db = action.world.get_resource(SimDB).conn
+    cursor = db.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO events
+            (uid, event_type, initiator, timestamp, description)
+        VALUES
+            (?, ?, ?, ?, ?);
+        """,
+        (event_id, action.name, action.character.uid, action.timestamp, description),
+    )
+
+    cursor.execute(
+        """
+        INSERT INTO deaths
+            (uid, character, year, cause)
+        VALUES
+            (?, ?, ?, ?);
+        """,
+        (event_id, action.character, action.timestamp, action.cause),
+    )
+
+    db.commit()
+    cursor.close()
+
+    action.character.get_component(EventHistory).append(event_id)
 
 
 class SendGiftAction(AIAction):
