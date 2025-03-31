@@ -13,7 +13,7 @@ from minerva.characters.war_helpers import (
     start_alliance,
     start_war,
 )
-from minerva.datetime import SimDate
+from minerva.game_state import GameState
 from minerva.pcg.character import spawn_character, spawn_family
 from minerva.pcg.territory_pcg import spawn_territory
 from minerva.sim_db import SimDB
@@ -74,7 +74,7 @@ def test_end_alliance(test_sim: Simulation):
     alliance = start_alliance(family_0, family_1)
     alliance_component = alliance.get_component(Alliance)
 
-    test_sim.world.add_resource(SimDate(10))
+    test_sim.world.get_resource(GameState).year = 10
 
     end_alliance(alliance)
 
@@ -131,7 +131,7 @@ def test_end_war(test_sim: Simulation):
     join_war_as(war, family_2, WarRole.AGGRESSOR_ALLY)
     join_war_as(war, family_3, WarRole.DEFENDER_ALLY)
 
-    test_sim.world.get_resource(SimDate).year += 3
+    test_sim.world.get_resource(GameState).year += 3
 
     end_war(war, family_1)
 

@@ -92,8 +92,8 @@ from minerva.characters.war_helpers import (
     start_war,
 )
 from minerva.config import Config
-from minerva.datetime import SimDate
 from minerva.ecs import Active, Entity, System, SystemGroup, World
+from minerva.game_state import GameState
 from minerva.pcg.base_types import FamilyGenOptions
 from minerva.pcg.character import spawn_family
 from minerva.pcg.world_map import generate_world_map
@@ -118,8 +118,7 @@ class TimeSystem(System):
     __update_order__ = ("last",)
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate)
-        current_date.year += 1
+        world.get_resource(GameState).year += 1
 
 
 class CharacterAgingSystem(System):
@@ -528,7 +527,7 @@ class RevoltUpdateSystem(System):
 
     def on_update(self, world: World) -> None:
         config = world.get_resource(Config)
-        current_year = world.get_resource(SimDate).year
+        current_year = world.get_resource(GameState).year
 
         for _, (territory, happiness, in_revolt, _) in world.query_components(
             (Territory, PopulationHappiness, InRevolt, Active)
@@ -629,7 +628,7 @@ def nothing_event(_: Entity) -> None:
 @TerritoryRandomEventSystem.random_event("poor harvest", 0.5)
 def poor_harvest_event(territory: Entity) -> None:
     """Poor harvest."""
-    current_date = territory.world.get_resource(SimDate).year
+    current_date = territory.world.get_resource(GameState).year
     happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value -= 10
@@ -644,7 +643,7 @@ def poor_harvest_event(territory: Entity) -> None:
 @TerritoryRandomEventSystem.random_event("disease", 0.5)
 def disease_event(territory: Entity) -> None:
     """Do Nothing."""
-    current_date = territory.world.get_resource(SimDate).year
+    current_date = territory.world.get_resource(GameState).year
     happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value -= 10
@@ -659,7 +658,7 @@ def disease_event(territory: Entity) -> None:
 @TerritoryRandomEventSystem.random_event("bountiful harvest", 0.5)
 def bountiful_harvest_event(territory: Entity) -> None:
     """Do Nothing."""
-    current_date = territory.world.get_resource(SimDate).year
+    current_date = territory.world.get_resource(GameState).year
     happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value += 10
@@ -702,7 +701,7 @@ class InfluencePointGainSystem(System):
 
             _logger.debug(
                 "[%04d]: %s has %d influence points",
-                world.get_resource(SimDate).year,
+                world.get_resource(GameState).year,
                 character.entity.name_with_uid,
                 character.influence_points,
             )
@@ -949,8 +948,8 @@ class PregnancyPlaceHolderSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.get_resource(random.Random)
-        current_date = world.get_resource(SimDate)
-        due_date = current_date.year + 1
+        current_date = world.get_resource(GameState).year
+        due_date = current_date + 1
 
         for _, (marriage, _) in world.query_components((Marriage, Active)):
             character = marriage.character.get_component(Character)
@@ -980,7 +979,7 @@ class PregnancyPlaceHolderSystem(System):
                 Pregnancy(
                     assumed_father=spouse.entity,
                     actual_father=spouse.entity,
-                    conception_date=current_date.year,
+                    conception_date=current_date,
                     due_date=due_date,
                 )
             )
@@ -994,7 +993,7 @@ class ChildBirthSystem(System):
     """Spawns new children when pregnant characters reach their due dates."""
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
 
         for _, (character, pregnancy, _) in world.query_components(
             (Character, Pregnancy, Active)
@@ -1028,7 +1027,7 @@ class AllianceSchemeUpdateSystem(System):
     __system_group__ = "SchemeUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
 
         for _, (scheme, _, _) in world.query_components(
             (Scheme, AllianceScheme, Active)
@@ -1157,7 +1156,7 @@ class WarSchemeUpdateSystem(System):
                     join_war_as(war, member_family, role)
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
 
         for _, (scheme, war_scheme, _) in world.query_components(
             (Scheme, WarScheme, Active)
@@ -1218,7 +1217,7 @@ class CoupSchemeUpdateSystem(System):
     __system_group__ = "SchemeUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
         rng = world.get_resource(random.Random)
 
         for _, (scheme, coup_scheme, _) in world.query_components(
@@ -1469,7 +1468,7 @@ class WarUpdateSystem(System):
                 _logger.info(
                     "[%04d]: The %s family defeated the %s family and has taken control "
                     "of the %s territory.",
-                    world.get_resource(SimDate).year,
+                    world.get_resource(GameState).year,
                     war.aggressor.name_with_uid,
                     war.defender.name_with_uid,
                     war.contested_territory.name_with_uid,
@@ -1504,7 +1503,7 @@ class WarUpdateSystem(System):
                 _logger.info(
                     "[%04d]: The %s family failed to defeat the %s family over control "
                     "of the %s territory.",
-                    world.get_resource(SimDate).year,
+                    world.get_resource(GameState).year,
                     war.aggressor.name_with_uid,
                     war.defender.name_with_uid,
                     war.contested_territory.name_with_uid,
@@ -1538,7 +1537,7 @@ class FamilyRefillSystem(System):
     __system_group__ = "UpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
         for _, (territory, _) in world.query_components((Territory, Active)):
             if len(territory.families) < 3:
                 family = spawn_family(world, FamilyGenOptions(spawn_members=True))
@@ -1581,7 +1580,7 @@ class HeirDeclarationSystem(System):
             return None
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
 
         for _, (character, _, _) in world.query_components(
             (Character, HeadOfFamily, Active)
@@ -1637,7 +1636,7 @@ class OrphanAdoptionSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.get_resource(random.Random)
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
 
         for _, (character, _, _) in world.query_components(
             (Character, HeadOfFamily, Active)

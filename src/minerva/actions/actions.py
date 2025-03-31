@@ -49,8 +49,8 @@ from minerva.characters.war_helpers import (
     join_alliance,
 )
 from minerva.config import Config
-from minerva.datetime import SimDate
 from minerva.ecs import Active, Entity
+from minerva.game_state import GameState
 from minerva.pcg.character import spawn_baby_from
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import (
@@ -357,7 +357,6 @@ class ExtortLocalFamiliesAction(AIAction):
         self.character = character
 
     def execute(self) -> None:
-        current_date = self.world.get_resource(SimDate).year
         family_head_component = self.character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
@@ -379,7 +378,7 @@ class ExtortLocalFamiliesAction(AIAction):
 
         _logger.info(
             "[%04d]: %s extorted the families in their territories.",
-            current_date,
+            self.world.get_resource(GameState).year,
             self.character.name_with_uid,
         )
 
@@ -857,7 +856,7 @@ class GetPregnant(AIAction):
         self.partner = partner
 
     def execute(self) -> None:
-        current_year = self.world.get_resource(SimDate).year
+        current_year = self.world.get_resource(GameState).year
 
         character_comp = self.character.get_component(Character)
 
@@ -1032,7 +1031,7 @@ class GoIntoRevolt(AIAction):
         self.context["territory"] = territory.name_with_uid
 
     def execute(self) -> None:
-        current_year = self.world.get_resource(SimDate).year
+        current_year = self.world.get_resource(GameState).year
         self.territory.add_component(InRevolt(start_date=current_year))
         self.log_event()
 

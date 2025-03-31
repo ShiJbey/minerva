@@ -1,8 +1,8 @@
 """Helper functions for interacting with Schemes."""
 
 from minerva.actions.base_types import Scheme, SchemeData, SchemeManager
-from minerva.datetime import SimDate
 from minerva.ecs import Entity, World
+from minerva.game_state import GameState
 from minerva.sim_db import SimDB
 
 
@@ -16,7 +16,7 @@ def create_scheme(
     """Create a new scheme."""
     scheme_obj = world.entity()
 
-    current_date = world.get_resource(SimDate).year
+    current_date = world.get_resource(GameState).year
 
     scheme_component = scheme_obj.add_component(
         Scheme(

@@ -51,8 +51,8 @@ from minerva.characters.helpers import (
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.war_data import WarTracker
 from minerva.config import Config
-from minerva.datetime import SimDate
 from minerva.ecs import Entity, World
+from minerva.game_state import GameState
 from minerva.pcg.base_types import (
     BabyFactory,
     CharacterFactory,
@@ -426,7 +426,7 @@ class DefaultBabyFactory(BabyFactory):
             options=option_overrides,
         )
 
-        set_character_birth_date(child, mother.world.get_resource(SimDate).year)
+        set_character_birth_date(child, mother.world.get_resource(GameState).year)
         set_character_birth_surname(child, mothers_family.name)
         set_character_birth_family(child, mothers_family)
         set_character_family(child, mothers_family)
@@ -508,7 +508,7 @@ class DefaultFamilyFactory(FamilyFactory):
         """Create a new family."""
         rng = world.get_resource(random.Random)
         config = world.get_resource(Config)
-        current_date = world.get_resource(SimDate).year
+        current_date = world.get_resource(GameState).year
         db = world.get_resource(SimDB).conn
 
         family = world.entity()

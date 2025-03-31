@@ -37,8 +37,8 @@ from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import remove_current_ruler
 from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
-from minerva.datetime import SimDate
 from minerva.ecs import Active, Entity
+from minerva.game_state import GameState
 from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import (
@@ -299,7 +299,7 @@ def set_family_head(
     character: Optional[Entity],
 ) -> None:
     """Set the current head of a family."""
-    current_date = family.world.get_resource(SimDate).year
+    current_date = family.world.get_resource(GameState).year
     db = family.world.get_resource(SimDB).conn
     cur = db.cursor()
     family_component = family.get_component(Family)
@@ -413,7 +413,7 @@ def remove_family_from_play(family: Entity) -> None:
     family_component = family.get_component(Family)
 
     db = world.get_resource(SimDB).conn
-    current_date = world.get_resource(SimDate).year
+    current_date = world.get_resource(GameState).year
     db_cursor = db.cursor()
     db_cursor.execute(
         """
@@ -461,7 +461,7 @@ def remove_family_from_play(family: Entity) -> None:
 def remove_character_from_play(character: Entity) -> None:
     """Remove a character from play."""
     world = character.world
-    current_date = world.get_resource(SimDate).year
+    current_date = world.get_resource(GameState).year
     character_component = character.get_component(Character)
 
     character.deactivate()
@@ -994,7 +994,7 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
     if character_b_component.spouse:
         raise RuntimeError(f"Error: {character_b.name_with_uid} is already married.")
 
-    current_date = world.get_resource(SimDate).year
+    current_date = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
@@ -1065,7 +1065,7 @@ def end_marriage(character_a: Entity, character_b: Entity) -> None:
     character_a_component.spouse = None
     character_b_component.spouse = None
 
-    current_date = world.get_resource(SimDate).year
+    current_date = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
@@ -1116,7 +1116,7 @@ def start_romantic_affair(character_a: Entity, character_b: Entity) -> None:
     if character_b_component.lover:
         raise RuntimeError(f"Error: {character_b.name_with_uid} already has a lover.")
 
-    current_date = world.get_resource(SimDate).year
+    current_date = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
@@ -1183,7 +1183,7 @@ def end_romantic_affair(character_a: Entity, character_b: Entity) -> None:
     character_a_component.lover = None
     character_b_component.lover = None
 
-    current_date = world.get_resource(SimDate)
+    current_date = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
@@ -1345,7 +1345,7 @@ def init_betrothal(character_a: Entity, character_b: Entity) -> None:
     if character_b_component.betrothed_to:
         raise RuntimeError(f"Error: {character_b.name_with_uid} is already betrothed.")
 
-    current_date = world.get_resource(SimDate).year
+    current_date = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
@@ -1405,7 +1405,7 @@ def terminate_betrothal(character_a: Entity, character_b: Entity) -> None:
             f" {character_a.name_with_uid}."
         )
 
-    current_date = world.get_resource(SimDate)
+    current_date = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
 

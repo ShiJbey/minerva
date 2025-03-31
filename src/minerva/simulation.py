@@ -34,8 +34,8 @@ from minerva.characters.components import (
 from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.characters.war_data import WarRole
 from minerva.config import Config
-from minerva.datetime import SimDate
 from minerva.ecs import Entity, World
+from minerva.game_state import GameState
 from minerva.pcg.base_types import PCGFactories
 from minerva.pcg.character import (
     DefaultBabyFactory,
@@ -67,7 +67,7 @@ class Simulation:
         """
         _config = config if config is not None else Config()
         self.world = World()
-        self.world.add_resource(SimDate())
+        self.world.add_resource(GameState())
         self.world.add_resource(_config)
         self.world.add_resource(random.Random(_config.seed))
         self.world.add_resource(
@@ -631,9 +631,9 @@ class Simulation:
         return self.world.get_resource(Config)
 
     @property
-    def date(self) -> SimDate:
+    def game_state(self) -> GameState:
         """The current date in the simulation."""
-        return self.world.get_resource(SimDate)
+        return self.world.get_resource(GameState)
 
     def step(self) -> None:
         """Advance the simulation by one timestep."""

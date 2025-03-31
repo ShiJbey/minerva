@@ -80,7 +80,7 @@ class SimulationInspector:
 
         panel = rich.panel.Panel(
             f"[orange1 bold]World seed:[/orange1 bold] {self.sim.config.seed}\n"
-            f"[orange1 bold]World Year:[/orange1 bold] {self.sim.date}\n"
+            f"[orange1 bold]World Year:[/orange1 bold] {self.sim.game_state.year}\n"
             f"[orange1 bold]Active Families:[/orange1 bold] {total_families}\n"
             f"[orange1 bold]Active Characters:[/orange1 bold] {total_characters}\n"
             f"[orange1 bold]Current Ruler:[/orange1 bold] {current_ruler_name}\n"

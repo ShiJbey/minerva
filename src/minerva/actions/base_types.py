@@ -15,8 +15,8 @@ from typing import Any, Callable, ClassVar, DefaultDict, Iterable, Iterator, Opt
 
 from ordered_set import OrderedSet
 
-from minerva.datetime import SimDate
 from minerva.ecs import Component, Entity, World
+from minerva.game_state import GameState
 from minerva.pcg.text_gen import render_string
 from minerva.sim_db import SimDB
 
@@ -380,7 +380,7 @@ class AIAction(ABC):
         self.uid = -1
         self.world = initiator.world
         self.initiator = initiator
-        self.timestamp = self.world.get_resource(SimDate).year
+        self.timestamp = self.world.get_resource(GameState).year
         self.action_type = initiator.world.get_resource(
             ActionTypeDatabase
         ).get_action_with_name(name)
