@@ -15,13 +15,9 @@ from minerva.relationships.helpers import add_relationship
 from minerva.relationships.preconditions import ConstantPrecondition
 from minerva.sim_db import SimDB
 from minerva.simulation_events import SimulationEvents
-from minerva.stats.base_types import (
-    StatComponent,
-    StatModifier,
-    StatModifierType,
-)
+from minerva.stats.base_types import Stat, StatComponent, StatModifier, StatModifierType
 from minerva.stats.helpers import default_stat_calc_strategy
-from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
+from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase, Traits
 from minerva.traits.effects import (
     AddIncomingRelationshipModifier,
     AddOutgoingRelationshipModifier,
@@ -30,18 +26,11 @@ from minerva.traits.effects import (
 from minerva.traits.helpers import add_trait, has_trait, remove_trait
 
 
-class Hunger(StatComponent):
+class Hunger(Stat):
     """Tracks an entity's hunger."""
 
-    MAX_VALUE: int = 1000
-
-    def __init__(
-        self,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(
-            default_stat_calc_strategy, base_value, (0, self.MAX_VALUE), True
-        )
+    def __init__(self, base_value: int = 0) -> None:
+        super().__init__(base_value, 0, 1000)
 
 
 @pytest.fixture
@@ -52,9 +41,9 @@ def world() -> World:
     w.add_resource(SimDB())
     w.add_resource(SimulationEvents())
     w.add_resource(SocialRuleLibrary())
-    w.add_resource(TraitLibrary())
-    w.get_resource(TraitLibrary).add_trait(
-        Trait(
+    w.add_resource(CharacterTraitDatabase())
+    w.get_resource(CharacterTraitDatabase).add_trait(
+        CharacterTrait(
             trait_id="flirtatious",
             name="Flirtatious",
             effects=[
@@ -69,8 +58,8 @@ def world() -> World:
             ],
         )
     )
-    w.get_resource(TraitLibrary).add_trait(
-        Trait(
+    w.get_resource(CharacterTraitDatabase).add_trait(
+        CharacterTrait(
             trait_id="charming",
             name="Charming",
             effects=[
@@ -83,8 +72,8 @@ def world() -> World:
             ],
         )
     )
-    w.get_resource(TraitLibrary).add_trait(
-        Trait(
+    w.get_resource(CharacterTraitDatabase).add_trait(
+        CharacterTrait(
             trait_id="gullible",
             name="Gullible",
             effects=[
@@ -93,8 +82,8 @@ def world() -> World:
             conflicting_traits=["skeptical"],
         )
     )
-    w.get_resource(TraitLibrary).add_trait(
-        Trait(
+    w.get_resource(CharacterTraitDatabase).add_trait(
+        CharacterTrait(
             trait_id="skeptical",
             name="Skeptical",
             effects=[
@@ -113,7 +102,7 @@ def create_test_character(world: World) -> Entity:
     return world.entity(
         components=[
             RelationshipManager(),
-            TraitManager(),
+            Traits(),
             Hunger(0),
             Sociability(default_stat_calc_strategy),
         ]

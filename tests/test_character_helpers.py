@@ -1,7 +1,5 @@
 # pylint: disable=W0621
-"""Test helper functions that modify characters.
-
-"""
+"""Test helper functions that modify characters."""
 
 import pytest
 
@@ -36,7 +34,6 @@ from minerva.characters.helpers import (
     start_marriage,
     start_romantic_affair,
 )
-from minerva.datetime import SimDate
 from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
 from minerva.pcg.character import spawn_character, spawn_family
 from minerva.sim_db import SimDB
@@ -67,7 +64,7 @@ def test_set_first_name(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.first_name == "Rhaenyra"
 
@@ -106,7 +103,7 @@ def test_set_surname(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.surname == "Targaryen"
 
@@ -141,7 +138,7 @@ def test_set_birth_surname(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.birth_surname == "Targaryen"
 
@@ -180,7 +177,7 @@ def test_set_sex(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.sex == Sex.FEMALE
 
@@ -215,7 +212,7 @@ def test_set_sexual_orientation(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.sexual_orientation == SexualOrientation.BISEXUAL
 
@@ -254,7 +251,7 @@ def test_set_life_stage(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.life_stage == LifeStage.ADULT
     cur = db.execute(
@@ -292,7 +289,7 @@ def test_set_age(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.age == 16
 
@@ -327,7 +324,7 @@ def test_set_birth_date(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.birth_date is None
 
@@ -338,9 +335,9 @@ def test_set_birth_date(sim: Simulation):
 
     assert result[0] is None
 
-    set_character_birth_date(rhaenyra, SimDate(16, 1))
+    set_character_birth_date(rhaenyra, 16)
 
-    assert character_component.birth_date == SimDate(16, 1)
+    assert character_component.birth_date == 16
 
     cur = db.execute(
         """SELECT birth_date FROM characters WHERE uid=?;""", (rhaenyra.uid,)
@@ -366,7 +363,7 @@ def test_set_death_date(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.death_date is None
 
@@ -377,9 +374,9 @@ def test_set_death_date(sim: Simulation):
 
     assert result[0] is None
 
-    set_character_death_date(rhaenyra, SimDate(78, 1))
+    set_character_death_date(rhaenyra, 78)
 
-    assert character_component.death_date == SimDate(78, 1)
+    assert character_component.death_date == 78
 
     cur = db.execute(
         """SELECT death_date FROM characters WHERE uid=?;""", (rhaenyra.uid,)
@@ -417,7 +414,7 @@ def test_set_mother(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.mother is None
 
@@ -467,7 +464,7 @@ def test_set_father(sim: Simulation):
         ),
     )
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.father is None
 
@@ -514,7 +511,7 @@ def test_set_biological_father(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.biological_father is None
 
@@ -553,7 +550,7 @@ def test_set_alive(sim: Simulation):
     )
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.is_alive is True
 
@@ -594,7 +591,7 @@ def test_set_character_birth_family(sim: Simulation):
     targaryen_family = spawn_family(sim.world, FamilyGenOptions(name="Targaryen"))
 
     character_component = rhaenyra.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert character_component.birth_family is None
 
@@ -645,7 +642,7 @@ def test_set_relation_sibling(sim: Simulation):
     )
 
     character_component = viserys.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert daemon not in character_component.siblings
 
@@ -696,7 +693,7 @@ def test_set_relation_child(sim: Simulation):
     )
 
     character_component = viserys.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert rhaenyra not in character_component.children
 
@@ -748,7 +745,7 @@ def test_start_marriage(sim: Simulation):
 
     aemma_character_component = aemma.get_component(Character)
     viserys_character_component = viserys.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
@@ -804,7 +801,7 @@ def test_end_marriage(sim: Simulation):
 
     aemma_character_component = aemma.get_component(Character)
     viserys_character_component = viserys.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
@@ -879,7 +876,7 @@ def test_start_romantic_affair(sim: Simulation):
 
     alicent_character_component = alicent.get_component(Character)
     cole_character_component = cole.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert cole_character_component.lover is None
     assert alicent_character_component.lover is None
@@ -934,7 +931,7 @@ def test_end_romantic_affair(sim: Simulation):
 
     alicent_character_component = alicent.get_component(Character)
     cole_character_component = cole.get_component(Character)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     assert cole_character_component.spouse is None
     assert alicent_character_component.spouse is None

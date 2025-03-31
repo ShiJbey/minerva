@@ -28,7 +28,7 @@ def start_alliance(*families: Entity) -> Entity:
     founder = founder_family_component.head
 
     world = founder_family.world
-    current_date = world.get_resource(SimDate)
+    current_date = world.get_resource(SimDate).year
 
     if founder is None:
         raise TypeError("Alliance founding family is missing a family head.")
@@ -55,7 +55,7 @@ def start_alliance(*families: Entity) -> Entity:
         else:
             family_component.alliance = alliance
 
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     db_cursor = db.cursor()
 
     db_cursor.execute(
@@ -67,7 +67,7 @@ def start_alliance(*families: Entity) -> Entity:
             alliance.uid,
             founder.uid,
             founder_family.uid,
-            current_date.to_iso_str(),
+            current_date,
         ),
     )
 
@@ -77,7 +77,7 @@ def start_alliance(*families: Entity) -> Entity:
         VALUES (?, ?, ?);
         """,
         [
-            (f.uid, alliance.uid, current_date.to_iso_str())
+            (f.uid, alliance.uid, current_date)
             for f in alliance_component.member_families
         ],
     )
@@ -103,7 +103,7 @@ def join_alliance(alliance: Entity, family: Entity) -> None:
 
     world = alliance.world
     current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     cursor.execute(
@@ -111,7 +111,7 @@ def join_alliance(alliance: Entity, family: Entity) -> None:
         INSERT INTO alliance_members (family_id, alliance_id, date_joined)
         VALUES (?, ?, ?);
         """,
-        (family.uid, alliance.uid, current_date.to_iso_str()),
+        (family.uid, alliance.uid, current_date.year),
     )
 
     db.commit()
@@ -122,11 +122,11 @@ def end_alliance(alliance: Entity) -> None:
 
     world = alliance.world
     current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     db_cursor = db.cursor()
 
     alliance_component = alliance.get_component(Alliance)
-    alliance_component.end_date = current_date.copy()
+    alliance_component.end_date = current_date.year
 
     # Remove the alliance from all member families
     for family in alliance_component.member_families:
@@ -135,7 +135,7 @@ def end_alliance(alliance: Entity) -> None:
 
     db_cursor.execute(
         """UPDATE alliances SET end_date=? WHERE uid=?""",
-        (current_date.to_iso_str(), alliance.uid),
+        (current_date.year, alliance.uid),
     )
 
     db_cursor.executemany(
@@ -145,7 +145,7 @@ def end_alliance(alliance: Entity) -> None:
         WHERE family_id=? AND alliance_id=?;
         """,
         [
-            (current_date.to_iso_str(), f.uid, alliance.uid)
+            (current_date.year, f.uid, alliance.uid)
             for f in alliance_component.member_families
         ],
     )
@@ -161,7 +161,7 @@ def start_war(
     """One family declares war on another."""
     world = family_a.world
     current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     db_cursor = db.cursor()
 
     family_a_wars = family_a.get_component(WarTracker)
@@ -172,7 +172,7 @@ def start_war(
             War(
                 family_a,
                 family_b,
-                start_date=current_date.copy(),
+                start_date=current_date.year,
                 contested_territory=contested_territory,
             )
         ]
@@ -187,7 +187,7 @@ def start_war(
         (uid, aggressor_id, defender_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (war_obj.uid, family_a.uid, family_b.uid, current_date.to_iso_str()),
+        (war_obj.uid, family_a.uid, family_b.uid, current_date.year),
     )
 
     db_cursor.executemany(
@@ -196,8 +196,8 @@ def start_war(
         VALUES (?, ?, ?, ?);
         """,
         [
-            (family_a.uid, war_obj.uid, WarRole.AGGRESSOR, current_date.to_iso_str()),
-            (family_b.uid, war_obj.uid, WarRole.DEFENDER, current_date.to_iso_str()),
+            (family_a.uid, war_obj.uid, WarRole.AGGRESSOR, current_date.year),
+            (family_b.uid, war_obj.uid, WarRole.DEFENDER, current_date.year),
         ],
     )
 
@@ -211,7 +211,7 @@ def end_war(war: Entity, winner: Optional[Entity]) -> None:
 
     world = war.world
     current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     db_cursor = db.cursor()
 
     war_component = war.get_component(War)
@@ -237,7 +237,7 @@ def end_war(war: Entity, winner: Optional[Entity]) -> None:
         """
         UPDATE wars SET end_date=?, winner_id=? WHERE uid=?;
         """,
-        (current_date.to_iso_str(), winner, war.uid),
+        (current_date.year, winner, war.uid),
     )
 
     db.commit()
@@ -250,7 +250,7 @@ def join_war_as(war: Entity, family: Entity, role: WarRole) -> None:
 
     world = war.world
     current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     db_cursor = db.cursor()
 
     war_component = war.get_component(War)
@@ -274,7 +274,7 @@ def join_war_as(war: Entity, family: Entity, role: WarRole) -> None:
         INSERT INTO war_participants (family_id, war_id, role, date_joined)
         VALUES (?, ?, ?, ?);
         """,
-        (family.uid, war.uid, role, current_date.to_iso_str()),
+        (family.uid, war.uid, role, current_date.year),
     )
 
     db.commit()

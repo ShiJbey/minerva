@@ -5,19 +5,39 @@ from __future__ import annotations
 import logging
 import random
 
-from minerva.actions.base_types import AIAction, Scheme
-from minerva.actions.scheme_helpers import add_member_to_scheme, create_scheme
-from minerva.actions.scheme_types import CheatingScheme
+from minerva.actions.base_types import AIAction, Scheme, get_proclivity_score
+from minerva.actions.scheme_helpers import add_member_to_scheme
+from minerva.actions.scheme_types import AllianceScheme, CoupScheme
 from minerva.characters.components import (
     Character,
     Family,
-    FamilyPrestige,
-    Fertility,
     HeadOfFamily,
+    LifeStage,
     Pregnancy,
+    Prestige,
     Sex,
 )
-from minerva.characters.helpers import remove_character_from_play, set_character_alive
+from minerva.characters.helpers import (
+    get_fertility,
+    get_prestige,
+    increment_fertility_base,
+    merge_family_with,
+    remove_character_from_play,
+    remove_heir,
+    set_character_alive,
+    set_character_biological_father,
+    set_character_birth_family,
+    set_character_family,
+    set_character_father,
+    set_character_life_stage,
+    set_character_mother,
+    set_family_head,
+    set_prestige_base,
+    set_relation_child,
+    set_relation_sibling,
+    start_marriage,
+    update_grandparent_relations,
+)
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import start_new_dynasty
 from minerva.characters.war_data import Alliance
@@ -31,247 +51,314 @@ from minerva.characters.war_helpers import (
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Entity
-from minerva.life_events.aging import DeathEvent
-from minerva.life_events.events import (
-    AttemptingFormAllianceEvent,
-    CheatOnSpouseEvent,
-    DisbandedAllianceEvent,
-    ExpandedFamilyTerritoryEvent,
-    FamilyJoinedAllianceEvent,
-    GiveBackToSmallFolkEvent,
-    GrowPoliticalInfluenceEvent,
-    JoinAllianceSchemeEvent,
-    JoinCoupSchemeEvent,
-    JoinedAllianceEvent,
-    LeftDisbandedAllianceEvent,
-    PregnancyEvent,
-    QuellRevoltEvent,
-    StartCoupSchemeEvent,
-    StartWarSchemeEvent,
-    TakeOverTerritoryEvent,
-    TaxTerritoryEvent,
-)
+from minerva.pcg.character import spawn_baby_from
 from minerva.relationships.base_types import Opinion
-from minerva.relationships.helpers import get_relationship
+from minerva.relationships.helpers import (
+    get_relationship,
+    increment_attraction_base,
+    increment_opinion_base,
+)
 from minerva.traits.helpers import add_trait
 from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
 from minerva.world_map.helpers import (
+    get_happiness_base,
+    increment_happiness_base,
     increment_political_influence,
+    set_happiness_base,
     set_territory_controlling_family,
 )
 
 _logger = logging.getLogger(__name__)
 
 
-class IdleAction(AIAction):
-    """Character does nothing."""
-
-    def __init__(self, performer: Entity) -> None:
-        super().__init__(performer, "Idle")
-
-    def execute(self) -> bool:
-        current_date = self.world.get_resource(SimDate)
-
-        _logger.debug(
-            "[%s]: %s is idle.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-        )
-
-        return True
-
-
 class GiveBackToTerritoryAction(AIAction):
     """An instance of a get married action."""
 
-    __slots__ = ("family", "territory")
+    __slots__ = ("character", "family", "territory")
 
-    family: Entity
-    territory: Entity
-
-    def __init__(self, performer: Entity, family: Entity, territory: Entity) -> None:
-        super().__init__(performer, "GiveBackToTerritory")
-        self.context["family"] = family
-        self.context["territory"] = territory
+    def __init__(self, character: Entity, family: Entity, territory: Entity) -> None:
+        super().__init__("GiveBackToTerritory", character, territory)
+        self.character = character
         self.family = family
         self.territory = territory
+        self.context["territory"] = territory.name_with_uid
+        self.context["family"] = family.name_with_uid
 
-    def execute(self) -> bool:
+    def execute(self) -> None:
         increment_political_influence(self.territory, self.family, 5)
+        set_happiness_base(self.territory, get_happiness_base(self.territory) + 5)
 
-        self.territory.get_component(PopulationHappiness).base_value += 5
-
-        GiveBackToSmallFolkEvent(self.performer, self.territory).log_event()
-
-        return True
+        self.log_event(self.character)
 
 
 class GrowPoliticalInfluenceAction(AIAction):
     """A family head grows their political influence in a territory."""
 
-    __slots__ = ("family", "territory")
+    __slots__ = ("character", "territory", "family")
 
-    family: Entity
-    territory: Entity
-
-    def __init__(self, performer: Entity, family: Entity, territory: Entity) -> None:
-        super().__init__(performer, "GrowPoliticalInfluence")
-        self.context["family"] = family
-        self.context["territory"] = territory
-        self.family = family
+    def __init__(self, character: Entity, family: Entity, territory: Entity) -> None:
+        super().__init__("GrowPoliticalInfluence", character, territory)
+        self.character = character
         self.territory = territory
+        self.family = family
+        self.context["family"] = family.name_with_uid
+        self.context["territory"] = territory.name_with_uid
 
-    def execute(self) -> bool:
+    def execute(self) -> None:
         increment_political_influence(self.territory, self.family, 15)
-
-        GrowPoliticalInfluenceEvent(
-            self.performer, self.family, self.territory
-        ).log_event()
-
-        return True
+        self.log_event(self.character)
 
 
 class GetMarriedAction(AIAction):
     """An instance of a get married action."""
 
-    def __init__(self, performer: Entity, partner: Entity) -> None:
-        super().__init__(performer, "GetMarried")
-        self.context["partner"] = partner
+    __slots__ = ("character", "spouse")
 
-    def execute(self) -> bool:
-        return True
+    def __init__(self, character: Entity, spouse: Entity) -> None:
+        super().__init__("GetMarried", character, spouse)
+        self.character = character
+        self.spouse = spouse
+        self.context["spouse"] = spouse.name_with_uid
+
+    def execute(self) -> None:
+        character = self.character.get_component(Character)
+        new_spouse = self.spouse.get_component(Character)
+
+        start_marriage(character_a=self.character, character_b=self.spouse)
+
+        # Now handle any family logistics
+
+        # Case 1: The character is head of their family and their new spouse is
+        # the head of their family
+        if self.character.has_component(HeadOfFamily) and self.spouse.has_component(
+            HeadOfFamily
+        ):
+            # Join the families into a single entity
+            family_a = character.family
+            family_b = new_spouse.family
+            assert family_a is not None
+            assert family_b is not None
+            set_family_head(family_b, None)
+            merge_family_with(family_b, family_a)
+
+            # new spouse loses all their heirs
+            if new_spouse.heir is not None:
+                remove_heir(new_spouse.entity)
+
+        # Case 2: The character is head of their family and their spouse is not
+        if character.entity.has_component(
+            HeadOfFamily
+        ) and not new_spouse.entity.has_component(HeadOfFamily):
+            family_a = character.family
+            assert family_a is not None
+            set_character_family(new_spouse.entity, family_a)
+
+            # new spouse loses heir eligibility
+            if new_spouse.heir_to is not None:
+                remove_heir(new_spouse.heir_to)
+
+        # Case 3: The character is not head of their family and their spouse is
+        if not character.entity.has_component(
+            HeadOfFamily
+        ) and new_spouse.entity.has_component(HeadOfFamily):
+            family_a = character.family
+            family_b = new_spouse.family
+            assert family_a is not None
+            assert family_b is not None
+            set_family_head(family_b, None)
+            set_character_family(new_spouse.entity, family_a)
+
+            # character loses heir eligibility
+            if new_spouse.heir_to is not None:
+                remove_heir(new_spouse.heir_to)
+
+        # Case 4: Neither character is head of their family.
+        if not character.entity.has_component(
+            HeadOfFamily
+        ) and not new_spouse.entity.has_component(HeadOfFamily):
+            family_a = character.family
+            assert family_a is not None
+            set_character_family(new_spouse.entity, family_a)
+
+            # new spouse loses heir eligibility
+            if new_spouse.heir_to is not None:
+                remove_heir(new_spouse.heir_to)
+
+        self.log_event(self.character, self.spouse)
+
+
+class BecomeSeniorAction(AIAction):
+    """Initiator becomes a senior."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__("BecomeSenior", character)
+        self.character = character
+
+    def execute(self) -> None:
+        set_character_life_stage(self.character, LifeStage.SENIOR)
+        self.log_event(self.character)
+
+
+class BecomeAdultAction(AIAction):
+    """Initiator becomes an adult."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__("BecomeAdult", character)
+        self.character = character
+
+    def execute(self) -> None:
+        set_character_life_stage(self.character, LifeStage.ADULT)
+        self.log_event(self.character)
+
+
+class BecomeYoungAdultAction(AIAction):
+    """Initiator becomes a young adult."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__("BecomeYoungAdult", character)
+        self.character = character
+
+    def execute(self) -> None:
+        set_character_life_stage(self.character, LifeStage.YOUNG_ADULT)
+        self.log_event(self.character)
+
+
+class BecomeAdolescentAction(AIAction):
+    """Initiator becomes an adolescent."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__("BecomeAdolescent", character)
+        self.character = character
+
+    def execute(self) -> None:
+        set_character_life_stage(self.character, LifeStage.ADOLESCENT)
+        self.log_event(self.character)
+
+
+class BecomeChildAction(AIAction):
+    """Initiator becomes a child."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__("BecomeChild", character)
+        self.character = character
+
+    def execute(self) -> None:
+        set_character_life_stage(self.character, LifeStage.CHILD)
+        self.log_event(self.character)
 
 
 class DieAction(AIAction):
     """Instance of an action where a character dies."""
 
-    def __init__(self, performer: Entity, cause_of_death: str = "") -> None:
-        super().__init__(performer, "Die")
-        self.cause_of_death = cause_of_death
+    __slots__ = ("character", "cause")
 
-    def execute(self) -> bool:
+    def __init__(self, character: Entity, cause: str = "") -> None:
+        super().__init__("Die", character)
+        self.character = character
+        self.cause = cause
+        self.context["cause"] = cause
+
+    def execute(self) -> None:
         """Have a character die."""
-        character = self.context.character
+        set_character_alive(self.character, False)
 
-        set_character_alive(character, False)
-        character.deactivate()
+        self.character.deactivate()
 
-        DeathEvent(character, cause=self.cause_of_death).log_event()
+        remove_character_from_play(self.character)
 
-        remove_character_from_play(character)
-
-        return True
+        self.log_event(self.character)
 
 
 class SendGiftAction(AIAction):
     """One family head sends a gift to another."""
 
-    __slots__ = ("recipient",)
+    __slots__ = ("character",)
 
-    recipient: Entity
-
-    def __init__(self, performer: Entity, recipient: Entity) -> None:
-        super().__init__(performer, "SendGift")
-        self.context["recipient"] = recipient
-        self.performer = performer
+    def __init__(self, character: Entity, recipient: Entity) -> None:
+        super().__init__("SendGift", character, recipient)
+        self.character = character
         self.recipient = recipient
 
-    def execute(self) -> bool:
-        world = self.context.world
-        current_date = world.get_resource(SimDate)
+    def execute(self) -> None:
+        assert self.recipient
 
-        get_relationship(self.recipient, self.performer).get_component(
+        get_relationship(self.recipient, self.character).get_component(
             Opinion
         ).base_value += 10
 
-        _logger.info(
-            "[%s]: %s sent a gift to %s.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.recipient.name_with_uid,
-        )
-
-        return True
+        self.log_event()
 
 
 class SendAidAction(AIAction):
     """One family head sends a aid to another during a revolt."""
 
-    performer: Entity
-    recipient: Entity
+    __slots__ = ("character",)
 
-    def __init__(self, performer: Entity, recipient: Entity) -> None:
-        super().__init__(performer, "SendGift")
-        self.context["recipient"] = recipient
-        self.performer = performer
+    def __init__(self, character: Entity, recipient: Entity) -> None:
+        super().__init__("SendAid", character, recipient)
+        self.character = character
         self.recipient = recipient
 
-    def execute(self) -> bool:
-        world = self.context.world
-        current_date = world.get_resource(SimDate)
+    def execute(self) -> None:
+        assert self.recipient
 
-        performer_character_comp = self.performer.get_component(Character)
+        performer_character_comp = self.character.get_component(Character)
 
         if performer_character_comp.family:
-            performer_character_comp.family.get_component(
-                FamilyPrestige
-            ).base_value += 10
+            performer_character_comp.family.get_component(Prestige).base_value += 10
 
         self.recipient.get_component(Character).influence_points += 50
 
-        get_relationship(self.recipient, self.performer).get_component(
-            Opinion
-        ).base_value += 20
+        increment_opinion_base(get_relationship(self.recipient, self.character), 20)
 
-        _logger.info(
-            "[%s]: %s sent aid to %s.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-            self.recipient.name_with_uid,
-        )
-
-        return True
+        self.log_event()
 
 
 class ExtortTerritoryOwnersAction(AIAction):
     """Ruler extorts all the families that control territories."""
 
-    def __init__(self, performer: Entity) -> None:
-        super().__init__(performer, "ExtortTerritoryOwners")
+    __slots__ = ("character",)
 
-    def execute(self) -> bool:
-        world = self.context.world
-        current_date = world.get_resource(SimDate)
+    def __init__(self, character: Entity) -> None:
+        super().__init__("ExtortTerritoryOwners", character)
+        self.character = character
 
-        for _, (territory, _) in world.query_components((Territory, Active)):
+    def execute(self) -> None:
+        for _, (territory, _) in self.world.query_components((Territory, Active)):
             if territory.controlling_family:
                 family_component = territory.controlling_family.get_component(Family)
                 if family_component.head:
                     family_head = family_component.head
                     family_head.get_component(Character).influence_points -= 20
-                    get_relationship(family_head, self.performer).get_component(
+                    get_relationship(family_head, self.character).get_component(
                         Opinion
                     ).base_value -= 10
 
-        _logger.info(
-            "[%s]: %s extorted the land controlling families.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
-        )
-
-        return True
+        self.log_event()
 
 
 class ExtortLocalFamiliesAction(AIAction):
     """Family controlling a territory extorts other families residing there."""
 
-    def __init__(self, performer: Entity) -> None:
-        super().__init__(performer, "ExtortLocalFamilies")
+    __slots__ = ("character",)
 
-    def execute(self) -> bool:
-        world = self.context.world
-        current_date = world.get_resource(SimDate)
-        family_head_component = self.performer.get_component(HeadOfFamily)
+    def __init__(self, character: Entity) -> None:
+        super().__init__("ExtortLocalFamilies", character)
+        self.character = character
+
+    def execute(self) -> None:
+        current_date = self.world.get_resource(SimDate).year
+        family_head_component = self.character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
         for territory in family_component.controlled_territories:
@@ -285,237 +372,257 @@ class ExtortLocalFamiliesAction(AIAction):
                 if other_family_component.head:
                     other_family_head = other_family_component.head
                     other_family_head.get_component(Character).influence_points -= 5
-                    get_relationship(other_family_head, self.performer).get_component(
+                    get_relationship(other_family_head, self.character).get_component(
                         Opinion
                     ).base_value -= 10
-                    self.performer.get_component(Character).influence_points += 5
+                    self.character.get_component(Character).influence_points += 5
 
         _logger.info(
-            "[%s]: %s extorted the families in their territories.",
-            current_date.to_iso_str(),
-            self.performer.name_with_uid,
+            "[%04d]: %s extorted the families in their territories.",
+            current_date,
+            self.character.name_with_uid,
         )
-
-        return True
 
 
 class QuellRevoltAction(AIAction):
     """A parameterized instance of a quell revolt action."""
 
-    __slots__ = ("territory",)
+    __slots__ = ("character", "territory")
 
-    territory: Entity
-
-    def __init__(self, performer: Entity, territory: Entity) -> None:
-        super().__init__(performer, "QuellRevolt")
-        self.context["territory"] = territory
+    def __init__(self, character: Entity, territory: Entity) -> None:
+        super().__init__("QuellRevolt", character, territory)
         self.territory = territory
+        self.context["territory"] = territory.name_with_uid
 
-    def execute(self) -> bool:
-        config = self.context.world.get_resource(Config)
+    def execute(self) -> None:
+        config = self.world.get_resource(Config)
 
         self.territory.remove_component(InRevolt)
 
-        performer_character_comp = self.performer.get_component(Character)
+        performer_character_comp = self.initiator.get_component(Character)
         if performer_character_comp.family:
-            performer_character_comp.family.get_component(
-                FamilyPrestige
-            ).base_value += 10
+            performer_character_comp.family.get_component(Prestige).base_value += 10
 
         population_happiness = self.territory.get_component(PopulationHappiness)
 
         population_happiness.base_value = config.base_territory_happiness
 
-        self.performer.get_component(CharacterMetrics).data.num_revolts_quelled += 1
+        self.initiator.get_component(CharacterMetrics).data.num_revolts_quelled += 1
 
-        QuellRevoltEvent(self.performer, self.territory).log_event()
-
-        return True
+        self.log_event(self.initiator)
 
 
-class TaxTerritoryAction(AIAction):
+class RevoltAgainstControllingFamily(AIAction):
+    """The initiator(territory) starts a revolt against the recipient."""
+
+    __slots__ = ("territory", "character")
+
+    def __init__(self, territory: Entity, character: Entity) -> None:
+        super().__init__("Revolt", territory, character)
+        self.territory = territory
+        self.character = character
+
+    def execute(self) -> None:
+        return
+
+
+class TaxTerritoriesAction(AIAction):
     """An instance of a get married action."""
 
-    __slots__ = ("territory",)
+    __slots__ = ("character",)
 
-    territory: Entity
+    def __init__(self, character: Entity) -> None:
+        super().__init__("TaxTerritories", character)
+        self.character = character
 
-    def __init__(self, performer: Entity, territory: Entity) -> None:
-        super().__init__(performer, "TaxTerritory")
-        self.context["territory"] = territory
-        self.territory = territory
-
-    def execute(self) -> bool:
-        character_component = self.context.character.get_component(Character)
+    def execute(self) -> None:
+        character_component = self.character.get_component(Character)
         character_component.influence_points += 250
 
-        self.territory.get_component(PopulationHappiness).base_value -= 20
+        family_head_component = self.initiator.get_component(HeadOfFamily)
+        family_component = family_head_component.family.get_component(Family)
 
-        TaxTerritoryEvent(self.performer, self.territory)
+        for territory in family_component.controlled_territories:
+            increment_happiness_base(territory, -20)
 
-        return True
+        self.log_event(self.initiator)
 
 
 class StartWarSchemeAction(AIAction):
     """Action instance data for starting a war scheme against a specific person."""
 
-    __slots__ = ("target", "territory")
+    __slots__ = ("character", "territory")
 
-    target: Entity
-    territory: Entity
-
-    def __init__(
-        self,
-        performer: Entity,
-        target: Entity,
-        territory: Entity,
-    ) -> None:
-        super().__init__(performer, "StartWarScheme")
+    def __init__(self, character: Entity, target: Entity, territory: Entity) -> None:
+        super().__init__("StartWarScheme", character, target=target)
         self.territory = territory
-        self.target = target
-        self.context["aggressor"] = performer
-        self.context["target"] = target
-        self.context["territory"] = territory
+        self.character = character
+        self.context["character"] = character.name_with_uid
+        self.context["territory"] = territory.name_with_uid
 
-    def execute(self) -> bool:
+    def execute(self) -> None:
+        assert self.target
+
         create_war_scheme(
-            initiator=self.performer, target=self.target, territory=self.territory
+            initiator=self.initiator, target=self.target, territory=self.territory
         )
 
-        StartWarSchemeEvent(
-            subject=self.performer,
-            target=self.target,
-            territory=self.territory,
-        ).log_event()
+        self.log_event()
 
-        return True
+
+class DeclareWar(AIAction):
+    """The initiator declares war on the recipient for the target."""
+
+    __slots__ = ("character", "opponent", "territory")
+
+    def __init__(self, character: Entity, opponent: Entity, territory: Entity) -> None:
+        super().__init__("DeclareWar", character, opponent, territory)
+        self.character = character
+        self.opponent = opponent
+        self.territory = territory
+        self.context["opponent"] = opponent.name_with_uid
+        self.context["territory"] = territory.name_with_uid
+
+    def execute(self) -> None:
+        self.log_event(self.character, self.opponent)
+
+
+class WinWarAction(AIAction):
+    """The initiator wins a war (target) against the recipient."""
+
+    __slots__ = ("character", "opponent")
+
+    def __init__(self, character: Entity, opponent: Entity) -> None:
+        super().__init__("WinWar", character, opponent)
+        self.character = character
+        self.opponent = opponent
+        self.context["opponent"] = opponent.name_with_uid
+
+    def execute(self) -> None:
+        self.log_event(self.character, self.opponent)
 
 
 class StartCoupSchemeAction(AIAction):
     """Instance data for starting a scheme to overthrow the royal family."""
 
-    __slots__ = ("target",)
+    def __init__(self, character: Entity, target: Entity) -> None:
+        super().__init__("StartCoupScheme", character, target=target)
+        self.context["ruler"] = target.name_with_uid
 
-    target: Entity
+    def execute(self) -> None:
+        assert self.target
 
-    def __init__(self, initiator: Entity, target: Entity) -> None:
-        super().__init__(initiator, "StartCoupScheme")
-        self.context["initiator"] = initiator
-        self.context["target"] = target
-        self.target = target
+        create_coup_scheme(initiator=self.initiator, target=self.target)
 
-    def execute(self) -> bool:
-        create_coup_scheme(initiator=self.performer, target=self.target)
+        self.initiator.get_component(CharacterMetrics).data.num_coups_planned += 1
 
-        self.performer.get_component(CharacterMetrics).data.num_coups_planned += 1
+        self.log_event(self.initiator)
 
-        StartCoupSchemeEvent(self.performer, self.target)
 
-        return True
+class CreateAllianceAction(AIAction):
+    """A family head creates alliances for other families to join."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__("CreateAlliance", character)
+        self.character = character
+
+    def execute(self) -> None:
+        self.log_event(self.character)
+
+
+class JoinAllianceAction(AIAction):
+    """Join an existing alliance."""
+
+    __slots__ = ("character", "alliance")
+
+    def __init__(self, character: Entity, alliance: Entity) -> None:
+        super().__init__("JoinAlliance", character, alliance)
+        self.character = character
+        self.alliance = alliance
+
+    def execute(self) -> None:
+        family = self.initiator.get_component(Character).family
+
+        if family is None:
+            raise RuntimeError(f"{self.initiator.name_with_uid} is missing a family.")
+
+        join_alliance(alliance=self.alliance, family=family)
+
+        self.log_event(self.character)
 
 
 class JoinCoupSchemeAction(AIAction):
     """A character joins someones coup scheme."""
 
-    __slots__ = ("scheme",)
+    __slots__ = ("character", "scheme")
 
-    scheme: Entity
-
-    def __init__(self, performer: Entity, scheme: Entity) -> None:
-        super().__init__(performer, "JoinCoupScheme")
-        self.context["scheme"] = scheme
+    def __init__(self, character: Entity, scheme: CoupScheme) -> None:
+        super().__init__("JoinCoupScheme", character)
+        self.character = character
         self.scheme = scheme
 
-    def execute(self) -> bool:
-        add_member_to_scheme(self.scheme, self.performer)
+    def execute(self) -> None:
+        add_member_to_scheme(self.scheme.entity, self.initiator)
 
-        JoinCoupSchemeEvent(
-            self.performer, self.scheme.get_component(Scheme).initiator
-        ).log_event()
-
-        return True
+        self.log_event(self.character)
 
 
 class JoinAllianceSchemeAction(AIAction):
     """A character joins someones alliance scheme."""
 
-    __slots__ = ("scheme",)
+    __slots__ = ("character", "scheme")
 
-    scheme: Entity
-
-    def __init__(self, performer: Entity, scheme: Entity) -> None:
-        super().__init__(performer, "JoinAllianceScheme")
-        self.context["scheme"] = scheme
+    def __init__(self, character: Entity, scheme: AllianceScheme) -> None:
+        super().__init__("JoinAllianceScheme", character)
+        self.context["scheme"] = scheme.entity.name_with_uid
+        self.context["scheme_initiator"] = scheme.entity.get_component(
+            Scheme
+        ).initiator.name_with_uid
+        self.character = character
         self.scheme = scheme
 
-    def execute(self) -> bool:
-        add_member_to_scheme(self.scheme, self.performer)
+    def execute(self) -> None:
+        add_member_to_scheme(self.scheme.entity, self.initiator)
 
-        JoinAllianceSchemeEvent(
-            self.performer,
-            self.scheme.get_component(Scheme).initiator,
-        ).log_event()
-
-        return True
+        self.log_event(self.character)
 
 
 class StartAllianceSchemeAction(AIAction):
     """Action instance data for starting a war scheme against a specific person."""
 
-    def __init__(
-        self,
-        performer: Entity,
-    ) -> None:
-        super().__init__(performer, "StartAllianceScheme")
+    def __init__(self, character: Entity) -> None:
+        super().__init__("StartAllianceScheme", character)
 
-    def execute(self) -> bool:
-        create_alliance_scheme(self.performer)
+    def execute(self) -> None:
+        create_alliance_scheme(self.initiator)
 
-        AttemptingFormAllianceEvent(self.performer).log_event()
-
-        return True
+        self.log_event(self.initiator)
 
 
-class JoinExistingAllianceAction(AIAction):
-    """Join someones existing alliance."""
+class LeaveDisbandedAllianceAction(AIAction):
+    """Leave an alliance that is disbanded."""
 
-    __slots__ = ("alliance",)
+    def __init__(self, character: Entity) -> None:
+        super().__init__("LeaveDisbandedAlliance", character)
 
-    alliance: Entity
+    def execute(self) -> None:
+        self.log_event(self.initiator)
 
-    def __init__(self, performer: Entity, alliance: Entity) -> None:
-        super().__init__(performer, "JoinExistingAlliance")
-        self.context["alliance"] = alliance
+
+class LeaveAllianceAction(AIAction):
+    """Leave an alliance."""
+
+    __slots__ = ("character", "alliance")
+
+    def __init__(self, character: Entity, alliance: Entity) -> None:
+        super().__init__("LeaveAlliance", character, alliance)
+        self.character = character
         self.alliance = alliance
 
-    def execute(self) -> bool:
-        family = self.performer.get_component(Character).family
-
-        if family is None:
-            raise RuntimeError(f"{self.performer.name_with_uid} is missing a family.")
-
-        join_alliance(alliance=self.alliance, family=family)
-
-        JoinedAllianceEvent(subject=self.performer, alliance=self.alliance).log_event()
-        FamilyJoinedAllianceEvent(subject=family, alliance=self.alliance).log_event()
-
-        return True
-
-
-class DisbandAllianceAction(AIAction):
-    """Disband an alliance."""
-
-    __slots__ = ("alliance",)
-
-    alliance: Entity
-
-    def __init__(self, performer: Entity, alliance: Entity) -> None:
-        super().__init__(performer, "DisbandAlliance")
-        self.context["alliance"] = alliance
-        self.alliance = alliance
-
-    def execute(self) -> bool:
-        family_head_component = self.performer.get_component(HeadOfFamily)
+    def execute(self) -> None:
+        family_head_component = self.initiator.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
         alliance_component = self.alliance.get_component(Alliance)
@@ -527,132 +634,320 @@ class DisbandAllianceAction(AIAction):
             member_family_component = member_family.get_component(Family)
 
             if member_family_component.head is not None:
-                LeftDisbandedAllianceEvent(
-                    subject=member_family_component.head,
-                    alliance=self.alliance,
-                ).log_event()
+                # LeftDisbandedAllianceEvent(
+                #     subject=member_family_component.head,
+                #     alliance=self.alliance,
+                # ).log_event()
 
                 get_relationship(
-                    member_family_component.head, self.performer
+                    member_family_component.head, self.initiator
                 ).get_component(Opinion).base_value -= 20
 
         end_alliance(self.alliance)
 
-        self.performer.get_component(CharacterMetrics).data.num_alliances_disbanded += 1
+        self.initiator.get_component(CharacterMetrics).data.num_alliances_disbanded += 1
 
-        DisbandedAllianceEvent(
-            subject=self.performer, alliance=self.alliance
-        ).log_event()
-
-        return True
+        # DisbandedAllianceEvent(
+        #     subject=self.initiator, alliance=self.alliance
+        # ).log_event()
 
 
 class ExpandIntoTerritoryAction(AIAction):
     """."""
 
-    def __init__(self, family_head: Entity, territory: Entity) -> None:
-        super().__init__(family_head, "ExpandIntoTerritory")
-        self.context["family_head"] = family_head
-        self.context["territory"] = territory
+    __slots__ = ("territory",)
 
-    def execute(self) -> bool:
-        family_head: Entity = self.context["family_head"]
-        territory: Entity = self.context["territory"]
+    def __init__(self, character: Entity, territory: Entity) -> None:
+        super().__init__("ExpandIntoTerritory", character, territory)
+        self.territory = territory
+        self.context["territory"] = territory.name_with_uid
 
-        family_head_component = family_head.get_component(HeadOfFamily)
+    def execute(self) -> None:
+        family_head_component = self.initiator.get_component(HeadOfFamily)
 
-        territory_component = territory.get_component(Territory)
+        territory_component = self.territory.get_component(Territory)
         territory_component.political_influence[family_head_component.family] = 50
         family_head_component.family.get_component(Family).territories_present_in.add(
-            territory
+            self.territory
         )
 
-        ExpandedFamilyTerritoryEvent(
-            subject=family_head,
-            family=family_head_component.family,
-            territory=territory,
-        ).log_event()
-
-        return True
+        self.log_event(self.initiator)
 
 
 class SeizeTerritoryAction(AIAction):
     """."""
 
-    def __init__(self, performer: Entity, territory: Entity) -> None:
-        super().__init__(performer, "SeizeTerritory")
-        self.context["family_head"] = performer
-        self.context["territory"] = territory
+    __slots__ = ("character", "territory")
 
-    def execute(self) -> bool:
-        family_head: Entity = self.context["family_head"]
-        territory: Entity = self.context["territory"]
+    def __init__(self, character: Entity, territory: Entity) -> None:
+        super().__init__("SeizeTerritory", character, territory)
+        self.character = character
+        self.territory = territory
+        self.context["territory"] = self.territory.name_with_uid
 
-        family_head_component = family_head.get_component(HeadOfFamily)
+    def execute(self) -> None:
 
-        set_territory_controlling_family(territory, family_head_component.family)
+        family_head_component = self.character.get_component(HeadOfFamily)
 
-        self.performer.get_component(CharacterMetrics).data.num_territories_taken += 1
+        set_territory_controlling_family(self.territory, family_head_component.family)
 
-        TakeOverTerritoryEvent(
-            subject=family_head,
-            territory=territory,
-            family=family_head_component.family,
-        ).log_event()
+        self.initiator.get_component(CharacterMetrics).data.num_territories_taken += 1
 
-        return True
-
-
-class TryCheatOnSpouseAction(AIAction):
-    """A character starts a scheme to cheat on their spouse."""
-
-    __slots__ = ("accomplice",)
-
-    accomplice: Entity
-
-    def __init__(self, performer: Entity, accomplice: Entity) -> None:
-        super().__init__(performer, "TryCheatOnSpouse")
-        self.accomplice = accomplice
-        self.context["accomplice"] = accomplice
-
-    def execute(self) -> bool:
-        create_scheme(
-            world=self.world,
-            scheme_type="cheat",
-            required_time=1,
-            initiator=self.performer,
-            data=CheatingScheme(self.accomplice),
-        )
-        return True
+        self.log_event(self.character)
 
 
 class CheatOnSpouseAction(AIAction):
     """A character cheats on their spouse."""
 
-    __slots__ = ("accomplice",)
+    __slots__ = ("character", "spouse", "accomplice")
 
-    accomplice: Entity
-
-    def __init__(self, performer: Entity, accomplice: Entity) -> None:
-        super().__init__(performer, "CheatOnSpouse")
+    def __init__(self, character: Entity, spouse: Entity, accomplice: Entity) -> None:
+        super().__init__("CheatOnSpouse", character, spouse)
+        self.character = character
+        self.spouse = spouse
         self.accomplice = accomplice
-        self.context["accomplice"] = accomplice
+        self.context["accomplice"] = self.accomplice.name_with_uid
 
-    def execute(self) -> bool:
-        performing_character = self.performer.get_component(Character)
+    def execute(self) -> None:
+        self.log_event(self.character)
 
-        assert performing_character.spouse
 
-        CheatOnSpouseEvent(
-            subject=self.performer,
-            spouse=performing_character.spouse,
-            accomplice=self.accomplice,
-        ).log_event()
+class TryCheatOnSpouseAction(AIAction):
+    """A character starts a scheme to cheat on their spouse."""
 
-        if performing_character.sex == Sex.FEMALE:
-            SexAction(self.performer, self.accomplice).execute()
+    __slots__ = ("character", "spouse", "accomplice")
 
-        return True
+    def __init__(self, character: Entity, spouse: Entity, accomplice: Entity) -> None:
+        super().__init__("TryCheatOnSpouse", character, spouse)
+        self.character = character
+        self.spouse = spouse
+        self.accomplice = accomplice
+        self.context["accomplice"] = self.accomplice.name_with_uid
+
+    def execute(self) -> None:
+        rng = self.world.get_resource(random.Random)
+
+        # Evaluate the accomplices willingness to participate in
+        # this activity if they are married
+        accomplice_character = self.accomplice.get_component(Character)
+        if accomplice_character.spouse is not None:
+
+            self.log_event(self.character, self.spouse, self.accomplice)
+
+            accomplice_cheating_action = TryCheatOnSpouseAction(
+                self.accomplice,
+                accomplice_character.spouse,
+                self.initiator,
+            )
+
+            action_utility = get_proclivity_score(accomplice_cheating_action)
+
+            if rng.random() < action_utility:
+                # Have to create an instance of the cheating action for the
+                # initiator
+                CheatOnSpouseAction(
+                    self.initiator,
+                    self.spouse,
+                    self.accomplice,
+                ).execute()
+
+                accomplice_cheating_action.execute()
+
+            else:
+                increment_attraction_base(
+                    get_relationship(self.initiator, self.accomplice), -10
+                )
+                increment_attraction_base(
+                    get_relationship(self.accomplice, self.initiator), -10
+                )
+                increment_opinion_base(
+                    get_relationship(self.accomplice, self.initiator), -15
+                )
+
+        # The accomplice is not married and so this is only sex
+        else:
+
+            self.log_event(self.character, self.spouse, self.accomplice)
+
+            accomplice_sex_action = SexAction(
+                self.accomplice,
+                self.initiator,
+            )
+
+            action_utility = get_proclivity_score(accomplice_sex_action)
+
+            if rng.random() < action_utility:
+                # Have to create an instance of the cheating action for the
+                # initiator
+                CheatOnSpouseAction(
+                    self.initiator,
+                    self.spouse,
+                    self.accomplice,
+                ).execute()
+
+                accomplice_sex_action.execute()
+
+            else:
+                # Lower the attraction between the characters
+                increment_attraction_base(
+                    get_relationship(self.initiator, self.accomplice), -10
+                )
+                increment_attraction_base(
+                    get_relationship(self.accomplice, self.initiator), -10
+                )
+                increment_opinion_base(
+                    get_relationship(self.accomplice, self.initiator), -15
+                )
+
+
+class DiscoverCoupScheme(AIAction):
+    """The initiator discovers the recipient's coup scheme."""
+
+    __slots__ = ("character", "scheme")
+
+    def __init__(self, character: Entity, scheme: CoupScheme) -> None:
+        super().__init__("DiscoverCoupScheme", character)
+        self.character = character
+        self.scheme = scheme
+
+    def execute(self) -> None:
+        self.log_event(self.initiator)
+
+
+class SentenceToDeath(AIAction):
+    """The initiator sentences the recipient to death."""
+
+    __slots__ = ("character", "reason")
+
+    def __init__(self, character: Entity, target: Entity, reason: str = "") -> None:
+        super().__init__("SentenceToDeath", character, target)
+        self.character = character
+        self.target = target
+        self.reason = reason
+        self.context["reason"] = reason
+
+    def execute(self) -> None:
+        assert self.target
+        self.log_event(self.character, self.target)
+        DieAction(self.target, cause=self.action_type.display_name).execute()
+
+
+class OverthrowRulerAction(AIAction):
+    """Overthrow the current ruler."""
+
+    __slots__ = ("character", "ruler")
+
+    def __init__(self, character: Entity, ruler: Entity) -> None:
+        super().__init__("OverthrowRuler", character, ruler)
+        self.character = character
+        self.ruler = ruler
+
+    def execute(self) -> None:
+        self.log_event(self.character, self.ruler)
+
+
+class GetPregnant(AIAction):
+    """An initiator character impregnates the recipient."""
+
+    __slots__ = ("character", "partner")
+
+    def __init__(self, character: Entity, partner: Entity) -> None:
+        super().__init__("GetPregnant", character)
+        self.character = character
+        self.partner = partner
+
+    def execute(self) -> None:
+        current_year = self.world.get_resource(SimDate).year
+
+        character_comp = self.character.get_component(Character)
+
+        # Add pregnancy component to character
+        self.character.add_component(
+            Pregnancy(
+                assumed_father=character_comp.spouse,
+                actual_father=self.partner,
+                conception_date=current_year,
+                due_date=current_year + 1,
+            )
+        )
+
+        increment_fertility_base(self.character, -25)
+
+
+class GiveBirth(AIAction):
+    """The initiator gives birth to the recipient."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__("GiveBirth", character)
+        self.character = character
+
+    def execute(self) -> None:
+        pregnancy = self.character.get_component(Pregnancy)
+
+        father = pregnancy.actual_father
+
+        baby = spawn_baby_from(
+            mother=self.character,
+            father=father,
+        )
+
+        character = self.character.get_component(Character)
+
+        set_character_mother(baby, self.character)
+        set_character_father(baby, pregnancy.assumed_father)
+        set_character_biological_father(baby, pregnancy.actual_father)
+
+        # Set grandparent/child relationships
+        update_grandparent_relations(baby, [character.mother, character.father])
+
+        if pregnancy.assumed_father is not None:
+            assumed_father_character_comp = pregnancy.assumed_father.get_component(
+                Character
+            )
+            update_grandparent_relations(
+                baby,
+                [
+                    assumed_father_character_comp.mother,
+                    assumed_father_character_comp.father,
+                ],
+            )
+
+        # Add to mothers family
+        set_character_family(baby, character.family)
+        set_character_birth_family(baby, character.family)
+
+        # Mother to child
+        set_relation_child(character.entity, baby)
+
+        # Father to child
+        if pregnancy.assumed_father:
+            set_relation_child(pregnancy.assumed_father, baby)
+
+        # Create relationships with children of birthing parent
+        for existing_child in character.children:
+            if existing_child == baby:
+                continue
+
+            set_relation_sibling(baby, existing_child)
+            set_relation_sibling(existing_child, baby)
+
+        # Create relationships with children of other parent
+        father_children = father.get_component(Character).children
+        for existing_child in father_children:
+            if existing_child == baby:
+                continue
+
+            set_relation_sibling(baby, existing_child)
+            set_relation_sibling(existing_child, baby)
+
+        character.entity.remove_component(Pregnancy)
+
+        # Reduce the character's fertility according to their species
+        increment_fertility_base(
+            self.character, -character.species.fertility_cost_per_child
+        )
 
 
 class SexAction(AIAction):
@@ -662,79 +957,115 @@ class SexAction(AIAction):
     the chance of getting pregnant.
     """
 
-    __slots__ = ("partner",)
+    __slots__ = ("character", "partner")
 
-    partner: Entity
-
-    def __init__(self, performer: Entity, partner: Entity) -> None:
-        super().__init__(performer, "Sex")
+    def __init__(self, character: Entity, partner: Entity) -> None:
+        super().__init__("Sex", character, partner)
+        self.character = character
         self.partner = partner
-        self.context["partner"] = partner
 
-    def execute(self) -> bool:
+    def execute(self) -> None:
         rng = self.world.get_resource(random.Random)
 
-        performing_character = self.performer.get_component(Character)
+        initiating_character = self.character.get_component(Character)
         partner_character = self.partner.get_component(Character)
 
-        if performing_character.sex == Sex.FEMALE and partner_character.sex == Sex.MALE:
+        if initiating_character.sex == Sex.FEMALE and partner_character.sex == Sex.MALE:
             # Calculate the probability of getting pregnant if not already
 
-            if self.performer.has_component(Pregnancy):
-                return True
+            if self.character.has_component(Pregnancy):
+                return
 
-            performer_fertility = self.performer.get_component(Fertility).normalized
+            initiator_fertility = get_fertility(self.character)
+            partner_fertility = get_fertility(self.partner)
 
-            partner_fertility = self.partner.get_component(Fertility).normalized
+            if initiator_fertility <= 0 or partner_fertility <= 0:
+                return
 
-            if performer_fertility <= 0 or partner_fertility <= 0:
-                return True
+            chance_have_child = (initiator_fertility + partner_fertility) / 2
 
-            chance_have_child = (performer_fertility + partner_fertility) / 2
-
-            if rng.random() < chance_have_child:
-                current_date = self.world.get_resource(SimDate).copy()
-                due_date = current_date.copy()
-                due_date.increment(months=9)
-
-                # Add pregnancy component to character
-                self.performer.add_component(
-                    Pregnancy(
-                        assumed_father=performing_character.spouse,
-                        actual_father=self.partner,
-                        conception_date=current_date,
-                        due_date=due_date,
-                    )
-                )
-
-                self.performer.get_component(Fertility).base_value -= 25
-
-                PregnancyEvent(self.performer).log_event()
-
-        return True
+            if rng.randint(0, 100) < chance_have_child:
+                GetPregnant(self.character, self.partner).execute()
 
 
 class ClaimThroneAction(AIAction):
     """A family head claims the throne and right to rule."""
 
-    def __init__(self, performer: Entity) -> None:
-        super().__init__(performer, "ClaimThrone")
+    __slots__ = ("character",)
 
-    def execute(self) -> bool:
+    def __init__(self, character: Entity) -> None:
+        super().__init__("ClaimThrone", character)
+        self.character = character
+
+    def execute(self) -> None:
 
         # Start a new dynasty with this person
-        start_new_dynasty(self.performer)
+        start_new_dynasty(self.initiator)
 
         # Give the ruler and their existing children the royal blood trait
-        add_trait(self.performer, "royal_blood")
+        add_trait(self.initiator, "royal_blood")
 
-        character_component = self.performer.get_component(Character)
+        character_component = self.initiator.get_component(Character)
         for child in character_component.children:
             add_trait(child, "royal_blood")
 
         # Increase the prestige of their family
         family = character_component.family
         assert family
-        family.get_component(FamilyPrestige).base_value += 20
+        set_prestige_base(family, get_prestige(family) + 20)
 
-        return True
+
+class GoIntoRevolt(AIAction):
+    """A territory goes into revolt against its controlling family.
+
+    The head of the controlling family then has to resolve the revolt on their next
+    turn. If not, the family loses control of the territory.
+    """
+
+    __slots__ = ("territory", "family")
+
+    def __init__(self, territory: Entity, family: Entity) -> None:
+        super().__init__("Revolt", territory, family)
+        self.territory = territory
+        self.family = family
+        self.context["family"] = family.name_with_uid
+        self.context["territory"] = territory.name_with_uid
+
+    def execute(self) -> None:
+        current_year = self.world.get_resource(SimDate).year
+        self.territory.add_component(InRevolt(start_date=current_year))
+        self.log_event()
+
+
+class BecomeFamilyHead(AIAction):
+    """A character becomes head of their family."""
+
+    __slots__ = ("character", "family")
+
+    def __init__(self, character: Entity, family: Entity) -> None:
+        super().__init__("BecomeFamilyHead", initiator=character, recipient=family)
+        self.character = character
+        self.family = family
+
+    def execute(self) -> None:
+        set_family_head(self.family, self.character)
+        self.log_event(self.character)
+
+
+class LoseControlOfTerritory(AIAction):
+    """A family head loses control of their territory."""
+
+    __slots__ = ("character", "family", "territory")
+
+    def __init__(self, character: Entity, family: Entity, territory: Entity) -> None:
+        super().__init__("LoseControlOfTerritory", character, territory)
+        self.character = character
+        self.family = family
+        self.territory = territory
+        self.context["character"] = character.name_with_uid
+        self.context["family"] = family.name_with_uid
+        self.context["territory"] = territory.name_with_uid
+
+    def execute(self) -> None:
+        set_territory_controlling_family(self.territory, None)
+        self.log_event(self.character)

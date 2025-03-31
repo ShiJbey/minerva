@@ -4,39 +4,25 @@ Source: https://ck3.paradoxwikis.com/Traits
 """
 
 from minerva.ecs import World
-from minerva.relationships.base_types import (
-    RelationshipModifier,
-    RelationshipPrecondition,
-)
-from minerva.relationships.preconditions import ConstantPrecondition, TargetHasTrait
 from minerva.stats.base_types import StatModifier, StatModifierType
-from minerva.traits.base_types import Trait, TraitLibrary
+from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase
 from minerva.traits.effects import (
-    AddBoldnessModifier,
-    AddCompassionModifier,
     AddDiplomacyModifier,
     AddFertilityModifier,
-    AddGreedModifier,
-    AddHonorModifier,
-    AddIncomingRelationshipModifier,
     AddIntrigueModifier,
     AddLifespanModifier,
     AddMartialModifier,
-    AddOutgoingRelationshipModifier,
     AddProwessModifier,
-    AddRationalityModifier,
-    AddSociabilityModifier,
     AddStewardshipModifier,
-    AddVengefulnessModifier,
 )
 
 
 def load_traits(world: World) -> None:
     """Load trait definitions."""
-    trait_library = world.get_resource(TraitLibrary)
+    trait_library = world.get_resource(CharacterTraitDatabase)
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="royal_blood",
             name="Royal Blood",
             spawn_frequency=0,
@@ -46,72 +32,34 @@ def load_traits(world: World) -> None:
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="brave",
             name="Brave",
             conflicting_traits=["craven"],
             spawn_frequency=1,
             effects=[
-                AddSociabilityModifier(StatModifier(20)),
-                AddRationalityModifier(StatModifier(-20)),
-                AddBoldnessModifier(StatModifier(70)),
                 AddMartialModifier(StatModifier(10)),
                 AddProwessModifier(StatModifier(15)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        attraction_modifier=StatModifier(20),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("craven"),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("brave"),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="craven",
             name="Craven",
             tags=["personality"],
             conflicting_traits=["brave"],
             spawn_frequency=1,
             effects=[
-                AddSociabilityModifier(StatModifier(-20)),
-                AddRationalityModifier(StatModifier(10)),
-                AddBoldnessModifier(StatModifier(-70)),
                 AddMartialModifier(StatModifier(-10)),
                 AddProwessModifier(StatModifier(-15)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        attraction_modifier=StatModifier(-10),
-                        opinion_modifier=StatModifier(-15),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("craven"),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="calm",
             name="Calm",
             tags=["personality"],
@@ -120,27 +68,12 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(10)),
                 AddIntrigueModifier(StatModifier(-20)),
-                AddRationalityModifier(StatModifier(45)),
-                AddVengefulnessModifier(StatModifier(-10)),
-                AddBoldnessModifier(StatModifier(-20)),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("calm"),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("wrathful"),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="wrathful",
             name="Wrathful",
             tags=["personality"],
@@ -149,121 +82,63 @@ def load_traits(world: World) -> None:
             effects=[
                 AddIntrigueModifier(StatModifier(-10)),
                 AddDiplomacyModifier(StatModifier(-10)),
-                AddVengefulnessModifier(StatModifier(10)),
-                AddBoldnessModifier(StatModifier(20)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="chaste",
             name="Chaste",
             tags=["personality"],
             conflicting_traits=["lustful"],
             spawn_frequency=1,
             effects=[
-                AddSociabilityModifier(StatModifier(-20)),
-                AddFertilityModifier(StatModifier(0.25, StatModifierType.PERCENT)),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("chaste"),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("lustful"),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
+                AddFertilityModifier(StatModifier(25, StatModifierType.PERCENT)),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="lustful",
             name="Trait",
             tags=["personality"],
             conflicting_traits=["chaste"],
             spawn_frequency=1,
             effects=[
-                AddSociabilityModifier(StatModifier(35)),
-                AddGreedModifier(StatModifier(20)),
-                AddHonorModifier(StatModifier(-20)),
-                AddFertilityModifier(StatModifier(0.25, StatModifierType.PERCENT)),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("lustful"),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("chaste"),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
+                AddFertilityModifier(StatModifier(25, StatModifierType.PERCENT)),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="content",
             name="Content",
             tags=["personality"],
             conflicting_traits=["ambitious"],
             spawn_frequency=1,
-            effects=[
-                AddSociabilityModifier(StatModifier(-10)),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("content"),
-                        opinion_modifier=StatModifier(20),
-                    )
-                ),
-            ],
+            effects=[],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="ambitious",
             name="Ambitious",
             tags=["personality"],
             conflicting_traits=["content"],
             spawn_frequency=1,
             effects=[
-                AddSociabilityModifier(StatModifier(20)),
                 AddStewardshipModifier(StatModifier(10)),
-                AddBoldnessModifier(StatModifier(20)),
                 AddDiplomacyModifier(StatModifier(10)),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("ambitious"),
-                        opinion_modifier=StatModifier(-15),
-                    )
-                ),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="diligent",
             name="Diligent",
             tags=["personality"],
@@ -272,30 +147,12 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(25)),
                 AddStewardshipModifier(StatModifier(25)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(15),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("diligent"),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("lazy"),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="lazy",
             name="Lazy",
             tags=["personality"],
@@ -304,19 +161,12 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(25)),
                 AddStewardshipModifier(StatModifier(-15)),
-                AddSociabilityModifier(StatModifier(-15)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="generous",
             name="Generous",
             tags=["personality"],
@@ -324,25 +174,12 @@ def load_traits(world: World) -> None:
             spawn_frequency=1,
             effects=[
                 AddDiplomacyModifier(StatModifier(20)),
-                AddSociabilityModifier(StatModifier(10)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(15),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("greedy"),
-                        opinion_modifier=StatModifier(-20),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="greedy",
             name="Greedy",
             tags=["personality"],
@@ -350,42 +187,35 @@ def load_traits(world: World) -> None:
             spawn_frequency=1,
             effects=[
                 AddDiplomacyModifier(StatModifier(-20)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(-15),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="gregarious",
             name="Gregarious",
             tags=["personality"],
             conflicting_traits=["shy"],
             spawn_frequency=1,
             effects=[
-                AddSociabilityModifier(StatModifier(50)),
                 AddDiplomacyModifier(StatModifier(20)),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="shy",
             name="Shy",
             tags=["personality"],
             conflicting_traits=["gregarious"],
-            effects=[AddSociabilityModifier(StatModifier(-50))],
+            effects=[],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="compassionate",
             name="Compassionate",
             tags=["personality"],
@@ -393,28 +223,12 @@ def load_traits(world: World) -> None:
             spawn_frequency=1,
             effects=[
                 AddDiplomacyModifier(StatModifier(25)),
-                AddSociabilityModifier(StatModifier(35)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(10),
-                        attraction_modifier=StatModifier(10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=RelationshipPrecondition.any(
-                            TargetHasTrait("sadistic"), TargetHasTrait("callous")
-                        ),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="honest",
             name="Honest",
             tags=["personality"],
@@ -422,28 +236,12 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(10)),
                 AddIntrigueModifier(StatModifier(-35)),
-                AddSociabilityModifier(StatModifier(10)),
-                AddCompassionModifier(StatModifier(10)),
-                AddHonorModifier(StatModifier(50)),
-                AddBoldnessModifier(StatModifier(10)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("deceitful"),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="deceitful",
             name="Deceitful",
             tags=["personality"],
@@ -451,22 +249,12 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(-10)),
                 AddIntrigueModifier(StatModifier(35)),
-                AddRationalityModifier(StatModifier(10)),
-                AddCompassionModifier(StatModifier(-10)),
-                AddHonorModifier(StatModifier(-50)),
-                AddBoldnessModifier(StatModifier(-10)),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("honest"),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="callous",
             name="Callous",
             tags=["personality"],
@@ -474,37 +262,23 @@ def load_traits(world: World) -> None:
             spawn_frequency=1,
             effects=[
                 AddDiplomacyModifier(StatModifier(-10)),
-                AddSociabilityModifier(StatModifier(-10)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(-5),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="sadistic",
             name="Sadistic",
             tags=["personality"],
             conflicting_traits=["compassion", "callous"],
             spawn_frequency=1,
-            effects=[
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                )
-            ],
+            effects=[],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="fickle",
             name="Fickle",
             tags=["personality"],
@@ -518,7 +292,7 @@ def load_traits(world: World) -> None:
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="stubborn",
             name="Stubborn",
             tags=["personality"],
@@ -527,31 +301,18 @@ def load_traits(world: World) -> None:
             effects=[
                 AddStewardshipModifier(StatModifier(20)),
                 AddLifespanModifier(StatModifier(5)),
-                AddIncomingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=ConstantPrecondition(True),
-                        opinion_modifier=StatModifier(-10),
-                    )
-                ),
             ],
         )
     )
 
     trait_library.add_trait(
-        Trait(
+        CharacterTrait(
             trait_id="eccentric",
             name="Eccentric",
             conflicting_traits=["fickle", "stubborn"],
             spawn_frequency=1,
             effects=[
                 AddDiplomacyModifier(StatModifier(-15)),
-                AddSociabilityModifier(StatModifier(-20)),
-                AddOutgoingRelationshipModifier(
-                    RelationshipModifier(
-                        precondition=TargetHasTrait("eccentric"),
-                        opinion_modifier=StatModifier(10),
-                    )
-                ),
             ],
         )
     )

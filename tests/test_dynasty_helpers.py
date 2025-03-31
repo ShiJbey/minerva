@@ -77,7 +77,7 @@ def test_set_current_ruler(sim: Simulation):
     set_character_family(corlys, velaryon_family)
 
     dynasty_tracker = sim.world.get_resource(DynastyTracker)
-    db = sim.world.get_resource(SimDB).db
+    db = sim.world.get_resource(SimDB).conn
 
     set_current_ruler(sim.world, viserys)
 

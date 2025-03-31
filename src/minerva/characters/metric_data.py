@@ -3,7 +3,6 @@
 import dataclasses
 from typing import Optional
 
-from minerva.datetime import SimDate
 from minerva.ecs import Component
 
 
@@ -24,7 +23,7 @@ class CharacterMetricData:
     num_failed_alliance_attempts: int = 0
     num_alliances_disbanded: int = 0
     directly_inherited_throne: bool = False
-    date_of_last_declared_war: Optional[SimDate] = None
+    date_of_last_declared_war: Optional[int] = None
 
 
 class CharacterMetrics(Component):

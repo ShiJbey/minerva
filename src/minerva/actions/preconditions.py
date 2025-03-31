@@ -1,13 +1,16 @@
-"""Preconditions for character behaviors.
-
-"""
+"""Preconditions for character behaviors."""
 
 from __future__ import annotations
 
-from minerva.actions.base_types import AIContext, AIPrecondition, Scheme, SchemeManager
+from minerva.actions.base_types import (
+    AIPrecondition,
+    CharacterController,
+    Scheme,
+    SchemeManager,
+)
 from minerva.actions.scheme_helpers import get_character_schemes_of_type
 from minerva.actions.scheme_types import CoupScheme
-from minerva.characters.components import Character, Ruler, Family, HeadOfFamily
+from minerva.characters.components import Character, Family, HeadOfFamily, Ruler
 from minerva.characters.war_data import Alliance, WarTracker
 from minerva.ecs import Active, Entity
 
@@ -15,23 +18,24 @@ from minerva.ecs import Active, Entity
 class IsFamilyHeadPrecondition(AIPrecondition):
     """Check that the character is head of a family."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        return context.character.has_component(HeadOfFamily)
+    def evaluate(self, entity: Entity) -> bool:
+        return entity.has_component(HeadOfFamily)
 
 
 class HasTerritoriesInRevolt(AIPrecondition):
     """Checks if the character has any territories in revolt."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        territories: list[Entity] = context.get_value("territories_in_revolt", [])
+    def evaluate(self, entity: Entity) -> bool:
+        blackboard = entity.get_component(CharacterController).blackboard
+        territories: list[Entity] = blackboard.get("territories_in_revolt", [])
         return bool(territories)
 
 
 class FamilyInAlliancePrecondition(AIPrecondition):
     """Check if the character's family belongs to an alliance."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        character_component = context.character.get_component(Character)
+    def evaluate(self, entity: Entity) -> bool:
+        character_component = entity.get_component(Character)
         family = character_component.family
 
         if family is None:
@@ -45,18 +49,18 @@ class FamilyInAlliancePrecondition(AIPrecondition):
 class JoinedAllianceScheme(AIPrecondition):
     """Evaluates to true if the character has already joined an alliance scheme."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        schemes = get_character_schemes_of_type(context.character, "alliance")
+    def evaluate(self, entity: Entity) -> bool:
+        schemes = get_character_schemes_of_type(entity, "alliance")
         return len(schemes) > 0
 
 
 class AreAllianceSchemesActive(AIPrecondition):
     """Evaluate to True if there are alliance schemes available to join."""
 
-    def evaluate(self, context: AIContext) -> bool:
+    def evaluate(self, entity: Entity) -> bool:
         alliance_schemes: list[Scheme] = []
 
-        for _, (scheme, _) in context.world.query_components((Scheme, Active)):
+        for _, (scheme, _) in entity.world.query_components((Scheme, Active)):
             if scheme.get_type() == "alliance":
                 alliance_schemes.append(scheme)
 
@@ -66,29 +70,29 @@ class AreAllianceSchemesActive(AIPrecondition):
 class AreAlliancesActive(AIPrecondition):
     """Evaluate to True if there are alliances available to join."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        return len(list(context.world.query_components((Alliance, Active)))) > 0
+    def evaluate(self, entity: Entity) -> bool:
+        return len(list(entity.world.query_components((Alliance, Active)))) > 0
 
 
 class IsRulerPrecondition(AIPrecondition):
     """Evaluates to true if the character is the current ruler."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        return context.character.has_component(Ruler)
+    def evaluate(self, entity: Entity) -> bool:
+        return entity.has_component(Ruler)
 
 
 class AreCoupSchemesActive(AIPrecondition):
     """Evaluates to True when there are active coup schemes."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        return len(list(context.world.query_components((CoupScheme, Active)))) > 0
+    def evaluate(self, entity: Entity) -> bool:
+        return len(list(entity.world.query_components((CoupScheme, Active)))) > 0
 
 
 class IsAllianceMemberPlottingCoup(AIPrecondition):
     """Returns true if an alliance member is plotting a coup."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        family = context.character.get_component(Character).family
+    def evaluate(self, entity: Entity) -> bool:
+        family = entity.get_component(Character).family
 
         if family is None:
             return False
@@ -100,7 +104,7 @@ class IsAllianceMemberPlottingCoup(AIPrecondition):
 
         alliance_component = family_component.alliance.get_component(Alliance)
 
-        for _, (scheme, _, _) in context.world.query_components(
+        for _, (scheme, _, _) in entity.world.query_components(
             (Scheme, CoupScheme, Active)
         ):
             scheme_initiator_family = scheme.initiator.get_component(Character).family
@@ -113,15 +117,15 @@ class IsAllianceMemberPlottingCoup(AIPrecondition):
 class HasActiveSchemes(AIPrecondition):
     """Evaluates to true if the character is currently involved with any schemes."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        return len(context.character.get_component(SchemeManager).schemes) > 0
+    def evaluate(self, entity: Entity) -> bool:
+        return len(entity.get_component(SchemeManager).schemes) > 0
 
 
 class IsCurrentlyAtWar(AIPrecondition):
     """Evaluates to true if the character's family is currently involved in a war."""
 
-    def evaluate(self, context: AIContext) -> bool:
-        family = context.character.get_component(Character).family
+    def evaluate(self, entity: Entity) -> bool:
+        family = entity.get_component(Character).family
 
         if family is None:
             return False
@@ -144,8 +148,8 @@ class IfAny(AIPrecondition):
         super().__init__()
         self.preconditions = list(preconditions)
 
-    def evaluate(self, context: AIContext) -> bool:
-        return any(p.evaluate(context) for p in self.preconditions)
+    def evaluate(self, entity: Entity) -> bool:
+        return any(p.evaluate(entity) for p in self.preconditions)
 
 
 class Not(AIPrecondition):
@@ -159,5 +163,5 @@ class Not(AIPrecondition):
         super().__init__()
         self.precondition = precondition
 
-    def evaluate(self, context: AIContext) -> bool:
-        return not self.precondition.evaluate(context)
+    def evaluate(self, entity: Entity) -> bool:
+        return not self.precondition.evaluate(entity)

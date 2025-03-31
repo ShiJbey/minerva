@@ -1,10 +1,10 @@
-"""AI Brain Sensors Classes.
+"""AI Brain Sensors Classes."""
 
-"""
+from typing import Any
 
 from ordered_set import OrderedSet
 
-from minerva.actions.base_types import AIContext, AISensor
+from minerva.actions.base_types import AISensor
 from minerva.characters.components import Family, HeadOfFamily
 from minerva.characters.war_data import Alliance
 from minerva.ecs import Entity
@@ -14,30 +14,30 @@ from minerva.world_map.components import InRevolt, Territory
 class TerritoriesInRevoltSensor(AISensor):
     """Get all territories in revolt and write it to the blackboard."""
 
-    def evaluate(self, context: AIContext) -> None:
+    def evaluate(self, entity: Entity, blackboard: dict[str, Any]) -> None:
         # Check if the character is a family head
         territories_in_revolt: list[Entity] = []
 
-        if context.character.has_component(HeadOfFamily):
-            family_head_component = context.character.get_component(HeadOfFamily)
+        if entity.has_component(HeadOfFamily):
+            family_head_component = entity.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
             for territory in family_component.controlled_territories:
                 if territory.has_component(InRevolt):
                     territories_in_revolt.append(territory)
 
-        context["territories_in_revolt"] = territories_in_revolt
+        blackboard["territories_in_revolt"] = territories_in_revolt
 
 
 class UnexpandedTerritoriesSensor(AISensor):
     """Get all territories without political foothold that border territories."""
 
-    def evaluate(self, context: AIContext) -> None:
+    def evaluate(self, entity: Entity, blackboard: dict[str, Any]) -> None:
         # Check if the character is a family head
         unexpanded_territories: OrderedSet[Entity] = OrderedSet([])
 
-        if context.character.has_component(HeadOfFamily):
-            family_head_component = context.character.get_component(HeadOfFamily)
+        if entity.has_component(HeadOfFamily):
+            family_head_component = entity.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
             for territory in family_component.controlled_territories:
                 territory_component = territory.get_component(Territory)
@@ -48,18 +48,18 @@ class UnexpandedTerritoriesSensor(AISensor):
                     ):
                         unexpanded_territories.add(neighboring_territory)
 
-        context["unexpanded_territories"] = list(unexpanded_territories)
+        blackboard["unexpanded_territories"] = list(unexpanded_territories)
 
 
 class UnControlledTerritoriesSensor(AISensor):
     """Get all territories the family has that don't have a controlling family."""
 
-    def evaluate(self, context: AIContext) -> None:
+    def evaluate(self, entity: Entity, blackboard: dict[str, Any]) -> None:
         # Check if the character is a family head
         uncontrolled_territories: OrderedSet[Entity] = OrderedSet([])
 
-        if context.character.has_component(HeadOfFamily):
-            family_head_component = context.character.get_component(HeadOfFamily)
+        if entity.has_component(HeadOfFamily):
+            family_head_component = entity.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
             for territory in family_component.territories_present_in:
@@ -67,21 +67,21 @@ class UnControlledTerritoriesSensor(AISensor):
                 if territory_component.controlling_family is None:
                     uncontrolled_territories.add(territory)
 
-        context["uncontrolled_territories"] = list(uncontrolled_territories)
+        blackboard["uncontrolled_territories"] = list(uncontrolled_territories)
 
 
-class TerritoriesControlledByOpps(AISensor):
+class TerritoriesControlledByOppsSensor(AISensor):
     """Get all territories a family is within that are controlled by other families.
 
     This sensor excludes territories controlled by allies
     """
 
-    def evaluate(self, context: AIContext) -> None:
+    def evaluate(self, entity: Entity, blackboard: dict[str, Any]) -> None:
         # Check if the character is a family head
         enemy_territories: OrderedSet[Entity] = OrderedSet([])
 
-        if context.character.has_component(HeadOfFamily):
-            family_head_component = context.character.get_component(HeadOfFamily)
+        if entity.has_component(HeadOfFamily):
+            family_head_component = entity.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
             allies: set[Entity] = set()
@@ -98,4 +98,4 @@ class TerritoriesControlledByOpps(AISensor):
                 ):
                     enemy_territories.add(territory)
 
-        context["enemy_territories"] = list(enemy_territories)
+        blackboard["enemy_territories"] = list(enemy_territories)

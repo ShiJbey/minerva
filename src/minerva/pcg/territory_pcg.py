@@ -11,7 +11,6 @@ from minerva.pcg.base_types import (
     TerritoryGenOptions,
 )
 from minerva.sim_db import SimDB
-from minerva.stats.helpers import default_stat_calc_strategy
 from minerva.world_map.components import PopulationHappiness, Territory
 
 
@@ -38,13 +37,11 @@ class DefaultTerritoryFactory(TerritoryFactory):
         territory.add_component(
             PopulationHappiness(
                 config.base_territory_happiness,
-                config.max_territory_happiness,
-                default_stat_calc_strategy,
             )
         )
         territory.name = name
 
-        db = world.get_resource(SimDB).db
+        db = world.get_resource(SimDB).conn
 
         db.execute(
             """INSERT INTO territories (uid, name) VALUES (?, ?);""",

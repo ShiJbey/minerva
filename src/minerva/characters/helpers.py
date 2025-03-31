@@ -10,38 +10,243 @@ from typing import Iterable, Optional
 from minerva.actions.base_types import Scheme, SchemeManager
 from minerva.actions.scheme_helpers import remove_member_from_scheme
 from minerva.characters.components import (
+    Betrothal,
     Character,
     Diplomacy,
-    RelationType,
-    Ruler,
     Family,
     FamilyRoleFlags,
+    Fertility,
     FormerFamilyHead,
     HeadOfFamily,
+    Intrigue,
+    Lifespan,
     LifeStage,
+    Luck,
     Marriage,
     Martial,
+    Prestige,
     Prowess,
+    RelationType,
     RomanticAffair,
+    Ruler,
     Sex,
     SexualOrientation,
     Stewardship,
-    Betrothal,
 )
 from minerva.characters.metric_data import CharacterMetrics
-from minerva.characters.succession_helpers import (
-    remove_current_ruler,
-)
+from minerva.characters.succession_helpers import remove_current_ruler
 from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.datetime import SimDate
 from minerva.ecs import Active, Entity
 from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
+from minerva.stats.base_types import (
+    StatModifier,
+    add_stat_modifier,
+    get_stat_value,
+    increment_stat_base,
+    remove_stat_modifier,
+    set_stat_base,
+)
 from minerva.world_map.components import Territory
 from minerva.world_map.helpers import set_territory_controlling_family
 
 _logger = logging.getLogger(__name__)
+
+# ===================================
+# Stat Helper Functions
+# ===================================
+
+
+def get_lifespan(entity: Entity) -> int:
+    """Get the lifespan for the entity."""
+    return get_stat_value(entity.get_component(Lifespan))
+
+
+def set_lifespan_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's life span."""
+    set_stat_base(entity.get_component(Lifespan), value)
+
+
+def add_lifespan_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to the lifespan stat."""
+    add_stat_modifier(entity, entity.get_component(Lifespan), modifier)
+
+
+def remove_lifespan_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from the lifespan stat."""
+    remove_stat_modifier(entity, entity.get_component(Lifespan), modifier)
+
+
+def get_fertility(entity: Entity) -> int:
+    """Get the lifespan for the entity."""
+    return get_stat_value(entity.get_component(Fertility))
+
+
+def increment_fertility_base(entity: Entity, value: int) -> None:
+    """Increment the fertility base value by the given amount."""
+    increment_stat_base(entity.get_component(Fertility), value)
+
+
+def set_fertility_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's fertility."""
+    set_stat_base(entity.get_component(Fertility), value)
+
+
+def add_fertility_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to the fertility stat."""
+    add_stat_modifier(entity, entity.get_component(Fertility), modifier)
+
+
+def remove_fertility_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from the fertility stat."""
+    remove_stat_modifier(entity, entity.get_component(Fertility), modifier)
+
+
+def get_stewardship_skill(entity: Entity) -> int:
+    """Get an entity's stewardship skill."""
+    return get_stat_value(entity.get_component(Stewardship))
+
+
+def set_stewardship_skill_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's stewardship skill."""
+    set_stat_base(entity.get_component(Stewardship), value)
+
+
+def add_stewardship_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to an entity;s stewardship skill."""
+    add_stat_modifier(entity, entity.get_component(Stewardship), modifier)
+
+
+def remove_stewardship_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from an entity's stewardship skill."""
+    remove_stat_modifier(entity, entity.get_component(Stewardship), modifier)
+
+
+def get_martial_skill(entity: Entity) -> int:
+    """Get the an entity's martial skill."""
+    return get_stat_value(entity.get_component(Martial))
+
+
+def set_martial_skill_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's martial skill."""
+    set_stat_base(entity.get_component(Martial), value)
+
+
+def add_martial_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to an entity's martial skill."""
+    add_stat_modifier(entity, entity.get_component(Martial), modifier)
+
+
+def remove_martial_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from an entity's martial skill."""
+    remove_stat_modifier(entity, entity.get_component(Martial), modifier)
+
+
+def get_intrigue_skill(entity: Entity) -> int:
+    """Get the an entity's intrigue skill."""
+    return get_stat_value(entity.get_component(Intrigue))
+
+
+def set_intrigue_skill_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's intrigue skill."""
+    set_stat_base(entity.get_component(Intrigue), value)
+
+
+def add_intrigue_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to an entity's intrigue skill."""
+    add_stat_modifier(entity, entity.get_component(Intrigue), modifier)
+
+
+def remove_intrigue_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from an entity's intrigue skill."""
+    remove_stat_modifier(entity, entity.get_component(Intrigue), modifier)
+
+
+def get_prowess_skill(entity: Entity) -> int:
+    """Get the an entity's prowess skill."""
+    return get_stat_value(entity.get_component(Prowess))
+
+
+def set_prowess_skill_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's prowess skill."""
+    set_stat_base(entity.get_component(Prowess), value)
+
+
+def add_prowess_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to an entity's prowess skill."""
+    add_stat_modifier(entity, entity.get_component(Prowess), modifier)
+
+
+def remove_prowess_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from an entity's prowess skill."""
+    remove_stat_modifier(entity, entity.get_component(Prowess), modifier)
+
+
+def get_diplomacy_skill(entity: Entity) -> int:
+    """Get the an entity's diplomacy skill."""
+    return get_stat_value(entity.get_component(Diplomacy))
+
+
+def set_diplomacy_skill_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's diplomacy skill."""
+    set_stat_base(entity.get_component(Diplomacy), value)
+
+
+def add_diplomacy_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to an entity's diplomacy skill."""
+    add_stat_modifier(entity, entity.get_component(Diplomacy), modifier)
+
+
+def remove_diplomacy_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from an entity's diplomacy skill."""
+    remove_stat_modifier(entity, entity.get_component(Diplomacy), modifier)
+
+
+def get_luck_skill(entity: Entity) -> int:
+    """Get the an entity's luck skill."""
+    return get_stat_value(entity.get_component(Luck))
+
+
+def set_luck_skill_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's luck skill."""
+    set_stat_base(entity.get_component(Luck), value)
+
+
+def add_luck_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to an entity's luck skill."""
+    add_stat_modifier(entity, entity.get_component(Luck), modifier)
+
+
+def remove_luck_skill_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from an entity's luck skill."""
+    remove_stat_modifier(entity, entity.get_component(Luck), modifier)
+
+
+def get_prestige(entity: Entity) -> int:
+    """Get the an entity's prestige skill."""
+    return get_stat_value(entity.get_component(Prestige))
+
+
+def set_prestige_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's prestige skill."""
+    set_stat_base(entity.get_component(Prestige), value)
+
+
+def increment_prestige_base(entity: Entity, value: int) -> None:
+    """Increment the prestige base value by the given amount."""
+    increment_stat_base(entity.get_component(Prestige), value)
+
+
+def add_prestige_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to an entity's prestige skill."""
+    add_stat_modifier(entity, entity.get_component(Prestige), modifier)
+
+
+def remove_prestige_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from an entity's prestige skill."""
+    remove_stat_modifier(entity, entity.get_component(Prestige), modifier)
 
 
 # ===================================
@@ -59,7 +264,7 @@ def set_family_name(
     family.name = name
     family_component.name = name
 
-    db = family.world.get_resource(SimDB).db
+    db = family.world.get_resource(SimDB).conn
     cur = db.cursor()
     cur.execute(
         """UPDATE families SET name=? WHERE uid=?;""",
@@ -78,7 +283,7 @@ def add_branch_family(family: Entity, branch_family: Entity) -> None:
     family_component.branch_families.add(branch_family)
 
     world = branch_family.world
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     cursor.execute(
@@ -94,8 +299,8 @@ def set_family_head(
     character: Optional[Entity],
 ) -> None:
     """Set the current head of a family."""
-    current_date = family.world.get_resource(SimDate).to_iso_str()
-    db = family.world.get_resource(SimDB).db
+    current_date = family.world.get_resource(SimDate).year
+    db = family.world.get_resource(SimDB).conn
     cur = db.cursor()
     family_component = family.get_component(Family)
     # Do nothing if already set properly
@@ -163,7 +368,7 @@ def set_character_family(
         family_component.active_members.add(character)
         character_component.family = family
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
     cur = db.cursor()
     cur.execute(
         """UPDATE characters SET family=? WHERE uid=?;""",
@@ -176,7 +381,7 @@ def set_family_home_base(family: Entity, territory: Optional[Entity]) -> None:
     """Set the home base for the given family."""
     family_component = family.get_component(Family)
 
-    db = family.world.get_resource(SimDB).db
+    db = family.world.get_resource(SimDB).conn
     cur = db.cursor()
 
     if family_component.home_base is not None:
@@ -207,8 +412,8 @@ def remove_family_from_play(family: Entity) -> None:
     world = family.world
     family_component = family.get_component(Family)
 
-    db = world.get_resource(SimDB).db
-    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).conn
+    current_date = world.get_resource(SimDate).year
     db_cursor = db.cursor()
     db_cursor.execute(
         """
@@ -216,7 +421,7 @@ def remove_family_from_play(family: Entity) -> None:
         SET defunct_date=?
         WHERE uid=?;
         """,
-        (current_date.to_iso_str(), family.uid),
+        (current_date, family.uid),
     )
     db.commit()
 
@@ -247,8 +452,8 @@ def remove_family_from_play(family: Entity) -> None:
         end_alliance(family_component.alliance)
 
     _logger.info(
-        "[%s]: The %s family has been removed from play.",
-        str(current_date),
+        "[%04d]: The %s family has been removed from play.",
+        current_date,
         family.name_with_uid,
     )
 
@@ -256,7 +461,7 @@ def remove_family_from_play(family: Entity) -> None:
 def remove_character_from_play(character: Entity) -> None:
     """Remove a character from play."""
     world = character.world
-    current_date = world.get_resource(SimDate).copy()
+    current_date = world.get_resource(SimDate).year
     character_component = character.get_component(Character)
 
     character.deactivate()
@@ -315,7 +520,7 @@ def set_character_birth_family(
     if family is not None:
         character_component.birth_family = family
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
     cur = db.cursor()
     cur.execute(
         """UPDATE characters SET birth_family=? WHERE uid=?;""",
@@ -527,7 +732,7 @@ def set_character_first_name(character: Entity, name: str) -> None:
     character_component.first_name = name
     character.name = character_component.full_name
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET first_name=? WHERE uid=?;""",
@@ -544,7 +749,7 @@ def set_character_surname(character: Entity, name: str) -> None:
     character_component.surname = name
     character.name = character_component.full_name
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET surname=? WHERE uid=?;""",
@@ -559,7 +764,7 @@ def set_character_birth_surname(character: Entity, name: str) -> None:
 
     character.get_component(Character).birth_surname = name
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET birth_surname=? WHERE uid=?;""",
@@ -574,7 +779,7 @@ def set_character_sex(character: Entity, sex: Sex) -> None:
 
     character.get_component(Character).sex = sex
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET sex=? WHERE uid=?;""",
@@ -591,7 +796,7 @@ def set_character_sexual_orientation(
 
     character.get_component(Character).sexual_orientation = orientation
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET sexual_orientation=? WHERE uid=?;""",
@@ -606,7 +811,7 @@ def set_character_life_stage(character: Entity, life_stage: LifeStage) -> None:
 
     character.get_component(Character).life_stage = life_stage
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET life_stage=? WHERE uid=?;""",
@@ -624,7 +829,7 @@ def set_character_age(character: Entity, age: float) -> None:
     character_component.age = age
 
     if math.floor(previous_age) != math.floor(age):
-        db = character.world.get_resource(SimDB).db
+        db = character.world.get_resource(SimDB).conn
 
         db.execute(
             """UPDATE characters SET age=? WHERE uid=?;""",
@@ -634,12 +839,12 @@ def set_character_age(character: Entity, age: float) -> None:
         db.commit()
 
 
-def set_character_birth_date(character: Entity, birth_date: SimDate) -> None:
+def set_character_birth_date(character: Entity, birth_date: int) -> None:
     """Set the birth date of a character."""
 
     character.get_component(Character).birth_date = birth_date
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET birth_date=? WHERE uid=?;""",
@@ -649,12 +854,12 @@ def set_character_birth_date(character: Entity, birth_date: SimDate) -> None:
     db.commit()
 
 
-def set_character_death_date(character: Entity, death_date: SimDate) -> None:
+def set_character_death_date(character: Entity, death_date: int) -> None:
     """Set the death date of a character."""
 
     character.get_component(Character).death_date = death_date
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET death_date=? WHERE uid=?;""",
@@ -669,7 +874,7 @@ def set_relation(
 ) -> None:
     """Adds a given relation type between two characters."""
     world = character_a.world
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     # Check that these characters don't already have the given relation.
@@ -706,7 +911,7 @@ def unset_relation(
     """Removes a given relation type between two characters."""
 
     world = character_a.world
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     cursor.execute(
@@ -723,7 +928,7 @@ def unset_relation(
 def get_relations(character: Entity, relation_type: RelationType) -> list[Entity]:
     """Get all characters related to the given character by the provided relation."""
     world = character.world
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
 
     cursor = db.cursor()
 
@@ -789,8 +994,8 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
     if character_b_component.spouse:
         raise RuntimeError(f"Error: {character_b.name_with_uid} is already married.")
 
-    current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate).year
+    db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
     # Set the spouse references in the component data
@@ -813,7 +1018,7 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
         INSERT INTO marriages (uid, character_id, spouse_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (a_to_b.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
+        (a_to_b.uid, character_a.uid, character_b.uid, current_date),
     )
 
     b_to_a = world.entity(
@@ -827,7 +1032,7 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
         INSERT INTO marriages (uid, character_id, spouse_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (b_to_a.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
+        (b_to_a.uid, character_b.uid, character_a.uid, current_date),
     )
 
     db.commit()
@@ -860,8 +1065,8 @@ def end_marriage(character_a: Entity, character_b: Entity) -> None:
     character_a_component.spouse = None
     character_b_component.spouse = None
 
-    current_date = world.get_resource(SimDate).to_iso_str()
-    db = world.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate).year
+    db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
     # Update the spouse IDs in the database
@@ -911,8 +1116,8 @@ def start_romantic_affair(character_a: Entity, character_b: Entity) -> None:
     if character_b_component.lover:
         raise RuntimeError(f"Error: {character_b.name_with_uid} already has a lover.")
 
-    current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate).year
+    db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
     # Set the lover references in the component data
@@ -935,7 +1140,7 @@ def start_romantic_affair(character_a: Entity, character_b: Entity) -> None:
         INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (a_to_b.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
+        (a_to_b.uid, character_b.uid, character_a.uid, current_date),
     )
 
     b_to_a = world.entity(
@@ -949,7 +1154,7 @@ def start_romantic_affair(character_a: Entity, character_b: Entity) -> None:
         INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (b_to_a.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
+        (b_to_a.uid, character_a.uid, character_b.uid, current_date),
     )
 
     db.commit()
@@ -978,8 +1183,8 @@ def end_romantic_affair(character_a: Entity, character_b: Entity) -> None:
     character_a_component.lover = None
     character_b_component.lover = None
 
-    current_date = world.get_resource(SimDate).to_iso_str()
-    db = world.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
     # Update the spouse IDs in the database
@@ -1019,7 +1224,7 @@ def set_character_alive(character: Entity, is_alive: bool) -> None:
 
     character.get_component(Character).is_alive = is_alive
 
-    db = character.world.get_resource(SimDB).db
+    db = character.world.get_resource(SimDB).conn
 
     db.execute(
         """UPDATE characters SET is_alive=? WHERE uid=?;""",
@@ -1140,8 +1345,8 @@ def init_betrothal(character_a: Entity, character_b: Entity) -> None:
     if character_b_component.betrothed_to:
         raise RuntimeError(f"Error: {character_b.name_with_uid} is already betrothed.")
 
-    current_date = world.get_resource(SimDate)
-    db = world.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate).year
+    db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
     # Update the relations in the database
@@ -1161,7 +1366,7 @@ def init_betrothal(character_a: Entity, character_b: Entity) -> None:
         INSERT INTO betrothals (uid, character_id, betrothed_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (a_to_b.uid, character_b.uid, character_a.uid, current_date.to_iso_str()),
+        (a_to_b.uid, character_b.uid, character_a.uid, current_date),
     )
 
     b_to_a = world.entity(
@@ -1176,7 +1381,7 @@ def init_betrothal(character_a: Entity, character_b: Entity) -> None:
         INSERT INTO betrothals (uid, character_id, betrothed_id, start_date)
         VALUES (?, ?, ?, ?);
         """,
-        (b_to_a.uid, character_a.uid, character_b.uid, current_date.to_iso_str()),
+        (b_to_a.uid, character_a.uid, character_b.uid, current_date),
     )
 
     db.commit()
@@ -1200,8 +1405,8 @@ def terminate_betrothal(character_a: Entity, character_b: Entity) -> None:
             f" {character_a.name_with_uid}."
         )
 
-    current_date = world.get_resource(SimDate).to_iso_str()
-    db = world.get_resource(SimDB).db
+    current_date = world.get_resource(SimDate)
+    db = world.get_resource(SimDB).conn
     cur = db.cursor()
 
     character_a_current_betrothal = character_a_component.betrothal

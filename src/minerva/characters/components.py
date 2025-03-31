@@ -9,9 +9,14 @@ from typing import Optional
 
 from ordered_set import OrderedSet
 
-from minerva.datetime import SimDate
 from minerva.ecs import Component, Entity, TagComponent
-from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
+from minerva.stats.base_types import Stat
+
+FERTILITY_MIN = 0
+FERTILITY_MAX = 100
+SKILL_MIN = 0
+SKILL_MAX = 100
+LIFESPAN_MIN = 0
 
 
 class LifeStage(enum.IntEnum):
@@ -228,8 +233,8 @@ class Character(Component):
     species: Species
     life_stage: LifeStage
     age: float
-    birth_date: Optional[SimDate]
-    death_date: Optional[SimDate]
+    birth_date: Optional[int]
+    death_date: Optional[int]
     mother: Optional[Entity]
     father: Optional[Entity]
     biological_father: Optional[Entity]
@@ -324,23 +329,23 @@ class Pregnancy(Component):
     """The character believed to have impregnated this character."""
     actual_father: Entity
     """The character that actually impregnated this character."""
-    conception_date: SimDate
+    conception_date: int
     """The date the child was conceived."""
-    due_date: SimDate
+    due_date: int
     """The date the baby is due to be born."""
 
     def __init__(
         self,
         assumed_father: Optional[Entity],
         actual_father: Entity,
-        conception_date: SimDate,
-        due_date: SimDate,
+        conception_date: int,
+        due_date: int,
     ) -> None:
         super().__init__()
         self.assumed_father = assumed_father
         self.actual_father = actual_father
         self.conception_date = conception_date
-        self.due_date = due_date.copy()
+        self.due_date = due_date
 
     def __str__(self) -> str:
         return (
@@ -370,15 +375,13 @@ class Betrothal(Component):
 
     character: Entity
     betrothed: Entity
-    start_date: SimDate
+    start_date: int
 
-    def __init__(
-        self, character: Entity, betrothed: Entity, start_date: SimDate
-    ) -> None:
+    def __init__(self, character: Entity, betrothed: Entity, start_date: int) -> None:
         super().__init__()
         self.character = character
         self.betrothed = betrothed
-        self.start_date = start_date.copy()
+        self.start_date = start_date
 
 
 class Marriage(Component):
@@ -392,13 +395,13 @@ class Marriage(Component):
 
     character: Entity
     spouse: Entity
-    start_date: SimDate
+    start_date: int
 
-    def __init__(self, character: Entity, spouse: Entity, start_date: SimDate) -> None:
+    def __init__(self, character: Entity, spouse: Entity, start_date: int) -> None:
         super().__init__()
         self.character = character
         self.spouse = spouse
-        self.start_date = start_date.copy()
+        self.start_date = start_date
 
 
 class RomanticAffair(Component):
@@ -411,9 +414,9 @@ class RomanticAffair(Component):
 
     character: Entity
     lover: Entity
-    start_date: SimDate
+    start_date: int
 
-    def __init__(self, character: Entity, lover: Entity, start_date: SimDate) -> None:
+    def __init__(self, character: Entity, lover: Entity, start_date: int) -> None:
         super().__init__()
         self.character = character
         self.lover = lover
@@ -559,56 +562,36 @@ class Dynasty(Component):
     __slots__ = (
         "founder",
         "family",
-        "_founding_date",
+        "founding_date",
         "current_ruler",
         "previous_rulers",
-        "_ending_date",
+        "ending_date",
         "previous_dynasty",
     )
 
     founder: Entity
     family: Entity
-    _founding_date: SimDate
+    founding_date: int
     current_ruler: Optional[Entity]
     previous_rulers: OrderedSet[Entity]
-    _ending_date: Optional[SimDate]
+    ending_date: Optional[int]
     previous_dynasty: Optional[Entity]
 
     def __init__(
         self,
         founder: Entity,
         family: Entity,
-        founding_date: SimDate,
+        founding_date: int,
         previous_dynasty: Optional[Entity] = None,
     ) -> None:
         super().__init__()
         self.founder = founder
         self.family = family
-        self._founding_date = founding_date.copy()
+        self.founding_date = founding_date
         self.current_ruler = None
         self.previous_rulers = OrderedSet([])
-        self._ending_date = None
+        self.ending_date = None
         self.previous_dynasty = previous_dynasty
-
-    @property
-    def founding_date(self) -> SimDate:
-        """The date the dynasty was founded."""
-        return self._founding_date
-
-    @founding_date.setter
-    def founding_date(self, value: SimDate) -> None:
-        """Set the founding date."""
-        self._founding_date = value.copy()
-
-    @property
-    def ending_date(self) -> Optional[SimDate]:
-        """The date the dynasty ended."""
-        return self._ending_date
-
-    @ending_date.setter
-    def ending_date(self, value: SimDate) -> None:
-        """Set the ending date."""
-        self._ending_date = value.copy()
 
     @property
     def last_ruler(self) -> Optional[Entity]:
@@ -649,233 +632,37 @@ class DynastyTracker:
         return None
 
 
-class Lifespan(StatComponent):
+class Lifespan(Stat):
     """Tracks an entity's lifespan."""
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, 999_999), True)
 
-
-class Fertility(StatComponent):
+class Fertility(Stat):
     """Tracks an entity's fertility."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Stewardship(StatComponent):
+class Stewardship(Stat):
     """Tracks an entity's stewardship."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Martial(StatComponent):
+class Martial(Stat):
     """Tracks an entity's martial."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Intrigue(StatComponent):
+class Intrigue(Stat):
     """Tracks an entity's intrigue."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
+class Prowess(Stat):
+    """Tracks an entity's prowess."""
 
 
-class Intelligence(StatComponent):
-    """Tracks a character's intelligence stat."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
+class Diplomacy(Stat):
+    """Tracks an entity's diplomacy stat."""
 
 
-class Prowess(StatComponent):
-    """Tracks an entityprowess."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Sociability(StatComponent):
-    """Tracks an entity's sociability."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Honor(StatComponent):
-    """Tracks an entityhonor."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Boldness(StatComponent):
-    """Tracks an entity's boldness."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Compassion(StatComponent):
-    """Tracks an entity's compassion."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Diplomacy(StatComponent):
-    """Tracks an entitydiplomacy."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Greed(StatComponent):
-    """Tracks an entity's greed."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Rationality(StatComponent):
-    """Tracks an entity's rationality."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Vengefulness(StatComponent):
-    """Tracks an entity's vengefulness."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class RomancePropensity(StatComponent):
-    """Tracks an entity's propensity for romantic actions."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Luck(StatComponent):
+class Luck(Stat):
     """Tracks an entity's propensity to be successful."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class FamilyPrestige(StatComponent):
+class Prestige(Stat):
     """Tracks the prestige level of a family."""
-
-    MAX_VALUE = 999_999
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)

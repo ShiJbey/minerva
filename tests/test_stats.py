@@ -11,36 +11,15 @@ from minerva.relationships.base_types import (
     Opinion,
     Relationship,
     RelationshipManager,
-    RelationshipModifier,
-    RelationshipPrecondition,
-    SocialRule,
-    SocialRuleLibrary,
 )
 from minerva.relationships.helpers import add_relationship, get_relationship
 from minerva.relationships.preconditions import ConstantPrecondition
 from minerva.simulation_events import SimulationEvents
-from minerva.stats.base_types import (
-    StatComponent,
-    StatModifier,
-    StatModifierType,
-)
-from minerva.stats.helpers import (
-    default_stat_calc_strategy,
-)
+from minerva.stats.base_types import Stat, StatModifier, StatModifierType
 
 
-class Hunger(StatComponent):
+class Hunger(Stat):
     """Tracks an entity's hunger."""
-
-    MAX_VALUE: int = 1000
-
-    def __init__(
-        self,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(
-            default_stat_calc_strategy, base_value, (0, self.MAX_VALUE), True
-        )
 
 
 class HungerState(Component):
@@ -368,61 +347,3 @@ def test_social_rules() -> None:
     )
 
     assert get_relationship(c1, c2).get_component(Opinion).value == 10
-
-
-def test_relationship_stat_listener() -> None:
-    """Test attaching listeners to relationship stats."""
-
-    def opinion_listener(entity: Entity, stat: StatComponent) -> None:
-        if not entity.has_component(_OpinionState):
-            entity.add_component(_OpinionState())
-
-        opinion_intervals = [
-            (-75, _OpinionStateValue.TERRIBLE),
-            (-25, _OpinionStateValue.POOR),
-            (25, _OpinionStateValue.NEUTRAL),
-            (75, _OpinionStateValue.GOOD),
-            (100, _OpinionStateValue.EXCELLENT),
-        ]
-
-        for level, label in opinion_intervals:
-            if stat.value <= level:
-                entity.get_component(_OpinionState).value = label
-                return
-
-    world = World()
-
-    world.add_resource(SocialRuleLibrary())
-    world.add_resource(SimulationEvents())
-
-    c1 = world.entity(
-        components=[
-            Hunger(0),
-            RelationshipManager(),
-        ]
-    )
-
-    c2 = world.entity(
-        components=[
-            Hunger(0),
-            RelationshipManager(),
-        ]
-    )
-    relationship = get_relationship(c1, c2)
-
-    opinion = relationship.get_component(Opinion)
-
-    opinion.listeners.append(opinion_listener)
-
-    assert opinion.value == 0
-    assert relationship.get_component(_OpinionState).value == _OpinionStateValue.NEUTRAL
-
-    opinion.base_value = 80
-    assert opinion.value == 80
-    assert (
-        relationship.get_component(_OpinionState).value == _OpinionStateValue.EXCELLENT
-    )
-
-    opinion.base_value = -60
-    assert opinion.value == -60
-    assert relationship.get_component(_OpinionState).value == _OpinionStateValue.POOR

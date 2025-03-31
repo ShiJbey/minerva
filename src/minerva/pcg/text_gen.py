@@ -7,13 +7,21 @@ characters, families, alliance, territories, and more.
 
 import json
 import pathlib
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import tracery
 import tracery.modifiers as tracery_modifiers
 
 from minerva.ecs import Entity, World
 from minerva.pcg.base_types import NameFactory
+
+
+def render_string(template: str, bindings: dict[str, Any]) -> str:
+    """Substitute bindings into provided template"""
+    output = template
+    for key, value in bindings.items():
+        output = output.replace(f"[{key}]", str(value))
+    return output
 
 
 class Tracery:

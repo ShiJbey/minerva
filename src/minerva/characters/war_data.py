@@ -1,13 +1,10 @@
-"""Classes and components for implementing wars and alliances between families.
-
-"""
+"""Classes and components for implementing wars and alliances between families."""
 
 import enum
 from typing import Iterable, Optional
 
 from ordered_set import OrderedSet
 
-from minerva.datetime import SimDate
 from minerva.ecs import Component, Entity
 
 
@@ -33,8 +30,8 @@ class War(Component):
         "aggressor_allies",
         "defender_allies",
         "contested_territory",
-        "_start_date",
-        "_end_date",
+        "start_date",
+        "end_date",
     )
 
     contested_territory: Entity
@@ -47,9 +44,9 @@ class War(Component):
     """Families allied with the aggressor in this war."""
     defender_allies: OrderedSet[Entity]
     """Families allied with the defender in this war."""
-    _start_date: SimDate
+    start_date: int
     """The date the war started"""
-    _end_date: Optional[SimDate]
+    end_date: Optional[int]
     """The date the war ended."""
 
     def __init__(
@@ -57,7 +54,7 @@ class War(Component):
         aggressor: Entity,
         defender: Entity,
         contested_territory: Entity,
-        start_date: SimDate,
+        start_date: int,
     ) -> None:
         super().__init__()
         self.contested_territory = contested_territory
@@ -67,29 +64,6 @@ class War(Component):
         self.aggressor_allies = OrderedSet([])
         self.defender_allies = OrderedSet([])
         self.end_date = None
-
-    @property
-    def start_date(self) -> SimDate:
-        """The date the war started."""
-        return self._start_date
-
-    @start_date.setter
-    def start_date(self, value: SimDate) -> None:
-        """Set the start date."""
-        self._start_date = value.copy()
-
-    @property
-    def end_date(self) -> Optional[SimDate]:
-        """The date the war started."""
-        return self._end_date
-
-    @end_date.setter
-    def end_date(self, value: Optional[SimDate]) -> None:
-        """Set the end date."""
-        if value is not None:
-            self._end_date = value.copy()
-        else:
-            self._end_date = None
 
 
 class WarTracker(Component):
@@ -115,8 +89,8 @@ class Alliance(Component):
         "founder",
         "founder_family",
         "member_families",
-        "_start_date",
-        "_end_date",
+        "start_date",
+        "end_date",
     )
 
     founder: Entity
@@ -125,9 +99,9 @@ class Alliance(Component):
     """The family the alliance's founder was the head of."""
     member_families: OrderedSet[Entity]
     """All families that belong to the alliance."""
-    _start_date: SimDate
+    start_date: int
     """The date the alliance started."""
-    _end_date: Optional[SimDate]
+    end_date: Optional[int]
     """The date the alliance ended."""
 
     def __init__(
@@ -135,7 +109,7 @@ class Alliance(Component):
         founder: Entity,
         founder_family: Entity,
         member_families: Iterable[Entity],
-        start_date: SimDate,
+        start_date: int,
     ) -> None:
         super().__init__()
         self.founder = founder
@@ -143,26 +117,3 @@ class Alliance(Component):
         self.member_families = OrderedSet(member_families)
         self.start_date = start_date
         self.end_date = None
-
-    @property
-    def start_date(self) -> SimDate:
-        """The date the war started."""
-        return self._start_date
-
-    @start_date.setter
-    def start_date(self, value: SimDate) -> None:
-        """Set the start date."""
-        self._start_date = value.copy()
-
-    @property
-    def end_date(self) -> Optional[SimDate]:
-        """The date the war started."""
-        return self._end_date
-
-    @end_date.setter
-    def end_date(self, value: Optional[SimDate]) -> None:
-        """Set the end date."""
-        if value is not None:
-            self._end_date = value.copy()
-        else:
-            self._end_date = None

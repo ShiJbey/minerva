@@ -1,7 +1,5 @@
 # pylint: disable=W0621
-"""Test helper functions that modify families.
-
-"""
+"""Test helper functions that modify families."""
 
 import pytest
 
@@ -76,7 +74,7 @@ def test_set_family_head(test_sim: Simulation):
 
     c0 = spawn_character(test_sim.world)
     c1 = spawn_character(test_sim.world)
-    db = test_sim.world.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).conn
 
     family_component = test_family.get_component(Family)
 
@@ -141,7 +139,7 @@ def test_set_family_name(test_sim: Simulation):
 
     assert test_family.get_component(Family).name == "Test Family"
 
-    db = test_sim.world.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).conn
 
     cur = db.execute("""SELECT name FROM families WHERE uid=?;""", (test_family.uid,))
     result = cur.fetchone()

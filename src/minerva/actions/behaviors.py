@@ -6,16 +6,15 @@ from ordered_set import OrderedSet
 
 from minerva.actions.actions import (
     ClaimThroneAction,
-    DisbandAllianceAction,
     ExpandIntoTerritoryAction,
     ExtortLocalFamiliesAction,
     ExtortTerritoryOwnersAction,
     GiveBackToTerritoryAction,
     GrowPoliticalInfluenceAction,
-    IdleAction,
+    JoinAllianceAction,
     JoinAllianceSchemeAction,
     JoinCoupSchemeAction,
-    JoinExistingAllianceAction,
+    LeaveAllianceAction,
     QuellRevoltAction,
     SeizeTerritoryAction,
     SendAidAction,
@@ -23,17 +22,24 @@ from minerva.actions.actions import (
     StartAllianceSchemeAction,
     StartCoupSchemeAction,
     StartWarSchemeAction,
-    TaxTerritoryAction,
+    TaxTerritoriesAction,
     TryCheatOnSpouseAction,
 )
 from minerva.actions.base_types import (
     AIAction,
     AIBehavior,
-    AIBrain,
-    AIPrecondition,
+    AIPreconditionGroup,
+    CharacterController,
     Scheme,
     SchemeManager,
 )
+from minerva.actions.preconditions import (
+    HasActiveSchemes,
+    IsCurrentlyAtWar,
+    IsFamilyHeadPrecondition,
+    Not,
+)
+from minerva.actions.scheme_helpers import get_character_schemes_of_type
 from minerva.actions.scheme_types import AllianceScheme, CoupScheme
 from minerva.characters.components import (
     Character,
@@ -45,50 +51,53 @@ from minerva.characters.components import (
     SexualOrientation,
 )
 from minerva.characters.succession_helpers import get_current_ruler
-from minerva.characters.war_data import Alliance
+from minerva.characters.war_data import Alliance, WarTracker
 from minerva.ecs import Active, Entity
 from minerva.relationships.base_types import Attraction
 from minerva.relationships.helpers import get_relationship
 from minerva.world_map.components import InRevolt, Territory
 
 
-class IdleBehavior(AIBehavior):
-    """A behavior that does nothing."""
-
-    def get_actions(self, character: Entity) -> list[AIAction]:
-        return [
-            IdleAction(character),
-        ]
-
-
 class GiveToSmallFolkBehavior(AIBehavior):
     """A family head  will try to increase their political influence in a territory."""
 
+    def __init__(self) -> None:
+        super().__init__("GiveToSmallFolk")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
+        if not character.has_component(HeadOfFamily):
+            return []
+
         # Choose the territory with the lowest political influence
         # and spend influence points to increase political power
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
-        actions: list[AIAction] = []
+        action_instances: list[AIAction] = []
 
         for territory in family_component.territories_present_in:
             territory_component = territory.get_component(Territory)
             if territory_component.controlling_family == family_component.entity:
-                action = GiveBackToTerritoryAction(
-                    performer=character,
-                    family=family_component.entity,
+                action_instance = GiveBackToTerritoryAction(
+                    character=character,
+                    family=family_head_component.family,
                     territory=territory,
                 )
-                actions.append(action)
+                action_instances.append(action_instance)
 
-        return actions
+        return action_instances
 
 
 class GrowPoliticalInfluenceBehavior(AIBehavior):
     """A family head  will try to increase their political influence in a territory."""
 
+    def __init__(self) -> None:
+        super().__init__("GrowPoliticalInfluence")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
+        if not character.has_component(HeadOfFamily):
+            return []
+
         # Choose the territory with the lowest political influence
         # and spend influence points to increase political power
         family_head_component = character.get_component(HeadOfFamily)
@@ -98,9 +107,9 @@ class GrowPoliticalInfluenceBehavior(AIBehavior):
 
         for territory in family_component.territories_present_in:
             action = GrowPoliticalInfluenceAction(
-                performer=character,
-                family=family_component.entity,
-                territory=territory,
+                character,
+                family_head_component.family,
+                territory,
             )
             actions.append(action)
 
@@ -109,6 +118,9 @@ class GrowPoliticalInfluenceBehavior(AIBehavior):
 
 class SendGiftBehavior(AIBehavior):
     """Family heads will send gifts to each other to increase opinion scores."""
+
+    def __init__(self) -> None:
+        super().__init__("SendGift")
 
     def get_actions(self, character: Entity) -> list[AIAction]:
         # Get all the families within the same territories
@@ -142,6 +154,9 @@ class SendGiftBehavior(AIBehavior):
 class SendAidBehavior(AIBehavior):
     """Character will try to increase favor with a family dealing with a revolt."""
 
+    def __init__(self) -> None:
+        super().__init__("SendAid")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
 
         # Get all territories in revolt and the family heads in charge
@@ -164,12 +179,18 @@ class SendAidBehavior(AIBehavior):
 class ExtortTerritoryOwners(AIBehavior):
     """The ruler will take influence points from the land-owning families."""
 
+    def __init__(self) -> None:
+        super().__init__("ExtortTerritoryOwners")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         return [ExtortTerritoryOwnersAction(character)]
 
 
 class ExtortLocalFamiliesBehavior(AIBehavior):
     """A family head will extort families that live in their controlled territories."""
+
+    def __init__(self) -> None:
+        super().__init__("ExtortLocalFamilies")
 
     def get_actions(self, character: Entity) -> list[AIAction]:
 
@@ -191,6 +212,9 @@ class ExtortLocalFamiliesBehavior(AIBehavior):
 class QuellRevolt(AIBehavior):
     """The head of the family controlling a territory will try to quell a revolt."""
 
+    def __init__(self) -> None:
+        super().__init__("QuellRevolt")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         # This behavior requires at least on territory to be in revolt. This
         # information is picked up by the
@@ -206,9 +230,7 @@ class QuellRevolt(AIBehavior):
                 continue
 
             if territory.has_component(InRevolt):
-                actions.append(
-                    QuellRevoltAction(performer=character, territory=territory)
-                )
+                actions.append(QuellRevoltAction(character, territory))
 
         return actions
 
@@ -216,9 +238,22 @@ class QuellRevolt(AIBehavior):
 class StartAllianceSchemeBehavior(AIBehavior):
     """A family head will try to start a new alliance."""
 
+    def __init__(self) -> None:
+        super().__init__("StartAllianceScheme")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         # Character will start a new scheme to form an alliance. Other family heads can
         # choose to join before the alliance is officially formed.
+
+        precondition = AIPreconditionGroup(
+            IsFamilyHeadPrecondition(),
+            Not(HasActiveSchemes()),
+            Not(IsCurrentlyAtWar()),
+        )
+
+        if precondition.evaluate(character) is False:
+            return []
+
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
@@ -231,14 +266,39 @@ class StartAllianceSchemeBehavior(AIBehavior):
 class JoinAllianceSchemeBehavior(AIBehavior):
     """A family head will have their family join an existing alliance."""
 
+    def __init__(self) -> None:
+        super().__init__("JoinAllianceScheme")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head will try to join an alliance scheme.
+
+        # IsFamilyHeadPrecondition(),
+        # Not(FamilyInAlliancePrecondition()),
+        # Not(JoinedAllianceScheme()),
+        # Not(HasActiveSchemes()),
+        # Not(IsCurrentlyAtWar()),
 
         world = character.world
         actions: list[AIAction] = []
 
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
+
+        if not character.has_component(HeadOfFamily):
+            return []
+
+        family_head_component = character.get_component(HeadOfFamily)
+        family_component = family_head_component.family.get_component(Family)
+
+        if family_component.alliance is not None:
+            return []
+
+        alliance_schemes = get_character_schemes_of_type(character, "alliance")
+        if alliance_schemes:
+            return []
+
+        if len(character.get_component(SchemeManager).schemes) > 0:
+            return []
 
         scheme_manager = character.get_component(SchemeManager)
         for scheme in scheme_manager.schemes:
@@ -249,7 +309,7 @@ class JoinAllianceSchemeBehavior(AIBehavior):
         if family_component.alliance:
             return []
 
-        for _, (scheme, _, _) in world.query_components(
+        for _, (scheme, alliance_scheme, _) in world.query_components(
             (Scheme, AllianceScheme, Active)
         ):
             if not scheme.is_valid:
@@ -258,7 +318,7 @@ class JoinAllianceSchemeBehavior(AIBehavior):
             if scheme.initiator == character or character in scheme.members:
                 continue
 
-            actions.append(JoinAllianceSchemeAction(character, scheme.entity))
+            actions.append(JoinAllianceSchemeAction(character, alliance_scheme))
 
         return actions
 
@@ -266,30 +326,57 @@ class JoinAllianceSchemeBehavior(AIBehavior):
 class JoinExistingAlliance(AIBehavior):
     """A family head will have their family join an existing alliance."""
 
+    def __init__(self) -> None:
+        super().__init__("JoinAlliance")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head will try to join an existing alliance.
 
-        world = character.world
+        if not character.has_component(HeadOfFamily):
+            return []
+
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
-        if family_component.alliance:
+        if family_component.alliance is not None:
             return []
+
+        alliance_schemes = get_character_schemes_of_type(character, "alliance")
+        if alliance_schemes:
+            return []
+
+        if len(character.get_component(SchemeManager).schemes) > 0:
+            return []
+
+        war_tracker = family_head_component.family.get_component(WarTracker)
+
+        if len(war_tracker.offensive_wars) > 0 or len(war_tracker.defensive_wars) > 0:
+            return []
+
+        world = character.world
 
         actions: list[AIAction] = []
 
         for _, (alliance, _) in world.query_components((Alliance, Active)):
-            actions.append(JoinExistingAllianceAction(character, alliance.entity))
+            actions.append(JoinAllianceAction(character, alliance.entity))
 
         return actions
 
 
-class DisbandAlliance(AIBehavior):
-    """A family head will try to disband their current alliance."""
+class LeaveAlliance(AIBehavior):
+    """A family head will try to leave their current alliance."""
+
+    def __init__(self) -> None:
+        super().__init__("LeaveAlliance")
 
     def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head has the option to leave the current alliance, causing the
         # entire alliance to disband
+
+        # IsFamilyHeadPrecondition(),
+        #             FamilyInAlliancePrecondition(),
+        #             Not(HasActiveSchemes()),
+        #             Not(IsCurrentlyAtWar()),
 
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
@@ -302,16 +389,24 @@ class DisbandAlliance(AIBehavior):
             return []
 
         else:
-            return [DisbandAllianceAction(character, family_component.alliance)]
+            return [LeaveAllianceAction(character, family_component.alliance)]
 
 
 class DeclareWarBehavior(AIBehavior):
     """A family head will declare war on another."""
 
+    def __init__(self) -> None:
+        super().__init__("DeclareWar")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         # The character will try to fight another family in a territory for control
         # over that territory. They will not declare war on a territory held by someone
         # in their alliance.
+        # IsFamilyHeadPrecondition(),
+        # Not(IsAllianceMemberPlottingCoup()),
+        # Not(HasActiveSchemes()),
+        # Not(IsCurrentlyAtWar()),
+
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
@@ -334,7 +429,7 @@ class DeclareWarBehavior(AIBehavior):
                 continue
 
             action = StartWarSchemeAction(
-                performer=character,
+                character=character,
                 target=enemy_family_component.head,
                 territory=territory,
             )
@@ -344,8 +439,11 @@ class DeclareWarBehavior(AIBehavior):
         return actions
 
 
-class TaxTerritory(AIBehavior):
-    """A family head will tax their controlling territory for influence points."""
+class TaxTerritories(AIBehavior):
+    """A family head will tax their controlling territories for influence points."""
+
+    def __init__(self) -> None:
+        super().__init__("TaxTerritories")
 
     def get_actions(self, character: Entity) -> list[AIAction]:
         # Choose the territory with the lowest political influence
@@ -353,22 +451,29 @@ class TaxTerritory(AIBehavior):
         family_head_component = character.get_component(HeadOfFamily)
         family_component = family_head_component.family.get_component(Family)
 
-        actions: list[AIAction] = []
-        for territory in family_component.controlled_territories:
-            action = TaxTerritoryAction(character, territory)
-            actions.append(action)
+        if family_component.controlled_territories:
+            return [TaxTerritoriesAction(character)]
 
-        return actions
+        return []
 
 
 class PlanCoupBehavior(AIBehavior):
     """A family head will attempt to overthrow the royal family."""
+
+    def __init__(self) -> None:
+        super().__init__("PlanCoup")
 
     def get_actions(self, character: Entity) -> list[AIAction]:
         # The family head will start a scheme to overthrow the royal family and other
         # characters can join. This is effectively the same as declaring war, but
         # alliances don't join and if discovered, all family heads involved are
         # executed and their families lose control of territory
+
+        # IsFamilyHeadPrecondition(),
+        # Not(IsRulerPrecondition()),
+        # Not(IsAllianceMemberPlottingCoup()),
+        # Not(HasActiveSchemes()),
+        # Not(IsCurrentlyAtWar()),
 
         current_ruler = get_current_ruler(character.world)
 
@@ -383,6 +488,9 @@ class PlanCoupBehavior(AIBehavior):
 class JoinCoupSchemeBehavior(AIBehavior):
     """A family head joins someones coup scheme."""
 
+    def __init__(self) -> None:
+        super().__init__("JoinCoupScheme")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         world = character.world
 
@@ -390,14 +498,16 @@ class JoinCoupSchemeBehavior(AIBehavior):
         # toward the person who is the head of the founding family.
         actions: list[AIAction] = []
 
-        for _, (scheme, _, _) in world.query_components((Scheme, CoupScheme, Active)):
+        for _, (scheme, coup_scheme, _) in world.query_components(
+            (Scheme, CoupScheme, Active)
+        ):
             if not scheme.is_valid:
                 continue
 
             if scheme.initiator == character or character in scheme.members:
                 continue
 
-            actions.append(JoinCoupSchemeAction(character, scheme.entity))
+            actions.append(JoinCoupSchemeAction(character, coup_scheme))
 
         return actions
 
@@ -405,13 +515,16 @@ class JoinCoupSchemeBehavior(AIBehavior):
 class ExpandPoliticalDomain(AIBehavior):
     """A family head expands the family's political influence to a new territory."""
 
+    def __init__(self) -> None:
+        super().__init__("ExpandPoliticalDomain")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         # Loop through all territories that neighbor existing political territories
         # Consider all those where the family does not have an existing political
         # foothold
-        character_brain = character.get_component(AIBrain)
+        character_controller = character.get_component(CharacterController)
         actions: list[AIAction] = []
-        unexpanded_territories: list[Entity] = character_brain.context[
+        unexpanded_territories: list[Entity] = character_controller.blackboard[
             "unexpanded_territories"
         ]
         for territory in unexpanded_territories:
@@ -423,6 +536,9 @@ class ExpandPoliticalDomain(AIBehavior):
 
 class SeizeControlOfTerritory(AIBehavior):
     """A family head takes control of an unclaimed territory."""
+
+    def __init__(self) -> None:
+        super().__init__("SeizeControlOfTerritory")
 
     def get_actions(self, character: Entity) -> list[AIAction]:
         # Loop through all the territories where this character has political influence
@@ -446,6 +562,9 @@ class SeizeControlOfTerritory(AIBehavior):
 class CheatOnSpouseBehavior(AIBehavior):
     """."""
 
+    def __init__(self) -> None:
+        super().__init__("CheatOnSpouse")
+
     def get_actions(self, character: Entity) -> list[AIAction]:
         # Loop through the people that this character is attracted to and are adults
         world = character.world
@@ -465,10 +584,7 @@ class CheatOnSpouseBehavior(AIBehavior):
         if character_spouse is None:
             return []
 
-        if (
-            character_component.life_stage < LifeStage.YOUNG_ADULT
-            or character_component.life_stage == LifeStage.SENIOR
-        ):
+        if character_component.life_stage < LifeStage.YOUNG_ADULT:
             return []
 
         eligible_accomplices: list[Character] = []
@@ -685,7 +801,11 @@ class CheatOnSpouseBehavior(AIBehavior):
             actions: list[AIAction] = []
 
             for accomplice, _ in accomplices_in_territory[:3]:
-                actions.append(TryCheatOnSpouseAction(character, accomplice.entity))
+                actions.append(
+                    TryCheatOnSpouseAction(
+                        character, character_spouse, accomplice.entity
+                    )
+                )
 
             return actions
 
@@ -695,10 +815,14 @@ class CheatOnSpouseBehavior(AIBehavior):
 class ClaimThroneBehavior(AIBehavior):
     """Territory-controlling family heads will try to claim the throne if empty."""
 
-    def __init__(self, precondition: AIPrecondition) -> None:
-        super().__init__("ClaimThrone", precondition)
+    def __init__(self) -> None:
+        super().__init__("ClaimThrone")
 
     def get_actions(self, character: Entity) -> list[AIAction]:
+
+        # IsFamilyHeadPrecondition(),
+        # Not(IsRulerPrecondition()),
+        # Not(IsCurrentlyAtWar()),
 
         world = character.world
 

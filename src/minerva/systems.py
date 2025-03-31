@@ -8,36 +8,47 @@ from typing import Callable, ClassVar, Optional
 from ordered_set import OrderedSet
 
 from minerva.actions.actions import (
-    CheatOnSpouseAction,
+    BecomeAdolescentAction,
+    BecomeAdultAction,
+    BecomeChildAction,
+    BecomeFamilyHead,
+    BecomeSeniorAction,
+    BecomeYoungAdultAction,
     ClaimThroneAction,
+    CreateAllianceAction,
+    DeclareWar,
     DieAction,
-    SexAction,
+    DiscoverCoupScheme,
+    GetMarriedAction,
+    GiveBirth,
+    GoIntoRevolt,
+    LoseControlOfTerritory,
+    OverthrowRulerAction,
+    SentenceToDeath,
 )
-from minerva.actions.base_types import AIAction, AIBehaviorLibrary, AIBrain, Scheme
-from minerva.actions.scheme_helpers import destroy_scheme
-from minerva.actions.scheme_types import (
-    AllianceScheme,
-    CheatingScheme,
-    CoupScheme,
-    WarScheme,
+from minerva.actions.base_types import (
+    AIAction,
+    AIBehaviorLibrary,
+    CharacterController,
+    Scheme,
+    score_actions,
 )
+from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
 from minerva.characters.components import (
     Character,
     Diplomacy,
     Dynasty,
     DynastyTracker,
-    Ruler,
     Family,
-    FamilyPrestige,
     FamilyRoleFlags,
     Fertility,
     HeadOfFamily,
-    Intrigue,
-    Lifespan,
     LifeStage,
     Marriage,
     Pregnancy,
+    Prestige,
     Prowess,
+    Ruler,
     Sex,
     SexualOrientation,
 )
@@ -45,24 +56,17 @@ from minerva.characters.helpers import (
     assign_family_member_to_roles,
     get_advisor_candidates,
     get_family_of,
+    get_fertility,
+    get_intrigue_skill,
+    get_lifespan,
     get_warrior_candidates,
-    merge_family_with,
+    increment_prestige_base,
     remove_family_from_play,
     set_character_age,
-    set_character_biological_father,
-    set_character_birth_family,
-    set_character_family,
-    set_character_father,
     set_character_life_stage,
-    set_character_mother,
-    set_family_head,
     set_family_home_base,
-    set_relation_child,
-    set_relation_sibling,
-    start_marriage,
-    update_grandparent_relations,
+    set_fertility_base,
     set_heir,
-    remove_heir,
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.stat_helpers import StatLevel, get_luck_level
@@ -88,31 +92,12 @@ from minerva.characters.war_helpers import (
     start_war,
 )
 from minerva.config import Config
-from minerva.datetime import MONTHS_PER_YEAR, SimDate
+from minerva.datetime import SimDate
 from minerva.ecs import Active, Entity, System, SystemGroup, World
-from minerva.life_events.aging import LifeStageChangeEvent
-from minerva.life_events.events import (
-    AllianceFoundedEvent,
-    AllianceSchemeFailedEvent,
-    BirthEvent,
-    ChildBirthEvent,
-    CoupSchemeDiscoveredEvent,
-    DeclareWarEvent,
-    DefendingTerritoryEvent,
-    LostTerritoryEvent,
-    MarriageEvent,
-    PregnancyEvent,
-    RemovedFromPowerEvent,
-    RevoltEvent,
-    RuleOverthrownEvent,
-    SentencedToDeathEvent,
-    UsurpEvent,
-)
-from minerva.life_events.succession import BecameFamilyHeadEvent
 from minerva.pcg.base_types import FamilyGenOptions
-from minerva.pcg.character import spawn_baby_from, spawn_family
+from minerva.pcg.character import spawn_family
 from minerva.pcg.world_map import generate_world_map
-from minerva.relationships.base_types import Attraction, Opinion
+from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
 from minerva.simulation_events import SimulationEvents
 from minerva.world_map.components import (
@@ -134,7 +119,7 @@ class TimeSystem(System):
 
     def on_update(self, world: World) -> None:
         current_date = world.get_resource(SimDate)
-        current_date.increment_month()
+        current_date.year += 1
 
 
 class CharacterAgingSystem(System):
@@ -143,92 +128,78 @@ class CharacterAgingSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        # This system runs every simulated month
-        elapsed_years: float = 1.0 / MONTHS_PER_YEAR
-
-        for _, (character, fertility, _) in world.query_components(
+        for uid, (character_comp, fertility, _) in world.query_components(
             (Character, Fertility, Active)
         ):
-            age = character.age + elapsed_years
-            set_character_age(character.entity, age)
+            character = world.get_entity(uid)
 
-            species = character.species
+            age = character_comp.age + 1
+            set_character_age(character, age)
+
+            species = character_comp.species
 
             if species.can_physically_age:
                 if age >= species.senior_age:
-                    if character.life_stage != LifeStage.SENIOR:
+                    if character_comp.life_stage != LifeStage.SENIOR:
                         fertility_max = (
                             species.senior_male_fertility
-                            if character.sex == Sex.MALE
+                            if character_comp.sex == Sex.MALE
                             else species.senior_female_fertility
                         )
 
-                        fertility.base_value = min(fertility.base_value, fertility_max)
+                        set_fertility_base(
+                            character, min(fertility.base_value, fertility_max)
+                        )
 
-                        set_character_life_stage(character.entity, LifeStage.SENIOR)
-
-                        LifeStageChangeEvent(
-                            character.entity, LifeStage.SENIOR
-                        ).log_event()
+                        BecomeSeniorAction(character).execute()
 
                 elif age >= species.adult_age:
-                    if character.life_stage != LifeStage.ADULT:
+                    if character_comp.life_stage != LifeStage.ADULT:
                         fertility_max = (
                             species.adult_male_fertility
-                            if character.sex == Sex.MALE
+                            if character_comp.sex == Sex.MALE
                             else species.adult_female_fertility
                         )
-                        fertility.base_value = min(fertility.base_value, fertility_max)
 
-                        set_character_life_stage(character.entity, LifeStage.ADULT)
+                        set_fertility_base(
+                            character, min(fertility.base_value, fertility_max)
+                        )
 
-                        LifeStageChangeEvent(
-                            character.entity, LifeStage.ADULT
-                        ).log_event()
+                        set_character_life_stage(character_comp.entity, LifeStage.ADULT)
+
+                        BecomeAdultAction(character).execute()
 
                 elif age >= species.young_adult_age:
-                    if character.life_stage != LifeStage.YOUNG_ADULT:
+                    if character_comp.life_stage != LifeStage.YOUNG_ADULT:
                         fertility_max = (
                             species.young_adult_male_fertility
-                            if character.sex == Sex.MALE
+                            if character_comp.sex == Sex.MALE
                             else species.young_adult_female_fertility
                         )
 
-                        fertility.base_value = min(fertility.base_value, fertility_max)
-
-                        set_character_life_stage(
-                            character.entity, LifeStage.YOUNG_ADULT
+                        set_fertility_base(
+                            character, min(fertility.base_value, fertility_max)
                         )
 
-                        LifeStageChangeEvent(
-                            character.entity, LifeStage.YOUNG_ADULT
-                        ).log_event()
+                        BecomeYoungAdultAction(character).execute()
 
                 elif age >= species.adolescent_age:
-                    if character.life_stage != LifeStage.ADOLESCENT:
+                    if character_comp.life_stage != LifeStage.ADOLESCENT:
                         fertility_max = (
                             species.adolescent_male_fertility
-                            if character.sex == Sex.MALE
+                            if character_comp.sex == Sex.MALE
                             else species.adolescent_female_fertility
                         )
 
-                        fertility.base_value = min(fertility.base_value, fertility_max)
+                        set_fertility_base(
+                            character, min(fertility.base_value, fertility_max)
+                        )
 
-                        set_character_life_stage(character.entity, LifeStage.ADOLESCENT)
-
-                        LifeStageChangeEvent(
-                            character.entity, LifeStage.ADOLESCENT
-                        ).log_event()
+                        BecomeAdolescentAction(character).execute()
 
                 else:
-                    if character.life_stage != LifeStage.CHILD:
-                        character.life_stage = LifeStage.CHILD
-
-                        set_character_life_stage(character.entity, LifeStage.CHILD)
-
-                        LifeStageChangeEvent(
-                            character.entity, LifeStage.CHILD
-                        ).log_event()
+                    if character_comp.life_stage != LifeStage.CHILD:
+                        BecomeChildAction(character).execute()
 
 
 class CharacterLifespanSystem(System):
@@ -237,11 +208,11 @@ class CharacterLifespanSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (character, life_span, _) in world.query_components(
-            (Character, Lifespan, Active)
-        ):
-            if character.age >= life_span.value:
-                DieAction(character.entity, cause_of_death="old age").execute()
+        for uid, (character_comp, _) in world.query_components((Character, Active)):
+            character = world.get_entity(uid)
+            lifespan = get_lifespan(character)
+            if character_comp.age >= lifespan:
+                DieAction(character, cause="old age").execute()
 
 
 class SuccessionDepthChartUpdateSystem(System):
@@ -276,8 +247,7 @@ class FamilyHeadSuccessionSystem(System):
             heir_character = heir.get_component(Character)
 
             if heir_character.is_alive and heir_character.family == family:
-                set_family_head(family, heir)
-                BecameFamilyHeadEvent(heir, family).log_event()
+                BecomeFamilyHead(heir, family).execute()
                 return True
 
         return False
@@ -296,8 +266,7 @@ class FamilyHeadSuccessionSystem(System):
                     heir_character = heir.get_component(Character)
 
                     if heir_character.is_alive and heir_character.family == family:
-                        set_family_head(family, heir)
-                        BecameFamilyHeadEvent(heir, family).log_event()
+                        BecomeFamilyHead(heir, family).execute()
                         return True
 
         return False
@@ -394,69 +363,78 @@ class CharacterBehaviorSystem(System):
 
     __system_group__ = "UpdateSystems"
 
-    def on_update(self, world: World) -> None:
+    @staticmethod
+    def get_acting_characters(world: World) -> list[Entity]:
+        """Get all characters who can perform an action this turn."""
+
         rng = world.get_resource(random.Random)
-        behavior_library = world.get_resource(AIBehaviorLibrary)
 
         family_heads = [
             world.get_entity(uid)
             for uid, _ in world.query_components((HeadOfFamily, Active))
         ]
 
-        all_acting_characters: OrderedSet[Entity] = OrderedSet([*family_heads])
+        acting_characters_set: OrderedSet[Entity] = OrderedSet([*family_heads])
 
-        for head in family_heads:
-            depth_chart = get_succession_depth_chart(head)
-            eligible_character_ids = [
-                entry.character_id for entry in depth_chart if entry.is_eligible
-            ]
-            for uid in eligible_character_ids[:5]:
-                all_acting_characters.add(world.get_entity(uid))
+        # for head in family_heads:
+        #     depth_chart = get_succession_depth_chart(head)
+        #     eligible_character_ids = [
+        #         entry.character_id for entry in depth_chart if entry.is_eligible
+        #     ]
+        #     for uid in eligible_character_ids[:5]:
+        #         acting_characters_set.add(world.get_entity(uid))
 
-        acting_order = list(all_acting_characters)
-        rng.shuffle(acting_order)
+        acting_characters_list = list(acting_characters_set)
+        rng.shuffle(acting_characters_list)
 
-        for character in acting_order:
+        return acting_characters_list
+
+    @staticmethod
+    def update_blackboard_from_sensors(entity: Entity) -> None:
+        """Update a character's blackboard using their AI sensors."""
+        character_controller = entity.get_component(CharacterController)
+        for sensor in character_controller.brain.sensors:
+            sensor.evaluate(entity, character_controller.blackboard)
+
+    def on_update(self, world: World) -> None:
+        behavior_library = world.get_resource(AIBehaviorLibrary)
+
+        acting_characters = CharacterBehaviorSystem.get_acting_characters(world)
+
+        for character in acting_characters:
             if character.is_active:
                 actions: list[AIAction] = []
+
                 character_component = character.get_component(Character)
-                brain = character.get_component(AIBrain)
-                brain.context.update_sensors()
+
+                character_controller = character.get_component(CharacterController)
+
+                CharacterBehaviorSystem.update_blackboard_from_sensors(character)
 
                 for behavior in behavior_library.iter_behaviors():
-                    if behavior.passes_preconditions(character):
-                        for potential_action in behavior.get_actions(character):
-                            if (
-                                brain.action_cooldowns[potential_action.get_name()] <= 0
-                                and character_component.influence_points
-                                >= potential_action.get_cost()
-                            ):
-                                # if potential_action.get_name() == "StartCoupScheme":
-                                #     utility = potential_action.calculate_utility()
-                                #     _logger.info(
-                                #         "D:: [%s] Coup Scheme => %s",
-                                #         character.uid,
-                                #         utility,
-                                #     )
-
-                                # if potential_action.get_name() == "StartWarScheme":
-                                #     utility = potential_action.calculate_utility()
-                                #     _logger.info(
-                                #         "D:: [%s] War Scheme => %s",
-                                #         character.uid,
-                                #         utility,
-                                #     )
-
-                                actions.append(potential_action)
+                    for potential_action in behavior.get_actions(character):
+                        if (
+                            character_controller.action_cooldowns[
+                                potential_action.get_name()
+                            ]
+                            <= 0
+                            and character_component.influence_points
+                            >= potential_action.get_cost()
+                        ):
+                            actions.append(potential_action)
 
                 if len(actions) > 0:
-                    selected_action = brain.action_selection_strategy.choose_action(
-                        actions
+                    action_scores = score_actions(actions)
+
+                    selected_action: AIAction = (
+                        character_controller.brain.action_selection_strategy.choose_action(
+                            action_scores
+                        )
                     )
 
-                    brain.action_cooldowns[selected_action.get_name()] = (
-                        selected_action.get_cooldown_time()
-                    )
+                    character_controller.action_cooldowns[
+                        selected_action.get_name()
+                    ] = selected_action.get_cooldown_time()
 
                     success = selected_action.execute()
 
@@ -464,8 +442,6 @@ class CharacterBehaviorSystem(System):
                         character_component.influence_points -= (
                             selected_action.get_cost()
                         )
-
-                brain.context.clear_blackboard()
 
 
 class FamilyRoleSystem(System):
@@ -517,14 +493,14 @@ class TerritoryRevoltSystem(System):
     """Territories revolt against controlling family.
 
     When a territory's happiness drops below a given threshold, the territory will
-    move into a revolt to remove the controlling family.
-
+    revolt to remove the controlling family. The head of the controlling family must
+    resolve the revolt within a given number of turns or they lose control of the
+    territory.
     """
 
     __system_group__ = "UpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate)
         config = world.get_resource(Config)
 
         for _, (territory, happiness, _) in world.query_components(
@@ -542,12 +518,7 @@ class TerritoryRevoltSystem(System):
             if territory.controlling_family is None:
                 continue
 
-            territory.entity.add_component(InRevolt(start_date=current_date))
-
-            RevoltEvent(
-                subject=territory.controlling_family,
-                territory=territory.entity,
-            ).log_event()
+            GoIntoRevolt(territory.entity, territory.controlling_family).execute()
 
 
 class RevoltUpdateSystem(System):
@@ -556,48 +527,38 @@ class RevoltUpdateSystem(System):
     __system_group__ = "UpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate)
         config = world.get_resource(Config)
+        current_year = world.get_resource(SimDate).year
 
         for _, (territory, happiness, in_revolt, _) in world.query_components(
             (Territory, PopulationHappiness, InRevolt, Active)
         ):
-            elapsed_months = (current_date - in_revolt.start_date).total_months
+            years_in_revolt = current_year - in_revolt.start_date
 
-            # Ignore territories that have not reached the point of no return
-            if elapsed_months < config.months_to_quell_revolt:
+            if years_in_revolt < config.turns_to_quell_revolt:
                 continue
-
-            if territory.controlling_family is None:
-                territory.entity.remove_component(InRevolt)
-                happiness.base_value = config.base_territory_happiness
-                continue
-
-            controlling_family_component = territory.controlling_family.get_component(
-                Family
-            )
-            if family_head := controlling_family_component.head:
-                character_component = family_head.get_component(Character)
-                character_component.influence_points -= 500
 
             territory.entity.remove_component(InRevolt)
             happiness.base_value = config.base_territory_happiness
 
-            if controlling_family_component.head:
-                LostTerritoryEvent(
-                    subject=controlling_family_component.head,
-                    territory=territory.entity,
-                ).log_event()
+            controlling_family = territory.controlling_family
 
-            RemovedFromPowerEvent(
-                subject=territory.controlling_family,
-                territory=territory.entity,
-            ).log_event()
+            if controlling_family:
+                family_component = controlling_family.get_component(Family)
+                family_head = family_component.head
 
-            territory.controlling_family.get_component(FamilyPrestige).base_value -= 20
+                if family_head:
+                    character_component = family_head.get_component(Character)
+                    character_component.influence_points -= 500
+                    LoseControlOfTerritory(
+                        family_head, controlling_family, territory.entity
+                    ).execute()
 
-            # Remove the current family from power
-            set_territory_controlling_family(territory.entity, None)
+                else:
+                    # Just remove the family from being in control
+                    set_territory_controlling_family(territory.entity, None)
+
+                increment_prestige_base(controlling_family, -20)
 
 
 class TerritoryRandomEventSystem(System):
@@ -668,14 +629,14 @@ def nothing_event(_: Entity) -> None:
 @TerritoryRandomEventSystem.random_event("poor harvest", 0.5)
 def poor_harvest_event(territory: Entity) -> None:
     """Poor harvest."""
-    current_date = territory.world.get_resource(SimDate)
+    current_date = territory.world.get_resource(SimDate).year
     happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value -= 10
 
     _logger.info(
-        "[%s]: %s has suffered a poor harvest.",
-        current_date.to_iso_str(),
+        "[%04d]: %s has suffered a poor harvest.",
+        current_date,
         territory.name_with_uid,
     )
 
@@ -683,14 +644,14 @@ def poor_harvest_event(territory: Entity) -> None:
 @TerritoryRandomEventSystem.random_event("disease", 0.5)
 def disease_event(territory: Entity) -> None:
     """Do Nothing."""
-    current_date = territory.world.get_resource(SimDate)
+    current_date = territory.world.get_resource(SimDate).year
     happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value -= 10
 
     _logger.info(
-        "[%s]: %s has suffered a disease outbreak.",
-        current_date.to_iso_str(),
+        "[%04d]: %s has suffered a disease outbreak.",
+        current_date,
         territory.name_with_uid,
     )
 
@@ -698,14 +659,14 @@ def disease_event(territory: Entity) -> None:
 @TerritoryRandomEventSystem.random_event("bountiful harvest", 0.5)
 def bountiful_harvest_event(territory: Entity) -> None:
     """Do Nothing."""
-    current_date = territory.world.get_resource(SimDate)
+    current_date = territory.world.get_resource(SimDate).year
     happiness_component = territory.get_component(PopulationHappiness)
 
     happiness_component.base_value += 10
 
     _logger.info(
-        "[%s]: %s had a bountiful harvest.",
-        current_date.to_iso_str(),
+        "[%04d]: %s had a bountiful harvest.",
+        current_date,
         territory.name_with_uid,
     )
 
@@ -740,8 +701,8 @@ class InfluencePointGainSystem(System):
             character.influence_points = max(0, character.influence_points)
 
             _logger.debug(
-                "[%s]: %s has %d influence points",
-                world.get_resource(SimDate).to_iso_str(),
+                "[%04d]: %s has %d influence points",
+                world.get_resource(SimDate).year,
                 character.entity.name_with_uid,
                 character.influence_points,
             )
@@ -978,68 +939,7 @@ class PlaceholderMarriageSystem(System):
 
             new_spouse = rng.choice(eligible_singles)
 
-            start_marriage(character_a=character.entity, character_b=new_spouse.entity)
-
-            # Now handle any family logistics
-
-            # Case 1: The character is head of their family and their new spouse is
-            # the head of their family
-            if character.entity.has_component(
-                HeadOfFamily
-            ) and new_spouse.entity.has_component(HeadOfFamily):
-                # Join the families into a single entity
-                family_a = character.family
-                family_b = new_spouse.family
-                assert family_a is not None
-                assert family_b is not None
-                set_family_head(family_b, None)
-                merge_family_with(family_b, family_a)
-
-                # new spouse loses all their heirs
-                if new_spouse.heir is not None:
-                    remove_heir(new_spouse.entity)
-
-            # Case 2: The character is head of their family and their spouse is not
-            if character.entity.has_component(
-                HeadOfFamily
-            ) and not new_spouse.entity.has_component(HeadOfFamily):
-                family_a = character.family
-                assert family_a is not None
-                set_character_family(new_spouse.entity, family_a)
-
-                # new spouse loses heir eligibility
-                if new_spouse.heir_to is not None:
-                    remove_heir(new_spouse.heir_to)
-
-            # Case 3: The character is not head of their family and their spouse is
-            if not character.entity.has_component(
-                HeadOfFamily
-            ) and new_spouse.entity.has_component(HeadOfFamily):
-                family_a = character.family
-                family_b = new_spouse.family
-                assert family_a is not None
-                assert family_b is not None
-                set_family_head(family_b, None)
-                set_character_family(new_spouse.entity, family_a)
-
-                # character loses heir eligibility
-                if new_spouse.heir_to is not None:
-                    remove_heir(new_spouse.heir_to)
-
-            # Case 4: Neither character is head of their family.
-            if not character.entity.has_component(
-                HeadOfFamily
-            ) and not new_spouse.entity.has_component(HeadOfFamily):
-                family_a = character.family
-                assert family_a is not None
-                set_character_family(new_spouse.entity, family_a)
-
-                # new spouse loses heir eligibility
-                if new_spouse.heir_to is not None:
-                    remove_heir(new_spouse.heir_to)
-
-            MarriageEvent(character.entity, new_spouse.entity).log_event()
-            MarriageEvent(new_spouse.entity, character.entity).log_event()
+            GetMarriedAction(character.entity, new_spouse.entity).execute()
 
 
 class PregnancyPlaceHolderSystem(System):
@@ -1050,8 +950,7 @@ class PregnancyPlaceHolderSystem(System):
     def on_update(self, world: World) -> None:
         rng = world.get_resource(random.Random)
         current_date = world.get_resource(SimDate)
-        due_date = current_date.copy()
-        due_date.increment(months=9)
+        due_date = current_date.year + 1
 
         for _, (marriage, _) in world.query_components((Marriage, Active)):
             character = marriage.character.get_component(Character)
@@ -1064,10 +963,9 @@ class PregnancyPlaceHolderSystem(System):
                 continue
 
             character_fertility_comp = marriage.character.get_component(Fertility)
-            character_fertility = character_fertility_comp.normalized
 
-            spouse_fertility_comp = marriage.spouse.get_component(Fertility)
-            spouse_fertility = spouse_fertility_comp.normalized
+            character_fertility = get_fertility(marriage.character) / 100.0
+            spouse_fertility = get_fertility(marriage.spouse) / 100.0
 
             if character_fertility <= 0 or spouse_fertility <= 0:
                 continue
@@ -1082,90 +980,29 @@ class PregnancyPlaceHolderSystem(System):
                 Pregnancy(
                     assumed_father=spouse.entity,
                     actual_father=spouse.entity,
-                    conception_date=current_date.copy(),
-                    due_date=due_date.copy(),
+                    conception_date=current_date.year,
+                    due_date=due_date,
                 )
             )
 
             character_fertility_comp.base_value -= 25
 
-            PregnancyEvent(character.entity).log_event()
+            # PregnancyEvent(character.entity).log_event()
 
 
 class ChildBirthSystem(System):
     """Spawns new children when pregnant characters reach their due dates."""
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate)
+        current_date = world.get_resource(SimDate).year
 
-        for _, (character, pregnancy, fertility, _) in world.query_components(
-            (Character, Pregnancy, Fertility, Active)
+        for _, (character, pregnancy, _) in world.query_components(
+            (Character, Pregnancy, Active)
         ):
             if pregnancy.due_date > current_date:
                 continue
 
-            father = pregnancy.actual_father
-
-            baby = spawn_baby_from(
-                mother=character.entity,
-                father=father,
-            )
-
-            set_character_mother(baby, character.entity)
-            set_character_father(baby, pregnancy.assumed_father)
-            set_character_biological_father(baby, pregnancy.actual_father)
-
-            # Set grandparent/child relationships
-            update_grandparent_relations(baby, [character.mother, character.father])
-
-            if pregnancy.assumed_father is not None:
-                assumed_father_character_comp = pregnancy.assumed_father.get_component(
-                    Character
-                )
-                update_grandparent_relations(
-                    baby,
-                    [
-                        assumed_father_character_comp.mother,
-                        assumed_father_character_comp.father,
-                    ],
-                )
-
-            # Add to mothers family
-            set_character_family(baby, character.family)
-            set_character_birth_family(baby, character.family)
-
-            # Mother to child
-            set_relation_child(character.entity, baby)
-
-            # Father to child
-            if pregnancy.assumed_father:
-                set_relation_child(pregnancy.assumed_father, baby)
-
-            # Create relationships with children of birthing parent
-            for existing_child in character.children:
-                if existing_child == baby:
-                    continue
-
-                set_relation_sibling(baby, existing_child)
-                set_relation_sibling(existing_child, baby)
-
-            # Create relationships with children of other parent
-            father_children = father.get_component(Character).children
-            for existing_child in father_children:
-                if existing_child == baby:
-                    continue
-
-                set_relation_sibling(baby, existing_child)
-                set_relation_sibling(existing_child, baby)
-
-            character.entity.remove_component(Pregnancy)
-
-            # Reduce the character's fertility according to their species
-            fertility.base_value -= character.species.fertility_cost_per_child
-
-            ChildBirthEvent(subject=character.entity, child=baby).log_event()
-
-            BirthEvent(subject=baby).log_event()
+            GiveBirth(character.entity).execute()
 
 
 class ActionCooldownSystem(System):
@@ -1174,7 +1011,7 @@ class ActionCooldownSystem(System):
     __system_group__ = "EarlyUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        for _, (brain, _) in world.query_components((AIBrain, Active)):
+        for _, (brain, _) in world.query_components((CharacterController, Active)):
             for key in brain.action_cooldowns:
                 brain.action_cooldowns[key] -= 1
 
@@ -1191,18 +1028,23 @@ class AllianceSchemeUpdateSystem(System):
     __system_group__ = "SchemeUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).copy()
+        current_date = world.get_resource(SimDate).year
 
         for _, (scheme, _, _) in world.query_components(
             (Scheme, AllianceScheme, Active)
         ):
+            if not scheme.initiator.is_active:
+                scheme.is_valid = False
+                destroy_alliance_scheme(scheme.entity)
+                continue
+
             if scheme.is_valid is False:
                 destroy_alliance_scheme(scheme.entity)
                 continue
 
-            elapsed_months = (current_date - scheme.start_date).total_months
+            elapsed_years = current_date - scheme.start_date
 
-            if elapsed_months >= scheme.required_time:
+            if elapsed_years >= scheme.required_time:
                 # Check that other people have joined the scheme for the alliance to be
                 # created. Otherwise, this scheme fails
                 if len(scheme.members) > 1:
@@ -1215,7 +1057,8 @@ class AllianceSchemeUpdateSystem(System):
                             raise RuntimeError("Alliance member is missing family.")
                         alliance_families.append(character_component.family)
 
-                    alliance = start_alliance(*alliance_families)
+                    start_alliance(*alliance_families)
+                    CreateAllianceAction(scheme.initiator).execute()
 
                     # Increase the opinion between alliance members.
                     for member_a in scheme.members:
@@ -1231,24 +1074,17 @@ class AllianceSchemeUpdateSystem(System):
                             ).base_value += 20
 
                     get_family_of(scheme.initiator).get_component(
-                        FamilyPrestige
+                        Prestige
                     ).base_value += 30
 
                     scheme.initiator.get_component(
                         CharacterMetrics
                     ).data.num_alliances_founded += 1
 
-                    AllianceFoundedEvent(
-                        subject=scheme.initiator,
-                        alliance=alliance,
-                    ).log_event()
-
                 else:
                     scheme.initiator.get_component(
                         CharacterMetrics
                     ).data.num_failed_alliance_attempts += 1
-
-                    AllianceSchemeFailedEvent(scheme.initiator).log_event()
 
                 scheme.is_valid = False
                 destroy_alliance_scheme(scheme.entity)
@@ -1321,12 +1157,17 @@ class WarSchemeUpdateSystem(System):
                     join_war_as(war, member_family, role)
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).copy()
+        current_date = world.get_resource(SimDate).year
 
         for _, (scheme, war_scheme, _) in world.query_components(
             (Scheme, WarScheme, Active)
         ):
             # Cancel the scheme if has been invalidated by an external system
+            if not war_scheme.aggressor.is_active or not war_scheme.defender.is_active:
+                scheme.is_valid = False
+                destroy_war_scheme(scheme.entity)
+                continue
+
             if scheme.is_valid is False:
                 destroy_war_scheme(scheme.entity)
                 continue
@@ -1338,9 +1179,9 @@ class WarSchemeUpdateSystem(System):
                 destroy_war_scheme(scheme.entity)
                 continue
 
-            elapsed_months = (current_date - scheme.start_date).total_months
+            elapsed_years = current_date - scheme.start_date
 
-            if elapsed_months >= scheme.required_time:
+            if elapsed_years >= scheme.required_time:
                 aggressor_family = self.get_family(scheme.initiator)
                 defender_family = self.get_family(war_scheme.defender)
 
@@ -1351,7 +1192,7 @@ class WarSchemeUpdateSystem(System):
                 ).data.num_wars_started += 1
                 scheme.initiator.get_component(
                     CharacterMetrics
-                ).data.date_of_last_declared_war = current_date.copy()
+                ).data.date_of_last_declared_war = current_date
 
                 war = start_war(aggressor_family, defender_family, war_scheme.territory)
 
@@ -1363,17 +1204,9 @@ class WarSchemeUpdateSystem(System):
                     war, war_scheme.defender, WarRole.DEFENDER_ALLY
                 )
 
-                DeclareWarEvent(
-                    subject=scheme.initiator,
-                    target=war_scheme.defender,
-                    territory=war_scheme.territory,
-                ).log_event()
-
-                DefendingTerritoryEvent(
-                    subject=war_scheme.defender,
-                    opponent=scheme.initiator,
-                    territory=war_scheme.territory,
-                ).log_event()
+                DeclareWar(
+                    scheme.initiator, war_scheme.defender, war_scheme.territory
+                ).execute()
 
                 scheme.is_valid = False
                 destroy_war_scheme(scheme.entity)
@@ -1385,12 +1218,17 @@ class CoupSchemeUpdateSystem(System):
     __system_group__ = "SchemeUpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate).copy()
+        current_date = world.get_resource(SimDate).year
         rng = world.get_resource(random.Random)
 
         for _, (scheme, coup_scheme, _) in world.query_components(
             (Scheme, CoupScheme, Active)
         ):
+            if not scheme.initiator.is_active or not coup_scheme.target.is_active:
+                scheme.is_valid = False
+                destroy_coup_scheme(scheme.entity)
+                continue
+
             if scheme.is_valid is False:
                 destroy_coup_scheme(scheme.entity)
                 continue
@@ -1399,33 +1237,28 @@ class CoupSchemeUpdateSystem(System):
                 destroy_coup_scheme(scheme.entity)
                 continue
 
-            elapsed_months = (current_date - scheme.start_date).total_months
+            current_ruler = get_current_ruler(world)
 
-            if elapsed_months >= scheme.required_time:
+            if current_ruler is None:
+                scheme.is_valid = False
+                continue
+
+            elapsed_years = current_date - scheme.start_date
+
+            if elapsed_years >= scheme.required_time:
                 # Check that other people have joined the scheme for the alliance to be
                 # created. Otherwise, this scheme fails
                 if len(scheme.members) > 2:
 
                     # Kill the current ruler.
-                    current_ruler = get_current_ruler(world)
 
-                    if current_ruler is None:
-                        scheme.is_valid = False
-                        continue
-
-                    RuleOverthrownEvent(
-                        subject=current_ruler, usurper=scheme.initiator
-                    ).log_event()
-
-                    UsurpEvent(
-                        subject=scheme.initiator, former_ruler=current_ruler
-                    ).log_event()
+                    OverthrowRulerAction(scheme.initiator, current_ruler).execute()
 
                     ruler_family = current_ruler.get_component(Character).family
 
                     current_ruler.get_component(Character).killed_by = scheme.initiator
 
-                    DieAction(current_ruler, cause_of_death="assassination").execute()
+                    DieAction(current_ruler, cause="assassination").execute()
                     end_current_dynasty(world)
 
                     if ruler_family is not None:
@@ -1442,7 +1275,7 @@ class CoupSchemeUpdateSystem(System):
                         assert member_character_comp.family
 
                         member_character_comp.family.get_component(
-                            FamilyPrestige
+                            Prestige
                         ).base_value += 50
 
                         if member != scheme.initiator:
@@ -1456,14 +1289,15 @@ class CoupSchemeUpdateSystem(System):
                 destroy_coup_scheme(scheme.entity)
 
             else:
+
                 # Check if the coup is discovered by the royal family
-                intrigue_score = scheme.initiator.get_component(Intrigue).normalized
+                intrigue_score = get_intrigue_skill(scheme.initiator)
 
                 # Nothing happens
-                if (rng.random() * 0.75) < intrigue_score:
+                if (rng.random() * 0.75) < intrigue_score / 100.0:
                     continue
 
-                CoupSchemeDiscoveredEvent(scheme.initiator).log_event()
+                DiscoverCoupScheme(current_ruler, coup_scheme).execute()
 
                 # They are discovered and put to death
                 for member in scheme.members:
@@ -1473,13 +1307,12 @@ class CoupSchemeUpdateSystem(System):
                     assert member_character_comp.family
 
                     member_character_comp.family.get_component(
-                        FamilyPrestige
+                        Prestige
                     ).base_value -= 50
 
                     # Execute traitor
                     member_character_comp.killed_by = coup_scheme.target
-                    SentencedToDeathEvent(member, "treason").log_event()
-                    DieAction(member, "treason").execute()
+                    SentenceToDeath(current_ruler, member, "treason").execute()
 
                 scheme.is_valid = False
                 destroy_coup_scheme(scheme.entity)
@@ -1634,9 +1467,9 @@ class WarUpdateSystem(System):
 
                 # TODO: Fire and log events for winning and losing wars
                 _logger.info(
-                    "[%s]: the %s family defeated the %s family and has taken control "
+                    "[%04d]: The %s family defeated the %s family and has taken control "
                     "of the %s territory.",
-                    world.get_resource(SimDate).to_iso_str(),
+                    world.get_resource(SimDate).year,
                     war.aggressor.name_with_uid,
                     war.defender.name_with_uid,
                     war.contested_territory.name_with_uid,
@@ -1658,8 +1491,8 @@ class WarUpdateSystem(System):
                         CharacterMetrics
                     ).data.num_wars_lost += 1
 
-                war.aggressor.get_component(FamilyPrestige).base_value += 40
-                war.defender.get_component(FamilyPrestige).base_value -= 20
+                war.aggressor.get_component(Prestige).base_value += 40
+                war.defender.get_component(Prestige).base_value -= 20
 
                 end_war(war.entity, war.aggressor)
 
@@ -1669,9 +1502,9 @@ class WarUpdateSystem(System):
 
                 # TODO: Fire and log events for winning and losing wars
                 _logger.info(
-                    "[%s]: the %s family failed to defeat the %s family over control "
+                    "[%04d]: The %s family failed to defeat the %s family over control "
                     "of the %s territory.",
-                    world.get_resource(SimDate).to_iso_str(),
+                    world.get_resource(SimDate).year,
                     war.aggressor.name_with_uid,
                     war.defender.name_with_uid,
                     war.contested_territory.name_with_uid,
@@ -1689,14 +1522,14 @@ class WarUpdateSystem(System):
                         CharacterMetrics
                     ).data.num_wars_won += 1
 
-                war.aggressor.get_component(FamilyPrestige).base_value -= 50
-                war.defender.get_component(FamilyPrestige).base_value += 35
+                war.aggressor.get_component(Prestige).base_value -= 50
+                war.defender.get_component(Prestige).base_value += 35
 
                 end_war(war.entity, war.defender)
 
             # Kill off the casualties
             for character in casualties:
-                DieAction(character, cause_of_death="war").execute()
+                DieAction(character, cause="war").execute()
 
 
 class FamilyRefillSystem(System):
@@ -1705,7 +1538,7 @@ class FamilyRefillSystem(System):
     __system_group__ = "UpdateSystems"
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate)
+        current_date = world.get_resource(SimDate).year
         for _, (territory, _) in world.query_components((Territory, Active)):
             if len(territory.families) < 3:
                 family = spawn_family(world, FamilyGenOptions(spawn_members=True))
@@ -1713,10 +1546,10 @@ class FamilyRefillSystem(System):
                 set_family_home_base(family, territory.entity)
                 family_component.territories_present_in.add(territory.entity)
                 _logger.info(
-                    "[%s] The %s family has risen to prominence in the %s territory.",
-                    current_date.to_iso_str(),
-                    family_component.name,
-                    territory.name,
+                    "[%04d]: The %s family has risen to prominence in the %s territory.",
+                    current_date,
+                    family.name_with_uid,
+                    territory.entity.name_with_uid,
                 )
 
 
@@ -1748,7 +1581,7 @@ class HeirDeclarationSystem(System):
             return None
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate)
+        current_date = world.get_resource(SimDate).year
 
         for _, (character, _, _) in world.query_components(
             (Character, HeadOfFamily, Active)
@@ -1763,32 +1596,10 @@ class HeirDeclarationSystem(System):
                 set_heir(character.entity, oldest_child)
                 oldest_child_character_comp.heir_to = character.entity
                 _logger.info(
-                    "[%s]: %s declared %s their heir.",
-                    current_date.to_iso_str(),
+                    "[%04d]: %s declared %s their heir.",
+                    current_date,
                     character.entity.name_with_uid,
                     oldest_child.name_with_uid,
-                )
-
-
-class OrphanIdentificationSystem(System):
-    """Identifies orphans in a family."""
-
-    def on_update(self, world: World) -> None:
-        current_date = world.get_resource(SimDate)
-
-        for _, (character, _) in world.query_components((Character, Active)):
-            mother = character.mother
-            father = character.father
-
-            missing_mother = mother is None or not mother.has_component(Active)
-            missing_father = father is None or not father.has_component(Active)
-            is_not_adult = character.life_stage <= LifeStage.ADOLESCENT
-
-            if missing_father and missing_mother and is_not_adult:
-                _logger.info(
-                    "[%s]: %s is an orphan.",
-                    current_date.to_iso_str(),
-                    character.entity.name_with_uid,
                 )
 
 
@@ -1826,7 +1637,7 @@ class OrphanAdoptionSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.get_resource(random.Random)
-        current_date = world.get_resource(SimDate)
+        current_date = world.get_resource(SimDate).year
 
         for _, (character, _, _) in world.query_components(
             (Character, HeadOfFamily, Active)
@@ -1845,116 +1656,11 @@ class OrphanAdoptionSystem(System):
                 chosen_orphan = rng.choice(orphans)
                 character.children.add(chosen_orphan)
                 _logger.info(
-                    "[%s]: %s adopted %s.",
-                    current_date.to_iso_str(),
+                    "[%04d]: %s adopted %s.",
+                    current_date,
                     character.entity.name_with_uid,
                     chosen_orphan.name_with_uid,
                 )
-
-
-class CheatSchemeUpdateSystem(System):
-    """Updates active cheating schemes."""
-
-    __system_group__ = "SchemeUpdateSystems"
-
-    def on_update(self, world: World) -> None:
-        rng = world.get_resource(random.Random)
-
-        for _, (scheme, cheating_scheme) in world.query_components(
-            (Scheme, CheatingScheme)
-        ):
-            # Destroy invalid schemes
-            if scheme.is_valid is False:
-                destroy_scheme(scheme.entity)
-                continue
-
-            # Destroy the scheme if the accomplice is no longer active
-            if not cheating_scheme.accomplice.is_active:
-                destroy_scheme(scheme.entity)
-                continue
-
-            # Destroy the scheme if the initiator is no longer active
-            if not scheme.initiator.is_active:
-                destroy_scheme(scheme.entity)
-                continue
-
-            # Destroy the scheme if the initiator is no longer married
-            initiator_character = scheme.initiator.get_component(Character)
-            if initiator_character.spouse is None:
-                destroy_scheme(scheme.entity)
-                continue
-
-            # Evaluate the accomplices willingness to participate in
-            # this activity if they are married
-            accomplice_character = cheating_scheme.accomplice.get_component(Character)
-            if accomplice_character.spouse is not None:
-                accomplice_cheating_action = CheatOnSpouseAction(
-                    cheating_scheme.accomplice, scheme.initiator
-                )
-
-                action_utility = accomplice_cheating_action.calculate_utility()
-
-                if rng.random() < action_utility:
-                    # Have to create an instance of the cheating action for the
-                    # initiator
-                    CheatOnSpouseAction(
-                        scheme.initiator, cheating_scheme.accomplice
-                    ).execute()
-
-                    accomplice_cheating_action.execute()
-
-                else:
-                    # Invalidate the scheme because the accomplice is not willing to
-                    # cheat
-                    scheme.is_valid = False
-
-                    # Lower the attraction between the characters
-                    get_relationship(
-                        scheme.initiator, cheating_scheme.accomplice
-                    ).get_component(Attraction).base_value -= 10
-
-                    get_relationship(
-                        cheating_scheme.accomplice, scheme.initiator
-                    ).get_component(Attraction).base_value -= 10
-
-                    get_relationship(
-                        cheating_scheme.accomplice, scheme.initiator
-                    ).get_component(Opinion).base_value -= 15
-
-            # The accomplice is not married and so this is only sex
-            else:
-                accomplice_sex_action = SexAction(
-                    cheating_scheme.accomplice, scheme.initiator
-                )
-
-                action_utility = accomplice_sex_action.calculate_utility()
-
-                if rng.random() < action_utility:
-                    # Have to create an instance of the cheating action for the
-                    # initiator
-                    CheatOnSpouseAction(
-                        scheme.initiator, cheating_scheme.accomplice
-                    ).execute()
-
-                    accomplice_sex_action.execute()
-
-                else:
-                    # Invalidate the scheme because the accomplice is not willing to
-                    # have sex
-                    scheme.is_valid = False
-
-                    # Lower the attraction between the characters
-                    get_relationship(
-                        scheme.initiator, cheating_scheme.accomplice
-                    ).get_component(Attraction).base_value -= 10
-
-                    get_relationship(
-                        cheating_scheme.accomplice, scheme.initiator
-                    ).get_component(Attraction).base_value -= 10
-
-                    get_relationship(
-                        cheating_scheme.accomplice, scheme.initiator
-                    ).get_component(Opinion).base_value -= 15
 
 
 class MapGenerationSystem(System):

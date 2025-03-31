@@ -1,14 +1,13 @@
-"""Selection strategies for AI,
+"""Selection strategies for AI,"""
 
-"""
-
-import logging
 import random
-from typing import Iterable, Optional
+from typing import Optional
 
-from minerva.actions.base_types import ActionSelectionStrategy, AIAction
-
-_logger = logging.getLogger(__name__)
+from minerva.actions.base_types import (
+    ActionSelectionStrategy,
+    AIAction,
+    ProclivityScores,
+)
 
 
 class MaxUtilActionSelectStrategy(ActionSelectionStrategy):
@@ -22,19 +21,21 @@ class MaxUtilActionSelectStrategy(ActionSelectionStrategy):
         super().__init__()
         self.utility_threshold = utility_threshold
 
-    def choose_action(self, actions: Iterable[AIAction]) -> AIAction:
+    def choose_action(self, action_scores: ProclivityScores) -> AIAction:
 
         max_utility: float = -999_999
         best_action: Optional[AIAction] = None
 
-        for action in actions:
-            utility = action.calculate_utility()
+        num_actions = len(action_scores.actions)
+        for i in range(num_actions):
+            action_instance = action_scores.actions[i]
+            score = action_scores.scores[i]
 
-            if utility < self.utility_threshold:
+            if score < self.utility_threshold:
                 continue
 
-            if utility > max_utility:
-                best_action = action
+            if score > max_utility:
+                best_action = action_instance
 
         if best_action is None:
             raise ValueError(
@@ -60,36 +61,28 @@ class WeightedActionSelectStrategy(ActionSelectionStrategy):
         self.utility_threshold = utility_threshold
         self.rng = rng
 
-    def choose_action(self, actions: Iterable[AIAction]) -> AIAction:
-        action_list = [*actions]
-
-        if len(action_list) == 0:
+    def choose_action(self, action_scores: ProclivityScores) -> AIAction:
+        if len(action_scores.actions) == 0:
             raise ValueError("No actions provided.")
 
         # Filter those with weights less than or equal to zero
         filtered_actions: list[tuple[AIAction, float]] = []
 
-        for action in action_list:
-            utility = action.calculate_utility()
+        num_actions = len(action_scores.actions)
+        for i in range(num_actions):
+            action_instance = action_scores.actions[i]
+            score = action_scores.scores[i]
 
-            if utility < self.utility_threshold:
+            if score < self.utility_threshold:
                 continue
 
-            filtered_actions.append((action, utility))
+            filtered_actions.append((action_instance, score))
 
         if len(filtered_actions) == 0:
             raise ValueError("No actions found in list after filtering.")
 
         filtered_actions = sorted(filtered_actions, key=lambda p: p[1])
         top_action_pairs = filtered_actions[-3:]
-
-        top_action_names = [a.get_name() for a, _ in top_action_pairs]
-
-        if "StartWarScheme" in top_action_names:
-            _logger.info(
-                "D:: (%s)",
-                ", ".join([a.get_name() + "==>" + str(u) for a, u in top_action_pairs]),
-            )
 
         top_actions, top_action_weights = zip(*top_action_pairs)
 

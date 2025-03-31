@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sqlite3
 
-
 DB_CONFIG = """
 DROP TABLE IF EXISTS characters;
 DROP TABLE IF EXISTS character_traits;
@@ -14,9 +13,6 @@ DROP TABLE IF EXISTS families;
 DROP TABLE IF EXISTS family_heads;
 DROP TABLE IF EXISTS marriages;
 DROP TABLE IF EXISTS romantic_affairs;
-DROP TABLE IF EXISTS life_event_types;
-DROP TABLE IF EXISTS life_events;
-DROP TABLE IF EXISTS life_event_args;
 DROP TABLE IF EXISTS rulers;
 DROP TABLE IF EXISTS dynasties;
 DROP TABLE IF EXISTS betrothals;
@@ -27,6 +23,8 @@ DROP TABLE IF EXISTS war_participants;
 DROP TABLE IF EXISTS schemes;
 DROP TABLE IF EXISTS scheme_members;
 DROP TABLE IF EXISTS scheme_targets;
+DROP TABLE IF EXISTS events;
+DROP TABLE IF EXISTS event_args;
 
 CREATE TABLE characters (
     uid INT NOT NULL PRIMARY KEY,
@@ -40,8 +38,8 @@ CREATE TABLE characters (
     is_alive INT,
     family INT,
     birth_family INT,
-    birth_date TEXT,
-    death_date TEXT,
+    birth_date INT,
+    death_date INT,
     FOREIGN KEY (uid) REFERENCES entities(uid),
     FOREIGN KEY (family) REFERENCES families(uid),
     FOREIGN KEY (birth_family) REFERENCES families(uid)
@@ -75,9 +73,9 @@ CREATE TABLE families (
     parent_id INT,
     head INT,
     alliance_id INT,
-    founding_date TEXT,
+    founding_date INT,
     home_base_id INT,
-    defunct_date TEXT,
+    defunct_date INT,
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (alliance_id) REFERENCES alliances(uid),
     FOREIGN KEY (home_base_id) REFERENCES territories(uid),
@@ -88,8 +86,8 @@ CREATE TABLE family_heads (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     head INT NOT NULL,
     family INT NOT NULL,
-    start_date TEXT,
-    end_date TEXT,
+    start_date INT,
+    end_date INT,
     predecessor INT,
     FOREIGN KEY (head) REFERENCES characters(uid),
     FOREIGN KEY (family) REFERENCES families(uid),
@@ -100,8 +98,8 @@ CREATE TABLE marriages (
     uid INT NOT NULL PRIMARY KEY,
     character_id INT NOT NULL,
     spouse_id INT NOT NULL,
-    start_date TEXT NOT NULL,
-    end_date TEXT,
+    start_date INT NOT NULL,
+    end_date INT,
     times_cheated INT,
     last_cheat_partner_id INT,
     FOREIGN KEY (last_cheat_partner_id) REFERENCES characters(uid),
@@ -113,8 +111,8 @@ CREATE TABLE betrothals (
     uid INT NOT NULL PRIMARY KEY,
     character_id INT NOT NULL,
     betrothed_id INT NOT NULL,
-    start_date TEXT NOT NULL,
-    end_date TEXT,
+    start_date INT NOT NULL,
+    end_date INT,
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (betrothed_id) REFERENCES characters(uid)
 ) STRICT;
@@ -123,37 +121,33 @@ CREATE TABLE romantic_affairs (
     uid INT NOT NULL PRIMARY KEY,
     character_id INT NOT NULL,
     lover_id INT NOT NULL,
-    start_date TEXT NOT NULL,
-    end_date TEXT,
+    start_date INT NOT NULL,
+    end_date INT,
     FOREIGN KEY (character_id) REFERENCES characters(uid),
     FOREIGN KEY (lover_id) REFERENCES characters(uid)
 ) STRICT;
 
-CREATE TABLE life_event_types (
-    name TEXT NOT NULL PRIMARY KEY,
-    display_name TEXT NOT NULL,
-    description TEXT NOT NULL
+CREATE TABLE events (
+    uid INTEGER NOT NULL PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    initiator INT NOT NULL,
+    recipient INT,
+    target INT,
+    timestamp INT NOT NULL
 ) STRICT;
 
-CREATE TABLE life_events (
-    event_id INT NOT NULL PRIMARY KEY,
-    subject_id INT NOT NULL,
-    event_type TEXT,
-    timestamp TEXT
-) STRICT;
-
-CREATE TABLE life_event_args (
-    event_id INT NOT NULL,
+CREATE TABLE event_args (
+    uid INT NOT NULL,
     name TEXT NOT NULL,
     value TEXT NOT NULL,
-    PRIMARY KEY (event_id, name)
+    PRIMARY KEY (uid, name)
 ) STRICT;
 
 CREATE TABLE rulers (
     character_id INT NOT NULL,
     dynasty_id INT NOT NULL,
-    start_date TEXT NOT NULL,
-    end_date TEXT,
+    start_date INT NOT NULL,
+    end_date INT,
     predecessor_id INT,
     PRIMARY KEY (character_id, start_date),
     FOREIGN KEY (character_id) REFERENCES characters(uid),
@@ -165,8 +159,8 @@ CREATE TABLE dynasties (
     uid INT PRIMARY KEY,
     family_id INT,
     founder_id INT,
-    start_date TEXT,
-    end_date TEXT,
+    start_date INT,
+    end_date INT,
     previous_dynasty_id INT,
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (founder_id) REFERENCES characters(uid),
@@ -177,8 +171,8 @@ CREATE TABLE alliances (
     uid INT NOT NULL PRIMARY KEY,
     founder_id INT NOT NULL,
     founder_family_id INT NOT NULL,
-    start_date TEXT,
-    end_date TEXT,
+    start_date INT,
+    end_date INT,
     FOREIGN KEY (founder_id) REFERENCES characters(uid),
     FOREIGN KEY (founder_family_id) REFERENCES families(uid)
 ) STRICT;
@@ -186,8 +180,8 @@ CREATE TABLE alliances (
 CREATE TABLE alliance_members (
     family_id INT NOT NULL,
     alliance_id INT NOT NULL,
-    date_joined TEXT NOT NULL,
-    date_left TEXT,
+    date_joined INT NOT NULL,
+    date_left INT,
     PRIMARY KEY (family_id, alliance_id),
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (alliance_id) REFERENCES alliances(uid)
@@ -197,8 +191,8 @@ CREATE TABLE wars (
     uid INT NOT NULL PRIMARY KEY,
     aggressor_id INT NOT NULL,
     defender_id INT NOT NULL,
-    start_date TEXT,
-    end_date TEXT,
+    start_date INT,
+    end_date INT,
     winner_id INT,
     FOREIGN KEY (aggressor_id) REFERENCES families(uid),
     FOREIGN KEY (defender_id) REFERENCES families(uid),
@@ -210,7 +204,7 @@ CREATE TABLE war_participants (
     family_id INT NOT NULL,
     war_id INT NOT NULL,
     role TEXT NOT NULL,
-    date_joined TEXT,
+    date_joined INT,
     FOREIGN KEY (family_id) REFERENCES families(uid),
     FOREIGN KEY (war_id) REFERENCES wars(uid)
 ) STRICT;
@@ -218,7 +212,7 @@ CREATE TABLE war_participants (
 CREATE TABLE schemes (
     uid INT PRIMARY KEY,
     scheme_type TEXT,
-    start_date TEXT,
+    start_date INT,
     initiator_id INT,
     description TEXT,
     FOREIGN KEY (initiator_id) REFERENCES characters(uid)
@@ -245,13 +239,15 @@ CREATE TABLE scheme_targets (
 class SimDB:
     """A simulation database."""
 
-    db: sqlite3.Connection
+    __slots__ = ("conn",)
+
+    conn: sqlite3.Connection
     """Connection to the SQLite instance."""
 
     def __init__(self, db_path: str = ":memory:") -> None:
-        self.db = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(db_path)
 
         # Initialize the database.
-        cur = self.db.cursor()
+        cur = self.conn.cursor()
         cur.executescript(DB_CONFIG)
-        self.db.commit()
+        self.conn.commit()

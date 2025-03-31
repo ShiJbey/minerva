@@ -16,7 +16,7 @@ def create_scheme(
     """Create a new scheme."""
     scheme_obj = world.entity()
 
-    current_date = world.get_resource(SimDate)
+    current_date = world.get_resource(SimDate).year
 
     scheme_component = scheme_obj.add_component(
         Scheme(
@@ -24,13 +24,13 @@ def create_scheme(
             initiator=initiator,
             required_time=required_time,
             data=data,
-            date_started=current_date.copy(),
+            date_started=current_date,
         )
     )
 
     scheme_obj.add_component(data)
 
-    db = world.get_resource(SimDB).db
+    db = world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     cursor.execute(
@@ -42,7 +42,7 @@ def create_scheme(
         (
             scheme_obj.uid,
             scheme_type,
-            current_date.to_iso_str(),
+            current_date,
             initiator.uid,
             scheme_component.get_description(),
         ),
@@ -64,7 +64,7 @@ def destroy_scheme(scheme: Entity) -> None:
 
     scheme_component.initiator.get_component(SchemeManager)
 
-    db = scheme.world.get_resource(SimDB).db
+    db = scheme.world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     cursor.execute(
@@ -99,7 +99,7 @@ def add_member_to_scheme(scheme: Entity, new_member: Entity) -> None:
 
     scheme_component.members.add(new_member)
 
-    db = scheme.world.get_resource(SimDB).db
+    db = scheme.world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     cursor.execute(
@@ -120,7 +120,7 @@ def remove_member_from_scheme(scheme: Entity, member: Entity) -> None:
 
     scheme_component.members.remove(member)
 
-    db = scheme.world.get_resource(SimDB).db
+    db = scheme.world.get_resource(SimDB).conn
     cursor = db.cursor()
 
     cursor.execute(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from minerva.ecs import Entity
 from minerva.sim_db import SimDB
-from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
+from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase, Traits
 
 
 def add_trait(entity: Entity, trait_id: str) -> bool:
@@ -24,23 +24,23 @@ def add_trait(entity: Entity, trait_id: str) -> bool:
         if the trait conflict with existing traits.
     """
 
-    library = entity.world.get_resource(TraitLibrary)
+    library = entity.world.get_resource(CharacterTraitDatabase)
     trait = library.get_trait(trait_id)
 
-    traits = entity.get_component(TraitManager)
+    traits = entity.get_component(Traits)
 
-    if trait_id in traits.traits:
+    if trait.uid in traits.traits:
         return False
 
     if has_conflicting_trait(entity, trait):
         return False
 
-    traits.traits[trait.trait_id] = trait
+    traits.traits.add(trait.uid)
 
     for effect in trait.effects:
         effect.apply(entity)
 
-    db = entity.world.get_resource(SimDB).db
+    db = entity.world.get_resource(SimDB).conn
 
     db.execute(
         """INSERT INTO character_traits (character_id, trait_id) VALUES (?, ?);""",
@@ -68,18 +68,18 @@ def remove_trait(entity: Entity, trait_id: str) -> bool:
         True if the trait was removed successfully, False otherwise.
     """
 
-    library = entity.world.get_resource(TraitLibrary)
-    trait = library.get_trait(trait_id)
+    trait_db = entity.world.get_resource(CharacterTraitDatabase)
+    trait = trait_db.get_trait(trait_id)
 
-    traits = entity.get_component(TraitManager)
+    traits = entity.get_component(Traits)
 
-    if trait_id in traits.traits:
-        del traits.traits[trait.trait_id]
+    if trait.uid in traits.traits:
+        traits.traits.remove(trait.uid)
 
         for effect in trait.effects:
             effect.remove(entity)
 
-        db = entity.world.get_resource(SimDB).db
+        db = entity.world.get_resource(SimDB).conn
 
         db.execute(
             """DELETE FROM character_traits WHERE character_id=? AND trait_id=?;""",
@@ -93,7 +93,7 @@ def remove_trait(entity: Entity, trait_id: str) -> bool:
     return False
 
 
-def has_conflicting_trait(entity: Entity, trait: Trait) -> bool:
+def has_conflicting_trait(entity: Entity, trait: CharacterTrait) -> bool:
     """Check if a trait conflicts with current traits.
 
     Parameters
@@ -109,9 +109,12 @@ def has_conflicting_trait(entity: Entity, trait: Trait) -> bool:
         True if the trait conflicts with any of the current traits or if any current
         traits conflict with the given trait. False otherwise.
     """
-    traits = entity.get_component(TraitManager)
+    trait_db = entity.world.get_resource(CharacterTraitDatabase)
+    traits = entity.get_component(Traits)
 
-    for existing_trait in traits.traits.values():
+    for existing_trait_uid in traits.traits:
+        existing_trait = trait_db.get_trait_by_uid(existing_trait_uid)
+
         if existing_trait.trait_id in trait.conflicting_traits:
             return True
 
@@ -136,18 +139,22 @@ def has_trait(entity: Entity, trait_id: str) -> bool:
     bool
         True if the trait was removed successfully, False otherwise.
     """
+    trait_db = entity.world.get_resource(CharacterTraitDatabase)
+    trait = trait_db.get_trait_by_name(trait_id)
+    return trait.uid in entity.get_component(Traits).traits
 
-    return trait_id in entity.get_component(TraitManager).traits
 
-
-def get_personality_traits(entity: Entity) -> list[Trait]:
+def get_personality_traits(entity: Entity) -> list[CharacterTrait]:
     """Get all a character's personality traits."""
-    personality_traits: list[Trait] = []
+    personality_traits: list[CharacterTrait] = []
 
-    trait_manager = entity.get_component(TraitManager)
+    trait_manager = entity.get_component(Traits)
+    trait_db = entity.world.get_resource(CharacterTraitDatabase)
 
-    for trait in trait_manager.traits.values():
+    for trait_uid in trait_manager.traits:
+        trait = trait_db.get_trait_by_uid(trait_uid)
         if "personality" in trait.tags:
             personality_traits.append(trait)
 
+    personality_traits = sorted(personality_traits, key=lambda t: t.uid)
     return personality_traits

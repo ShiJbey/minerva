@@ -5,40 +5,34 @@ from __future__ import annotations
 import random
 from typing import Optional
 
-from minerva.actions.base_types import AIBrain, AIContext, SchemeManager
-from minerva.actions.selection_strategies import MaxUtilActionSelectStrategy
-from minerva.actions.sensors import (
-    TerritoriesControlledByOpps,
-    TerritoriesInRevoltSensor,
-    UnControlledTerritoriesSensor,
-    UnexpandedTerritoriesSensor,
+from minerva.actions.base_types import (
+    AIBrainDatabase,
+    CharacterController,
+    EventHistory,
+    ProclivityTracker,
+    SchemeManager,
 )
 from minerva.characters.components import (
-    Boldness,
+    FERTILITY_MAX,
+    FERTILITY_MIN,
+    SKILL_MAX,
+    SKILL_MIN,
     Character,
-    Compassion,
     Diplomacy,
     Family,
-    FamilyPrestige,
     Fertility,
-    Greed,
-    Honor,
-    Intelligence,
     Intrigue,
     Lifespan,
     LifeStage,
     Luck,
     Martial,
+    Prestige,
     Prowess,
-    Rationality,
-    RomancePropensity,
     Sex,
     SexualOrientation,
-    Sociability,
     Species,
     SpeciesLibrary,
     Stewardship,
-    Vengefulness,
 )
 from minerva.characters.helpers import (
     set_character_biological_father,
@@ -71,8 +65,8 @@ from minerva.pcg.base_types import (
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
 from minerva.simulation_events import SimulationEvents
-from minerva.stats.helpers import default_stat_calc_strategy
-from minerva.traits.base_types import Trait, TraitLibrary, TraitManager
+from minerva.stats.base_types import StatModifiers
+from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase, Traits
 from minerva.traits.helpers import (
     add_trait,
     get_personality_traits,
@@ -223,37 +217,28 @@ class DefaultCharacterFactory(CharacterFactory):
         )
         obj.name = character.full_name
 
-        obj.add_component(TraitManager())
+        obj.add_component(Traits())
+        obj.add_component(StatModifiers())
+        obj.add_component(ProclivityTracker())
         obj.add_component(CharacterMetrics())
         obj.add_component(RelationshipManager())
         obj.add_component(
-            AIBrain(
-                context=AIContext(
-                    world,
-                    character=obj,
-                    sensors=[
-                        TerritoriesInRevoltSensor(),
-                        UnexpandedTerritoriesSensor(),
-                        UnControlledTerritoriesSensor(),
-                        TerritoriesControlledByOpps(),
-                    ],
-                ),
-                action_selection_strategy=MaxUtilActionSelectStrategy(),
-                # action_selection_strategy=WeightedActionSelectStrategy(rng=rng),
+            CharacterController(
+                world.get_resource(AIBrainDatabase).get_brain_by_name("cpu")
             )
         )
         obj.add_component(SchemeManager())
+        obj.add_component(EventHistory())
 
         # Create all the stat components and add them to the stats class for str look-ups
         obj.add_component(
             Lifespan(
-                default_stat_calc_strategy,
                 rng.randint(chosen_species.lifespan[0], chosen_species.lifespan[1]),
+                min_value=0,
             )
         )
         obj.add_component(
             Fertility(
-                default_stat_calc_strategy,
                 base_value=(
                     rng.randint(
                         0,
@@ -262,100 +247,53 @@ class DefaultCharacterFactory(CharacterFactory):
                     if options.randomize_stats
                     else chosen_species.get_max_fertility(chosen_sex, chosen_life_stage)
                 ),
+                max_value=FERTILITY_MAX,
+                min_value=FERTILITY_MIN,
             )
         )
         obj.add_component(
             Diplomacy(
-                default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if options.randomize_stats else 0,
+                max_value=SKILL_MAX,
+                min_value=SKILL_MIN,
             )
         )
         obj.add_component(
             Martial(
-                default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if options.randomize_stats else 0,
+                max_value=SKILL_MAX,
+                min_value=SKILL_MIN,
             )
         )
         obj.add_component(
             Stewardship(
-                default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if options.randomize_stats else 0,
+                max_value=SKILL_MAX,
+                min_value=SKILL_MIN,
             )
         )
         obj.add_component(
             Intrigue(
-                default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Intelligence(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
+                max_value=SKILL_MAX,
+                min_value=SKILL_MIN,
             )
         )
         obj.add_component(
             Prowess(
-                default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Boldness(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Compassion(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Greed(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Honor(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Rationality(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Sociability(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-        obj.add_component(
-            Vengefulness(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
+                max_value=SKILL_MAX,
+                min_value=SKILL_MIN,
             )
         )
         obj.add_component(
             Luck(
-                default_stat_calc_strategy,
                 base_value=rng.randint(0, 80) if options.randomize_stats else 0,
+                max_value=SKILL_MAX,
+                min_value=SKILL_MIN,
             )
         )
-        obj.add_component(
-            RomancePropensity(
-                default_stat_calc_strategy,
-                base_value=rng.randint(0, 80) if options.randomize_stats else 0,
-            )
-        )
-
-        db = world.get_resource(SimDB).db
+        db = world.get_resource(SimDB).conn
 
         db.execute(
             """
@@ -381,7 +319,7 @@ class DefaultCharacterFactory(CharacterFactory):
         )
 
         # Sample personality traits
-        trait_library = world.get_resource(TraitLibrary)
+        trait_library = world.get_resource(CharacterTraitDatabase)
 
         personality_traits = trait_library.get_traits_with_tags(["personality"])
 
@@ -488,7 +426,7 @@ class DefaultBabyFactory(BabyFactory):
             options=option_overrides,
         )
 
-        set_character_birth_date(child, mother.world.get_resource(SimDate).copy())
+        set_character_birth_date(child, mother.world.get_resource(SimDate).year)
         set_character_birth_surname(child, mothers_family.name)
         set_character_birth_family(child, mothers_family)
         set_character_family(child, mothers_family)
@@ -497,7 +435,7 @@ class DefaultBabyFactory(BabyFactory):
         mother_personality = get_personality_traits(mother)
         father_personality = get_personality_traits(father)
 
-        all_parent_traits: list[Trait] = sorted(
+        all_parent_traits: list[CharacterTrait] = sorted(
             list(set(mother_personality).union(set(father_personality))),
             key=lambda t: t.trait_id,
         )
@@ -528,7 +466,7 @@ class DefaultBabyFactory(BabyFactory):
 
         n_additional_traits = config.max_personality_traits - len(child_personality)
 
-        trait_library = mother.world.get_resource(TraitLibrary)
+        trait_library = mother.world.get_resource(CharacterTraitDatabase)
 
         personality_traits = trait_library.get_traits_with_tags(["personality"])
 
@@ -570,8 +508,8 @@ class DefaultFamilyFactory(FamilyFactory):
         """Create a new family."""
         rng = world.get_resource(random.Random)
         config = world.get_resource(Config)
-        current_date = world.get_resource(SimDate)
-        db = world.get_resource(SimDB).db
+        current_date = world.get_resource(SimDate).year
+        db = world.get_resource(SimDB).conn
 
         family = world.entity()
         family_name = (
@@ -593,7 +531,7 @@ class DefaultFamilyFactory(FamilyFactory):
             )
         )
         family.add_component(WarTracker())
-        family.add_component(FamilyPrestige(default_stat_calc_strategy))
+        family.add_component(Prestige())
         family.name = f"{family_name}"
 
         db.execute(
@@ -602,7 +540,7 @@ class DefaultFamilyFactory(FamilyFactory):
             (uid, name, founding_date)
             VALUES (?, ?, ?);
             """,
-            (family.uid, family.name, current_date.to_iso_str()),
+            (family.uid, family.name, current_date),
         )
 
         db.commit()

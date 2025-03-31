@@ -22,7 +22,6 @@ import tqdm
 import ck3_traits
 import minerva
 from minerva.config import Config
-from minerva.datetime import MONTHS_PER_YEAR
 from minerva.inspection import SimulationInspector
 from minerva.pcg.text_gen import load_tracery_file
 from minerva.simulation import Simulation
@@ -77,7 +76,7 @@ def parse_args() -> argparse.Namespace:
 def run_simulation_with_profiling(simulation: Simulation, years: int) -> None:
     """Run the simulation with profiling enabled."""
 
-    total_time_steps: int = years * MONTHS_PER_YEAR
+    total_time_steps: int = years
 
     print(f"Simulating {years} years ({total_time_steps} timesteps) ...")
 
@@ -99,7 +98,7 @@ def run_simulation_with_profiling(simulation: Simulation, years: int) -> None:
 
 def run_simulation(simulation: Simulation, years: int) -> None:
     """Runs the simulation."""
-    total_time_steps: int = years * MONTHS_PER_YEAR
+    total_time_steps: int = years
 
     print(f"Simulating {years} years ({total_time_steps} timesteps) ...")
 
@@ -123,10 +122,6 @@ if __name__ == "__main__":
         Config(
             seed=args.seed,
             world_size=(25, 15),
-            logging_enabled=bool(args.enable_logging),
-            log_to_terminal=False,
-            log_level="DEBUG" if args.debug else "INFO",
-            show_debug=args.debug if args.debug else False,
         )
     )
 

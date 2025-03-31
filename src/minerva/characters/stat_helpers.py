@@ -2,45 +2,23 @@
 
 import enum
 
-from minerva.characters.components import (
-    Intelligence,
-    Luck,
-    Martial,
-    Prowess,
-    Stewardship,
-)
+from minerva.characters.components import Luck, Martial, Prowess, Stewardship
 from minerva.ecs import Entity
 
 EXCELLENT_STAT_THRESHOLD = 85
-GOOD_STAT_THRESHOLD = 20
-NEUTRAL_STAT_THRESHOLD = -20
+GOOD_STAT_THRESHOLD = 60
+NEUTRAL_STAT_THRESHOLD = 20
 BAD_STAT_THRESHOLD = 15
 
 
-class StatLevel(enum.Enum):
+class StatLevel(enum.IntEnum):
     """A general interval for a stat."""
 
-    TERRIBLE = enum.auto()
-    BAD = enum.auto()
-    NEUTRAL = enum.auto()
-    GOOD = enum.auto()
-    EXCELLENT = enum.auto()
-
-
-def get_intelligence_level(character: Entity) -> StatLevel:
-    """Get the stat level for a character's intelligence stat."""
-    stat_value = character.get_component(Intelligence).value
-
-    if stat_value >= EXCELLENT_STAT_THRESHOLD:
-        return StatLevel.EXCELLENT
-    elif stat_value >= GOOD_STAT_THRESHOLD:
-        return StatLevel.GOOD
-    elif stat_value >= NEUTRAL_STAT_THRESHOLD:
-        return StatLevel.NEUTRAL
-    elif stat_value >= BAD_STAT_THRESHOLD:
-        return StatLevel.BAD
-    else:
-        return StatLevel.TERRIBLE
+    TERRIBLE = 0
+    BAD = 15
+    NEUTRAL = 20
+    GOOD = 60
+    EXCELLENT = 85
 
 
 def get_stewardship_level(character: Entity) -> StatLevel:

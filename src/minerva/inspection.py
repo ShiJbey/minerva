@@ -12,51 +12,44 @@ import rich.markdown
 import rich.panel
 import rich.table
 
-from minerva import __version__
-from minerva.actions.base_types import Scheme, SchemeManager
+from minerva.actions.base_types import (
+    EventHistory,
+    get_event_description,
+    get_event_timestamp,
+)
 from minerva.characters.components import (
+    FERTILITY_MAX,
+    SKILL_MAX,
     Betrothal,
-    Boldness,
     Character,
-    Compassion,
-    Diplomacy,
     Dynasty,
     DynastyTracker,
-    RelationType,
-    Ruler,
     Family,
     FamilyRoleFlags,
-    Fertility,
-    Greed,
     HeadOfFamily,
-    Honor,
-    Intelligence,
-    Intrigue,
-    Lifespan,
-    Luck,
     Marriage,
-    Martial,
     Pregnancy,
-    Prowess,
-    Rationality,
-    RomancePropensity,
+    RelationType,
     RomanticAffair,
-    Sociability,
-    Stewardship,
-    Vengefulness,
+    Ruler,
 )
-from minerva.characters.helpers import get_relations
+from minerva.characters.helpers import (
+    get_diplomacy_skill,
+    get_fertility,
+    get_intrigue_skill,
+    get_lifespan,
+    get_luck_skill,
+    get_martial_skill,
+    get_prowess_skill,
+    get_relations,
+    get_stewardship_skill,
+)
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
 from minerva.ecs import Active
-from minerva.life_events.base_types import (
-    get_life_event_ids,
-    get_life_event_timestamp,
-    get_life_event_description,
-)
 from minerva.simulation import Simulation
-from minerva.traits.base_types import TraitManager
+from minerva.traits.base_types import CharacterTraitDatabase, Traits
 from minerva.world_map.components import PopulationHappiness, Territory
 
 
@@ -80,8 +73,6 @@ class SimulationInspector:
         total_territories = len(
             list(self.sim.world.query_components((Territory, Active)))
         )
-        total_wars = len(list(self.sim.world.query_components((War, Active))))
-        total_alliances = len(list(self.sim.world.query_components((Alliance, Active))))
         current_ruler = get_current_ruler(self.sim.world)
         current_ruler_name = current_ruler.name_with_uid if current_ruler else "None"
 
@@ -89,14 +80,11 @@ class SimulationInspector:
 
         panel = rich.panel.Panel(
             f"[orange1 bold]World seed:[/orange1 bold] {self.sim.config.seed}\n"
-            f"[orange1 bold]World Date:[/orange1 bold] {self.sim.date.to_iso_str()}\n"
-            f"[orange1 bold]Simulation Version:[/orange1 bold] {__version__}\n"
-            f"[orange1 bold]Num Active Families:[/orange1 bold] {total_families}\n"
-            f"[orange1 bold]Num Active Characters:[/orange1 bold] {total_characters}\n"
+            f"[orange1 bold]World Year:[/orange1 bold] {self.sim.date}\n"
+            f"[orange1 bold]Active Families:[/orange1 bold] {total_families}\n"
+            f"[orange1 bold]Active Characters:[/orange1 bold] {total_characters}\n"
             f"[orange1 bold]Current Ruler:[/orange1 bold] {current_ruler_name}\n"
-            f"[orange1 bold]Num Active Territories:[/orange1 bold] {total_territories}\n"
-            f"[orange1 bold]Num Active Wars:[/orange1 bold] {total_wars}\n"
-            f"[orange1 bold]Num Active Alliances:[/orange1 bold] {total_alliances}",
+            f"[orange1 bold]Territories:[/orange1 bold] {total_territories}",
             title="Simulation Info",
             title_align="left",
             expand=False,
@@ -161,8 +149,8 @@ class SimulationInspector:
                 f"[orange1 bold]Aggressor Allies[/orange1 bold]: {aggressor_allies}\n"
                 f"[orange1 bold]Defender Allies[/orange1 bold]: {defender_allies}\n"
                 f"[orange1 bold]Contested Territory[/orange1 bold]: {contested_territory}\n"
-                f"[orange1 bold]Start Date[/orange1 bold]: {start_date}\n"
-                f"[orange1 bold]End Date[/orange1 bold]: {end_date}",
+                f"[orange1 bold]Start Year[/orange1 bold]: {start_date}\n"
+                f"[orange1 bold]End Year[/orange1 bold]: {end_date}",
                 title=f"War ({war_id})",
                 title_align="left",
                 expand=False,
@@ -187,8 +175,8 @@ class SimulationInspector:
                 f"[orange1 bold]Founder[/orange1 bold]: {founder}\n"
                 f"[orange1 bold]Founder Family[/orange1 bold]: {founder_family}\n"
                 f"[orange1 bold]Members[/orange1 bold]: {members}\n"
-                f"[orange1 bold]Start Date[/orange1 bold]: {start_date}\n"
-                f"[orange1 bold]End Date[/orange1 bold]: {end_date}",
+                f"[orange1 bold]Start Year[/orange1 bold]: {start_date}\n"
+                f"[orange1 bold]End Year[/orange1 bold]: {end_date}",
                 title=f"Alliance ({alliance_id})",
                 title_align="left",
                 expand=False,
@@ -309,8 +297,12 @@ class SimulationInspector:
 
         titles = ", ".join(title_list) if title_list else "N/A"
 
-        trait_manager = character.get_component(TraitManager)
-        traits = ", ".join(entry.name for entry in trait_manager.traits.values())
+        trait_manager = character.get_component(Traits)
+        trait_db = character.world.get_resource(CharacterTraitDatabase)
+        traits = ", ".join(
+            trait_db.get_trait_by_uid(entry).name
+            for entry in sorted(trait_manager.traits)
+        )
 
         demographic_info = (
             "[orange1 bold]First Name[/orange1 bold]:"
@@ -326,9 +318,9 @@ class SimulationInspector:
             f"{character_component.sexual_orientation.name.lower()}\n"
             f"[orange1 bold]Is Alive[/orange1 bold]: {character_component.is_alive}\n"
             f"[orange1 bold]Titles[/orange1 bold]: {titles}\n"
-            "[orange1 bold]Birth Date[/orange1 bold]: "
+            "[orange1 bold]Birth Year[/orange1 bold]: "
             f"{character_component.birth_date}\n"
-            "[orange1 bold]Death Date[/orange1 bold]: "
+            "[orange1 bold]Death Year[/orange1 bold]: "
             f"{character_component.death_date}\n"
             f"[orange1 bold]Traits[/orange1 bold]: {traits}\n"
             f"[orange1 bold]Family[/orange1 bold]: {family}\n"
@@ -359,8 +351,8 @@ class SimulationInspector:
 
             pregnancy_panel = rich.panel.Panel(
                 f"[bold]This character is pregnant[/bold]\n"
-                f"[orange1 bold]Conception Date[/orange1 bold]: {conception}\n"
-                f"[orange1 bold]Due Date[/orange1 bold]: {due}\n"
+                f"[orange1 bold]Conception Year[/orange1 bold]: {conception}\n"
+                f"[orange1 bold]Due Year[/orange1 bold]: {due}\n"
                 f"[orange1 bold]Assumed Father[/orange1 bold]: {assumed_father}\n"
                 f"[orange1 bold]Actual Father[/orange1 bold]: {actual_father}",
                 title="Pregnancy",
@@ -387,19 +379,19 @@ class SimulationInspector:
         metrics = character.get_component(CharacterMetrics).data
         metrics_str = (
             f"[orange1 bold]Times Married[/orange1 bold]: {metrics.times_married}\n"
-            f"[orange1 bold]# Wars[/orange1 bold]: {metrics.num_wars}\n"
-            f"[orange1 bold]# Wars Started[/orange1 bold]: {metrics.num_wars_started}\n"
-            f"[orange1 bold]# Wars Won[/orange1 bold]: {metrics.num_wars_won}\n"
-            f"[orange1 bold]# Wars Lost[/orange1 bold]: {metrics.num_wars_lost}\n"
-            f"[orange1 bold]# Revolts Quelled[/orange1 bold]: {metrics.num_revolts_quelled}\n"
-            f"[orange1 bold]# Coups Planned[/orange1 bold]: {metrics.num_coups_planned}\n"
-            f"[orange1 bold]# Territories Taken[/orange1 bold]: {metrics.num_territories_taken}\n"
+            f"[orange1 bold]Total Wars[/orange1 bold]: {metrics.num_wars}\n"
+            f"[orange1 bold]Wars Started[/orange1 bold]: {metrics.num_wars_started}\n"
+            f"[orange1 bold]Wars Won[/orange1 bold]: {metrics.num_wars_won}\n"
+            f"[orange1 bold]Wars Lost[/orange1 bold]: {metrics.num_wars_lost}\n"
+            f"[orange1 bold]Revolts Quelled[/orange1 bold]: {metrics.num_revolts_quelled}\n"
+            f"[orange1 bold]Coups Planned[/orange1 bold]: {metrics.num_coups_planned}\n"
+            f"[orange1 bold]Territories Taken[/orange1 bold]: {metrics.num_territories_taken}\n"
             f"[orange1 bold]Times as Ruler[/orange1 bold]: {metrics.times_as_ruler}\n"
-            f"[orange1 bold]# Alliances Founded[/orange1 bold]: {metrics.num_alliances_founded}\n"
-            f"[orange1 bold]# Failed Alliance Schemes[/orange1 bold]: {metrics.num_failed_alliance_attempts}\n"
-            f"[orange1 bold]# Alliances Disbanded[/orange1 bold]: {metrics.num_alliances_disbanded}\n"
+            f"[orange1 bold]Alliances Founded[/orange1 bold]: {metrics.num_alliances_founded}\n"
+            f"[orange1 bold]Failed Alliance Schemes[/orange1 bold]: {metrics.num_failed_alliance_attempts}\n"
+            f"[orange1 bold]Alliances Disbanded[/orange1 bold]: {metrics.num_alliances_disbanded}\n"
             f"[orange1 bold]Inherited Throne?[/orange1 bold]: {metrics.directly_inherited_throne}\n"
-            f"[orange1 bold]Last Declared War[/orange1 bold]: {metrics.date_of_last_declared_war}"
+            f"[orange1 bold]Year of Last Declared War[/orange1 bold]: {metrics.date_of_last_declared_war}"
         )
 
         metrics_panel = rich.panel.Panel(
@@ -432,99 +424,37 @@ class SimulationInspector:
         )
         renderable_objs.append(relations_panel)
 
-        stat_columns: list[str] = []
-        stat_columns.append(
-            "[orange1 bold]Influence Points[/orange1 bold]: "
-            f"{int(character_component.influence_points)}"
-        )
-        lifespan = character.get_component(Lifespan).value
-        stat_columns.append("[orange1 bold]Lifespan[/orange1 bold]: " f"{lifespan:.2f}")
-        fertility = character.get_component(Fertility).value
-        stat_columns.append(
-            "[orange1 bold]Fertility[/orange1 bold]: " f"{fertility:.2f}"
-        )
-        stewardship = character.get_component(Stewardship).value
-        stat_columns.append(
-            "[orange1 bold]Stewardship[/orange1 bold]: " f"{stewardship:.2f}"
-        )
-        martial = character.get_component(Martial).value
-        stat_columns.append("[orange1 bold]Martial[/orange1 bold]: " f"{martial:.2f}")
-        intrigue = character.get_component(Intrigue).value
-        stat_columns.append("[orange1 bold]Intrigue[/orange1 bold]: " f"{intrigue:.2f}")
-        intelligence = character.get_component(Intelligence).value
-        stat_columns.append(
-            "[orange1 bold]intelligence[/orange1 bold]: " f"{intelligence:.2f}"
-        )
-        prowess = character.get_component(Prowess).value
-        stat_columns.append("[orange1 bold]Prowess[/orange1 bold]: " f"{prowess:.2f}")
-        sociability = character.get_component(Sociability).value
-        stat_columns.append(
-            "[orange1 bold]Sociability[/orange1 bold]: " f"{sociability:.2f}"
-        )
-        honor = character.get_component(Honor).value
-        stat_columns.append("[orange1 bold]Honor[/orange1 bold]: " f"{honor:.2f}")
-        boldness = character.get_component(Boldness).value
-        stat_columns.append("[orange1 bold]Boldness[/orange1 bold]: " f"{boldness:.2f}")
-        compassion = character.get_component(Compassion).value
-        stat_columns.append(
-            "[orange1 bold]Compassion[/orange1 bold]: " f"{compassion:.2f}"
-        )
-        diplomacy = character.get_component(Diplomacy).value
-        stat_columns.append(
-            "[orange1 bold]Diplomacy[/orange1 bold]: " f"{diplomacy:.2f}"
-        )
-        greed = character.get_component(Greed).value
-        stat_columns.append("[orange1 bold]Greed[/orange1 bold]: " f"{greed:.2f}")
-        rationality = character.get_component(Rationality).value
-        stat_columns.append(
-            "[orange1 bold]Rationality[/orange1 bold]: " f"{rationality:.2f}"
-        )
-        vengefulness = character.get_component(Vengefulness).value
-        stat_columns.append(
-            "[orange1 bold]Vengefulness[/orange1 bold]: " f"{vengefulness:.2f}"
-        )
-        romance_propensity = character.get_component(RomancePropensity).value
-        stat_columns.append(
-            "[orange1 bold]Romance Propensity[/orange1 bold]: "
-            f"{romance_propensity:.2f}"
-        )
-        luck = character.get_component(Luck).value
-        stat_columns.append("[orange1 bold]Luck[/orange1 bold]: " f"{luck:.2f}")
+        inf_points = character_component.influence_points
+        lifespan = get_lifespan(character)
+        fertility = get_fertility(character)
+        stewardship = get_stewardship_skill(character)
+        martial = get_martial_skill(character)
+        intrigue = get_intrigue_skill(character)
+        prowess = get_prowess_skill(character)
+        diplomacy = get_diplomacy_skill(character)
+        luck = get_luck_skill(character)
 
         stats_panel = rich.panel.Panel(
-            rich.columns.Columns(stat_columns, expand=False, equal=True),
+            f"[orange1 bold]Influence Points[/orange1 bold]: {inf_points}\n"
+            f"[orange1 bold]Max Lifespan[/orange1 bold]: {lifespan} years\n"
+            f"[orange1 bold]Fertility[/orange1 bold]: {fertility}/{FERTILITY_MAX}\n"
+            f"[orange1 bold]Stewardship[/orange1 bold]: {stewardship}/{SKILL_MAX}\n"
+            f"[orange1 bold]Martial[/orange1 bold]: {martial}/{SKILL_MAX}\n"
+            f"[orange1 bold]Intrigue[/orange1 bold]: {intrigue}/{SKILL_MAX}\n"
+            f"[orange1 bold]Prowess[/orange1 bold]: {prowess}/{SKILL_MAX}\n"
+            f"[orange1 bold]Diplomacy[/orange1 bold]: {diplomacy}/{SKILL_MAX}\n"
+            f"[orange1 bold]Luck[/orange1 bold]: {luck}/{SKILL_MAX}",
             title="Stats",
             title_align="left",
             expand=False,
         )
         renderable_objs.append(stats_panel)
 
-        scheme_table = rich.table.Table(
-            "UID", "SchemeType", "Initiator", "members", highlight=True
-        )
-        scheme_manager = character.get_component(SchemeManager)
-        for scheme in scheme_manager.schemes:
-            scheme_component = scheme.get_component(Scheme)
-            scheme_table.add_row(
-                str(scheme.uid),
-                str(scheme_component.get_type()),
-                str(scheme_component.initiator.name_with_uid),
-                ", ".join(m.name_with_uid for m in scheme_component.members),
-            )
-
-        scheme_panel = rich.panel.Panel(
-            scheme_table,
-            title="Schemes",
-            title_align="left",
-            expand=False,
-        )
-        renderable_objs.append(scheme_panel)
-
         life_event_table = rich.table.Table("Timestamp", "Description", highlight=True)
-        for event_id in get_life_event_ids(character):
+        for event_id in character.get_component(EventHistory).get_events():
             life_event_table.add_row(
-                str(get_life_event_timestamp(self.sim.world, event_id)),
-                get_life_event_description(self.sim.world, event_id),
+                str(get_event_timestamp(self.sim.world, event_id)),
+                get_event_description(self.sim.world, event_id),
             )
 
         life_event_panel = rich.panel.Panel(
@@ -767,8 +697,8 @@ class SimulationInspector:
             f"[orange1 bold]Current Ruler[/orange1 bold]: {current_ruler}\n"
             f"[orange1 bold]Founder[/orange1 bold]: {dynasty_component.founder.name_with_uid}\n"
             f"[orange1 bold]Family[/orange1 bold]: {dynasty_component.family.name_with_uid}\n"
-            f"[orange1 bold]Founding Date[/orange1 bold]: {dynasty_component.founding_date}\n"
-            f"[orange1 bold]Ending Date[/orange1 bold]: {dynasty_component.ending_date}\n"
+            f"[orange1 bold]Founding Year[/orange1 bold]: {dynasty_component.founding_date}\n"
+            f"[orange1 bold]Ending Year[/orange1 bold]: {dynasty_component.ending_date}\n"
             f"[orange1 bold]Previous Rulers[/orange1 bold]: {previous_rulers}\n"
             f"[orange1 bold]Previous Dynasty[/orange1 bold]: {previous_dynasty}",
         )
@@ -794,8 +724,8 @@ class SimulationInspector:
         table.add_column("Current Dynasty", justify="right")
         table.add_column("UID")
         table.add_column("Family")
-        table.add_column("Start Date")
-        table.add_column("End Date")
+        table.add_column("Start Year")
+        table.add_column("End Year")
 
         results = sorted(
             self.sim.world.query_components((Dynasty,)), key=lambda e: e[0]
@@ -909,7 +839,7 @@ class SimulationInspector:
 
         table = rich.table.Table(show_header=True, title="Alliances", highlight=True)
         table.add_column("UID")
-        table.add_column("Start Date")
+        table.add_column("Start Year")
         table.add_column("Founder")
         table.add_column("Members")
 
@@ -937,7 +867,7 @@ class SimulationInspector:
 
         table = rich.table.Table(show_header=True, title="Wars", highlight=True)
         table.add_column("UID")
-        table.add_column("Start Date")
+        table.add_column("Start Year")
         table.add_column("Aggressor")
         table.add_column("Defender")
         table.add_column("Territory")

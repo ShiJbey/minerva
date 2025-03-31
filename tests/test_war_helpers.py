@@ -1,7 +1,5 @@
 # pylint: disable=W0621
-"""Test helper functions for wars.
-
-"""
+"""Test helper functions for wars."""
 
 import pytest
 
@@ -59,7 +57,7 @@ def test_start_alliance(test_sim: Simulation):
 def test_end_alliance(test_sim: Simulation):
     """Test terminating an existing alliance."""
 
-    db = test_sim.world.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).conn
 
     character_0 = spawn_character(test_sim.world)
     character_1 = spawn_character(test_sim.world)
@@ -76,7 +74,7 @@ def test_end_alliance(test_sim: Simulation):
     alliance = start_alliance(family_0, family_1)
     alliance_component = alliance.get_component(Alliance)
 
-    test_sim.world.add_resource(SimDate(10, 1))
+    test_sim.world.add_resource(SimDate(10))
 
     end_alliance(alliance)
 
@@ -97,7 +95,7 @@ def test_end_alliance(test_sim: Simulation):
 def test_start_war(test_sim: Simulation):
     """Test starting a war."""
 
-    db = test_sim.world.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).conn
 
     family_0 = spawn_family(test_sim.world)
     family_1 = spawn_family(test_sim.world)
@@ -119,7 +117,7 @@ def test_start_war(test_sim: Simulation):
 def test_end_war(test_sim: Simulation):
     """Test ending a war."""
 
-    db = test_sim.world.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).conn
 
     family_0 = spawn_family(test_sim.world)
     family_1 = spawn_family(test_sim.world)
@@ -133,7 +131,7 @@ def test_end_war(test_sim: Simulation):
     join_war_as(war, family_2, WarRole.AGGRESSOR_ALLY)
     join_war_as(war, family_3, WarRole.DEFENDER_ALLY)
 
-    test_sim.world.get_resource(SimDate).increment(years=3)
+    test_sim.world.get_resource(SimDate).year += 3
 
     end_war(war, family_1)
 
@@ -152,7 +150,7 @@ def test_end_war(test_sim: Simulation):
 def test_join_war_as(test_sim: Simulation):
     """Test character's joining a war on a specific side."""
 
-    db = test_sim.world.get_resource(SimDB).db
+    db = test_sim.world.get_resource(SimDB).conn
 
     family_0 = spawn_family(test_sim.world)
     family_1 = spawn_family(test_sim.world)

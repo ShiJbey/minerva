@@ -8,216 +8,256 @@ how likely the action is to succeed if it is attempted.
 
 from __future__ import annotations
 
-import enum
+import logging
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Any, DefaultDict, Iterable, Iterator, Literal, Optional, TypeVar
+from typing import Any, Callable, ClassVar, DefaultDict, Iterable, Iterator, Optional
 
 from ordered_set import OrderedSet
 
 from minerva.datetime import SimDate
 from minerva.ecs import Component, Entity, World
+from minerva.pcg.text_gen import render_string
+from minerva.sim_db import SimDB
+
+_logger = logging.getLogger(__name__)
+
+P_ALWAYS = 999
+P_USUALLY = 7
+P_FREQUENTLY = 3
+P_LIKELY = 1
+P_UNLIKELY = -1
+P_INFREQUENTLY = -3
+P_RARELY = -7
+P_NEVER = -999
 
 
 class ActionSelectionStrategy(ABC):
     """A utility object that helps AIBrains choose an action to execute."""
 
     @abstractmethod
-    def choose_action(self, actions: Iterable[AIAction]) -> AIAction:
+    def choose_action(self, action_scores: ProclivityScores) -> AIAction:
         """Select an action from the given collection of actions."""
         raise NotImplementedError()
 
 
-class AIBrain(Component):
+class Proclivity:
+    """A consideration function for characters taking actions."""
+
+    __slots__ = ("score", "conditions")
+
+    score: int
+    """The score to return if the proclivity applies."""
+    conditions: list[Callable[[AIAction], bool]]
+    """Conditions that must pass for the score to be returned."""
+
+    def __init__(self, score: int) -> None:
+        self.score = score
+        self.conditions = []
+
+    def where(self, condition: Callable[[AIAction], bool]) -> Proclivity:
+        """Add a condition to a proclivity."""
+        self.conditions.append(condition)
+        return self
+
+    def check_preconditions(self, ctx: AIAction) -> bool:
+        """Check if the preconditions pass."""
+        return all(cond(ctx) for cond in self.conditions)
+
+
+class ProclivityTracker(Component):
+    """Tracks all the action proclivities for an entity."""
+
+    __slots__ = ("proclivities", "target_proclivities")
+
+    proclivities: list[Proclivity]
+    """Proclivities evaluated when a character is initiates an action."""
+    target_proclivities: list[Proclivity]
+    """Proclivities evaluated when a character is the recipient of an action."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.proclivities = []
+        self.target_proclivities = []
+
+
+class GlobalProclivities:
+    """A collection of proclivities evaluated against every action."""
+
+    __slots__ = ("proclivities",)
+
+    proclivities: list[Proclivity]
+    """Proclivities to evaluate."""
+
+    def __init__(self) -> None:
+        self.proclivities = []
+
+
+class ActionTagDatabase:
+    """Manages all valid tags for actions."""
+
+    __slots__ = ("_uid_to_tag_map", "_tag_to_uid_map", "_next_tag_uid")
+
+    _next_tag_uid: int
+    """The UID associated with the next tag added to the database."""
+    _uid_to_tag_map: dict[int, str]
+    """Maps UIDs to text tags."""
+    _tag_to_uid_map: dict[str, int]
+    """Maps tags to UIDs."""
+
+    def __init__(self) -> None:
+        self._next_tag_uid = 1
+        self._uid_to_tag_map = {}
+        self._tag_to_uid_map = {}
+
+    def get_tags(self) -> list[str]:
+        """List all the tags in the database."""
+        return list(self._uid_to_tag_map.values())
+
+    def get_tag_by_uid(self, uid: int):
+        """Get a tag using its UID."""
+        return self._uid_to_tag_map[uid]
+
+    def tag_exists(self, tag: str) -> bool:
+        """Check if the given tag is in the database."""
+        return tag in self._tag_to_uid_map
+
+    def get_tag_uid(self, tag: str) -> int:
+        """Get the UID for a given tag."""
+        return self._tag_to_uid_map[tag]
+
+    def add_tag(self, tag: str) -> None:
+        """Add a new tag to the database."""
+        self._uid_to_tag_map[self._next_tag_uid] = tag
+        self._tag_to_uid_map[tag] = self._next_tag_uid
+        self._next_tag_uid += 1
+
+
+def get_proclivity_score(action: AIAction) -> float:
+    """Calculate the proclivity of a single action on a scale [0.0, 1.0]"""
+
+    proclivity_tracker = action.initiator.get_component(ProclivityTracker)
+
+    pos_score: float = 0
+    abs_total_score: float = 0
+
+    for proclivity in proclivity_tracker.proclivities:
+        if proclivity.check_preconditions(action):
+            if proclivity.score <= P_NEVER:
+                return 0.0
+
+            if proclivity.score > 0:
+                pos_score += proclivity.score
+
+            abs_total_score += abs(proclivity.score)
+
+    if abs_total_score == 0:
+        return 0.5
+
+    return pos_score / abs_total_score
+
+
+def score_actions(potential_actions: Iterable[AIAction]) -> ProclivityScores:
+    """Calculate the proclivity of each action."""
+
+    scores: list[float] = []
+    actions: list[AIAction] = []
+
+    for action_instance in potential_actions:
+        score = get_proclivity_score(action_instance)
+
+        scores.append(score)
+        actions.append(action_instance)
+
+    return ProclivityScores(actions=actions, weights=scores)
+
+
+class AIBrain:
     """A brain used to make choices for a character."""
 
     __slots__ = (
-        "context",
+        "uid",
+        "name",
         "action_selection_strategy",
-        "action_cooldowns",
+        "sensors",
     )
 
-    context: AIContext
+    uid: int
+    """A unique ID assigned to this brain."""
+    name: str
+    """A unique name assigned to this brain."""
+    sensors: list[AISensor]
+    """Sensors used to fill the blackboard with information about the world/action."""
     action_selection_strategy: ActionSelectionStrategy
-    action_cooldowns: DefaultDict[str, int]
+    """Function called to choose from a collection of sorted actions
+    """
 
     def __init__(
         self,
-        context: AIContext,
+        name: str,
+        sensors: list[AISensor],
         action_selection_strategy: ActionSelectionStrategy,
     ) -> None:
-        super().__init__()
-        self.context = context
+        self.uid = -1
+        self.name = name
+        self.sensors = sensors
         self.action_selection_strategy = action_selection_strategy
-        self.action_cooldowns = defaultdict(lambda: 0)
+
+
+class AIBrainDatabase:
+    """A database for all the brains that control characters."""
+
+    __slots__ = ("_uid_to_brain_map", "_name_to_uid_map", "_next_brain_uid")
+
+    _next_brain_uid: int
+    """The UID assigned to the next brain in the database."""
+    _uid_to_brain_map: dict[int, AIBrain]
+    """Trait UIDs mapped to brain instances."""
+    _name_to_uid_map: dict[str, int]
+    """Trait names mapped to UIDs."""
+
+    def __init__(self) -> None:
+        self._next_brain_uid = 1
+        self._uid_to_brain_map = {}
+        self._name_to_uid_map = {}
+
+    def get_brains(self) -> list[AIBrain]:
+        """Get all brains in the database."""
+        return list(self._uid_to_brain_map.values())
+
+    def get_brain_by_name(self, name: str) -> AIBrain:
+        """Get a brain using it's name."""
+        uid = self._name_to_uid_map[name]
+        return self._uid_to_brain_map[uid]
+
+    def get_brain_by_uid(self, uid: int) -> AIBrain:
+        """Get a brain using its UID."""
+        return self._uid_to_brain_map[uid]
+
+    def add_brain(self, brain: AIBrain) -> None:
+        """Add a brain to the database."""
+        brain.uid = self._next_brain_uid
+        self._next_brain_uid += 1
+        self._uid_to_brain_map[brain.uid] = brain
+        self._name_to_uid_map[brain.name] = brain.uid
 
 
 class AISensor(ABC):
     """An object that retrieves some world state to help fill AI blackboard."""
 
     @abstractmethod
-    def evaluate(self, context: AIContext) -> None:
+    def evaluate(self, entity: Entity, blackboard: dict[str, Any]) -> None:
         """Run the sensor and write to the context's blackboard."""
         raise NotImplementedError()
 
 
-_RT = TypeVar("_RT")
-
-
-class AIContext:
-    """A context of information used for AI decision making.
-
-    AIContexts can be hierarchical and use information from a parent context
-    to prevent from duplicating data.
-    """
-
-    __slots__ = ("_blackboard", "world", "character", "sensors", "_parent")
-
-    _blackboard: dict[str, Any]
-    """A key-value store of variables used for decision-making."""
-    world: World
-    """The simulation's World instance."""
-    character: Entity
-    """The character this context is in reference to."""
-    sensors: list[AISensor]
-    """Sensors used to fill the blackboard with information about the world/action."""
-    _parent: Optional[AIContext]
-    """The context this context is derived from."""
-
-    def __init__(
-        self,
-        world: World,
-        character: Entity,
-        sensors: list[AISensor],
-        *,
-        parent: Optional[AIContext] = None,
-    ) -> None:
-        self._blackboard = {}
-        self.world = world
-        self.character = character
-        self.sensors = [*sensors]
-        self._parent = parent
-
-    def update_sensors(self) -> None:
-        """Run all the sensors."""
-        for sensor in self.sensors:
-            sensor.evaluate(self)
-
-    def create_child(self) -> AIContext:
-        """Create a child of the context."""
-        return AIContext(self.world, self.character, self.sensors, parent=self)
-
-    def set_value(self, key: str, value: Any) -> None:
-        """Set a value."""
-        self._blackboard[key] = value
-
-    def get_value(self, key: str, default_value: _RT = None) -> _RT:
-        """Get a value."""
-        try:
-            return self._blackboard[key]
-        except KeyError:
-            if self._parent:
-                return self._parent.get_value(key, default_value)
-            else:
-                return default_value
-
-    def clear_blackboard(self) -> None:
-        """Clear all key-value entries."""
-        self._blackboard.clear()
-
-    def __getitem__(self, key: str) -> Any:
-        return self.get_value(key)
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        self.set_value(key, value)
-
-
 class AIPrecondition(ABC):
-    """A precondition required for an action to be executed."""
+    """A precondition required for a behavior to be available."""
 
     @abstractmethod
-    def evaluate(self, context: AIContext) -> bool:
+    def evaluate(self, entity: Entity) -> bool:
         """Evaluate the precondition."""
         raise NotImplementedError()
-
-
-class AIUtilityConsideration(ABC):
-    """A consideration of the utility of taking an action."""
-
-    def invert(self) -> AIUtilityConsideration:
-        """Invert the consideration."""
-        return _InvertedConsideration(self)
-
-    def pow(self, exponent: int) -> AIUtilityConsideration:
-        """Raise the utility value to a given exponent."""
-        return _ExponentialConsideration(self, exponent)
-
-    @abstractmethod
-    def evaluate(self, context: AIContext) -> float:
-        """Evaluate the consideration."""
-        raise NotImplementedError()
-
-
-class _InvertedConsideration(AIUtilityConsideration):
-    """Inverts a consideration score."""
-
-    __slots__ = ("consideration",)
-
-    consideration: AIUtilityConsideration
-
-    def __init__(self, consideration: AIUtilityConsideration) -> None:
-        super().__init__()
-        self.consideration = consideration
-
-    def evaluate(self, context: AIContext) -> float:
-        return 1 - self.consideration.evaluate(context)
-
-
-class _ExponentialConsideration(AIUtilityConsideration):
-    """Inverts a consideration score."""
-
-    __slots__ = ("consideration", "exponent")
-
-    consideration: AIUtilityConsideration
-    exponent: int
-
-    def __init__(self, consideration: AIUtilityConsideration, exponent: int) -> None:
-        super().__init__()
-        self.consideration = consideration
-        self.exponent = exponent
-
-    def evaluate(self, context: AIContext) -> float:
-        return self.consideration.evaluate(context) ** self.exponent
-
-
-class ConstantUtilityConsideration(AIUtilityConsideration):
-    """A utility consideration that is a constant value."""
-
-    __slots__ = ("value",)
-
-    value: float
-
-    def __init__(self, value: float) -> None:
-        super().__init__()
-        self.value = value
-
-    def evaluate(self, context: AIContext) -> float:
-        return self.value
-
-
-class ConstantPrecondition(AIPrecondition):
-    """A precondition that is always true."""
-
-    __slots__ = ("value",)
-
-    value: bool
-
-    def __init__(self, value: bool) -> None:
-        super().__init__()
-        self.value = value
-
-    def evaluate(self, context: AIContext) -> bool:
-        return self.value
 
 
 class AIPreconditionGroup(AIPrecondition):
@@ -231,93 +271,24 @@ class AIPreconditionGroup(AIPrecondition):
         super().__init__()
         self.preconditions = list(preconditions)
 
-    def evaluate(self, context: AIContext) -> bool:
-        return all(p.evaluate(context) for p in self.preconditions)
+    def evaluate(self, entity: Entity) -> bool:
+        return all(p.evaluate(entity) for p in self.preconditions)
 
 
-class AIConsiderationGroupOp(enum.IntEnum):
-    """An operation to perform on a group of considerations."""
+class CharacterController(Component):
+    """Manages character-specific AI information."""
 
-    MEAN = 0
-    MIN = enum.auto()
-    MAX = enum.auto()
+    __slots__ = ("brain", "blackboard", "action_cooldowns")
 
+    brain: AIBrain
+    blackboard: dict[str, Any]
+    action_cooldowns: DefaultDict[str, int]
 
-class AIUtilityConsiderationGroup(AIUtilityConsideration):
-    """A composite group of utility considerations."""
-
-    __slots__ = ("op", "considerations")
-
-    op: AIConsiderationGroupOp
-    considerations: list[AIUtilityConsideration]
-
-    def __init__(
-        self,
-        *considerations: AIUtilityConsideration,
-        op: Literal["mean", "min", "max"] = "mean",
-    ) -> None:
+    def __init__(self, brain: AIBrain) -> None:
         super().__init__()
-        self.op = AIConsiderationGroupOp[op.upper()]
-        self.considerations = list(considerations)
-
-    def evaluate(self, context: AIContext) -> float:
-        if self.op == AIConsiderationGroupOp.MEAN:
-            return self.get_geometric_mean_score(context)
-        elif self.op == AIConsiderationGroupOp.MAX:
-            return self.get_max_score(context)
-        elif self.op == AIConsiderationGroupOp.MIN:
-            return self.get_min_score(context)
-        else:
-            raise ValueError(f"Error: Unsupported op value: {self.op}")
-
-    def get_geometric_mean_score(self, context: AIContext) -> float:
-        """Calculate the geometric mean of the considerations."""
-        score: float = 1
-        consideration_count: int = 0
-
-        for consideration in self.considerations:
-            utility_score = consideration.evaluate(context)
-
-            if utility_score < 0.0:
-                continue
-
-            elif utility_score == 0.0:
-                return 0.0
-
-            # Update the current score and counts
-            score = score * utility_score
-            consideration_count += 1
-
-        if consideration_count == 0:
-            return 0.5
-        else:
-            return score ** (1 / consideration_count)
-
-    def get_min_score(self, context: AIContext) -> float:
-        """Get the minimum score of the considerations."""
-
-        min_score: float = 999_999.0
-
-        for consideration in self.considerations:
-            utility_score = consideration.evaluate(context)
-
-            if utility_score < min_score:
-                min_score = utility_score
-
-        return min_score
-
-    def get_max_score(self, context: AIContext) -> float:
-        """Get the maximum score of the considerations."""
-
-        max_score: float = -999_999.0
-
-        for consideration in self.considerations:
-            utility_score = consideration.evaluate(context)
-
-            if utility_score > max_score:
-                max_score = utility_score
-
-        return max_score
+        self.brain = brain
+        self.blackboard = {}
+        self.action_cooldowns = defaultdict(lambda: 0)
 
 
 class AIActionType:
@@ -325,132 +296,216 @@ class AIActionType:
 
     __slots__ = (
         "name",
+        "display_name",
+        "description",
         "cost",
         "cooldown",
-        "utility_consideration",
+        "tags",
     )
 
     name: str
     """The name of this action type."""
+    display_name: str
+    """The name of the event when displayed in a GUI."""
+    description: str
+    """A text template used to generate a textual description of this event type."""
     cost: int
     """The number of influence points required to execute this action."""
     cooldown: int
     """Number of months between recurred uses of this action by the same character."""
-    utility_consideration: AIUtilityConsideration
-    """Consideration(s) for how much a character wants to perform this action."""
+    tags: set[str]
+    """Tags associated with this action (used for action selection)."""
 
     def __init__(
         self,
         name: str,
-        cost: int,
-        cooldown: int,
-        utility_consideration: AIUtilityConsideration,
+        display_name: str,
+        description: str,
+        cost: int = 0,
+        cooldown: int = 0,
+        tags: Optional[Iterable[str]] = None,
     ) -> None:
         super().__init__()
         self.name = name
+        self.display_name = display_name
+        self.description = description
         self.cost = cost
         self.cooldown = cooldown
-        self.utility_consideration = utility_consideration
+        self.tags = set(tags if tags else [])
 
 
 class AIAction(ABC):
     """An action that a character can take."""
 
-    __slots__ = ("performer", "context", "action_type", "world")
+    __slots__ = (
+        "uid",
+        "world",
+        "action_type",
+        "initiator",
+        "recipient",
+        "target",
+        "timestamp",
+        "context",
+    )
 
-    performer: Entity
-    context: AIContext
-    action_type: AIActionType
+    _next_uid: ClassVar[int] = 1
+
+    uid: int
+    """The unique ID for this event."""
     world: World
+    """The simulation's world instance."""
+    action_type: AIActionType
+    """A reference to the action this is an instantiation of."""
+    initiator: Entity
+    """The UID of the entity that is performing the action."""
+    recipient: Optional[Entity]
+    """The UID of the entity the action is directed toward."""
+    target: Optional[Entity]
+    """The UID of the entity being acted upon."""
+    timestamp: int
+    """The timestamp of the event."""
+    context: dict[str, str]
+    """Arguments passed to the database."""
 
-    def __init__(self, performer: Entity, action_type: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        initiator: Entity,
+        recipient: Optional[Entity] = None,
+        target: Optional[Entity] = None,
+        context: Optional[dict[str, str]] = None,
+    ) -> None:
         super().__init__()
-        self.performer = performer
-        self.context = performer.get_component(AIBrain).context.create_child()
-        self.action_type = performer.world.get_resource(
-            AIActionLibrary
-        ).get_action_with_name(action_type)
-        self.context["performer"] = performer
-        self.world = self.context.world
+        super().__init__()
+        self.uid = -1
+        self.world = initiator.world
+        self.initiator = initiator
+        self.timestamp = self.world.get_resource(SimDate).year
+        self.action_type = initiator.world.get_resource(
+            ActionTypeDatabase
+        ).get_action_with_name(name)
+        self.recipient = recipient
+        self.target = target
+        self.context = {
+            "initiator": initiator.name_with_uid,
+        }
+
+        if self.recipient:
+            self.context["recipient"] = self.recipient.name_with_uid
+
+        if self.target:
+            self.context["target"] = self.target.name_with_uid
+
+        if context:
+            self.context.update(context)
+
+    @abstractmethod
+    def execute(self) -> None:
+        """Execute the action using the instance information."""
+        raise NotImplementedError()
+
+    def log_event(self, *entities: Entity) -> int:
+        """Dispatches the event to the proper listeners."""
+        self.uid = AIAction._next_uid
+        AIAction._next_uid += 1
+
+        _logger.info(
+            "[%04d]: %s",
+            self.timestamp,
+            render_string(
+                self.action_type.description,
+                {
+                    "initiator": self.initiator.name_with_uid,
+                    "subject": self.initiator.name_with_uid,
+                    "target": self.target.name_with_uid if self.target else "",
+                    "recipient": self.recipient.name_with_uid if self.recipient else "",
+                    **self.context,
+                },
+            ),
+        )
+
+        db = self.world.get_resource(SimDB).conn
+        cursor = db.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO events
+                (uid, event_type, initiator, recipient, target, timestamp)
+            VALUES
+                (?, ?, ?, ?, ?, ?);
+            """,
+            (
+                self.uid,
+                self.action_type.name,
+                self.initiator.uid,
+                self.recipient.uid if self.recipient else None,
+                self.target.uid if self.target else None,
+                self.timestamp,
+            ),
+        )
+
+        cursor.executemany(
+            """
+            INSERT INTO event_args (uid, name, value)
+            VALUES (?, ?, ?);
+            """,
+            [(self.uid, k, v) for k, v in self.context.items()],
+        )
+
+        db.commit()
+        cursor.close()
+
+        for entity in entities:
+            entity.get_component(EventHistory).append(self.uid)
+
+        return 0
 
     def get_name(self) -> str:
-        """Get the name of the behavior."""
+        """Get the name of the action."""
         return self.action_type.name
 
     def get_cost(self) -> int:
-        """Get the cost of the behavior."""
+        """Get the influence point cost of this action."""
         return self.action_type.cost
 
     def get_cooldown_time(self) -> int:
-        """Get the amount of time between repeat uses of this action type."""
+        """Get the cooldown time for this action."""
         return self.action_type.cooldown
 
-    def get_performer(self) -> Entity:
-        """Get the character performing the action."""
-        return self.performer
 
-    def calculate_utility(self) -> float:
-        """Get the utility of this action."""
-        return self.action_type.utility_consideration.evaluate(self.context)
+class ActionTypeDatabase:
+    """The Database of AI action types."""
 
-    @abstractmethod
-    def execute(self) -> bool:
-        """Execute the action."""
-        raise NotImplementedError()
+    __slots__ = ("_action_types",)
 
-
-class AIActionLibrary:
-    """The library of AI actions."""
-
-    __slots__ = ("actions",)
-
-    actions: dict[str, AIActionType]
+    _action_types: dict[str, AIActionType]
 
     def __init__(self) -> None:
-        self.actions = {}
+        self._action_types = {}
 
-    def add_action(self, action: AIActionType) -> None:
-        """Add an action to the library."""
-        self.actions[action.name] = action
+    def add_action(self, action_type: AIActionType) -> None:
+        """Add an action type to the database."""
+        self._action_types[action_type.name] = action_type
 
-    def iter_actions(self) -> Iterator[AIActionType]:
-        """Return iterator for the library."""
-        return iter(self.actions.values())
+    def get_actions(self) -> list[AIActionType]:
+        """Get all actions in the database."""
+        return list(self._action_types.values())
 
     def get_action_with_name(self, name: str) -> AIActionType:
         """Get an action using its name."""
-        return self.actions[name]
+        return self._action_types[name]
 
 
 class AIBehavior(ABC):
     """A behavior that can be performed by a character."""
 
-    __slots__ = (
-        "name",
-        "precondition",
-    )
+    __slots__ = ("name",)
 
     name: str
     """The name of the behavior."""
-    precondition: AIPrecondition
-    """Calculates if the action can be performed."""
 
-    def __init__(
-        self,
-        name: str,
-        precondition: AIPrecondition,
-    ) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.precondition = precondition
-
-    def get_name(self) -> str:
-        """Get the name of the behavior."""
-        return self.name
-
-    def passes_preconditions(self, entity: Entity) -> bool:
-        """Check if the given character passes all the preconditions."""
-        context = entity.get_component(AIBrain).context.create_child()
-        return self.precondition.evaluate(context)
 
     @abstractmethod
     def get_actions(self, character: Entity) -> list[AIAction]:
@@ -470,7 +525,7 @@ class AIBehaviorLibrary:
 
     def add_behavior(self, behavior: AIBehavior) -> None:
         """Add behavior to the library."""
-        self.behaviors[behavior.get_name()] = behavior
+        self.behaviors[behavior.name] = behavior
 
     def iter_behaviors(self) -> Iterator[AIBehavior]:
         """Return iterator to behaviors."""
@@ -479,6 +534,98 @@ class AIBehaviorLibrary:
     def get_behavior(self, name: str) -> AIBehavior:
         """Get a behavior by name."""
         return self.behaviors[name]
+
+
+class ProclivityScores:
+    """Results of a proclivity calculation."""
+
+    __slots__ = ("actions", "scores")
+
+    actions: list[AIAction]
+    scores: list[float]
+
+    def __init__(self, actions: list[AIAction], weights: list[float]) -> None:
+        self.actions = actions
+        self.scores = weights
+
+
+class EventHistory(Component):
+    """Tracks events associated with this entity."""
+
+    __slots__ = ("_event_ids",)
+
+    _event_ids: list[int]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._event_ids = []
+
+    def append(self, event_id: int) -> None:
+        """Add an event ID to the history."""
+        self._event_ids.append(event_id)
+
+    def get_events(self) -> list[int]:
+        """Get all events in the history."""
+        return self._event_ids
+
+
+def get_event_timestamp(world: World, event_id: int) -> int:
+    """Get the timestamp for the event with the given event ID."""
+
+    db = world.get_resource(SimDB).conn
+    cursor = db.cursor()
+
+    # First get the event information
+    timestamp: int = cursor.execute(
+        """
+        SELECT
+            timestamp
+        FROM events
+        WHERE uid=?;
+        """,
+        (event_id,),
+    ).fetchone()[0]
+
+    return int(timestamp)
+
+
+def get_event_description(world: World, event_id: int) -> str:
+    """Get the description for the life event with the given event ID."""
+
+    db = world.get_resource(SimDB).conn
+    cursor = db.cursor()
+
+    event_type: str = cursor.execute(
+        """
+        SELECT
+            event_type
+        FROM events
+        WHERE uid=?;
+        """,
+        (event_id,),
+    ).fetchone()[0]
+
+    action_database = world.get_resource(ActionTypeDatabase)
+    action_type = action_database.get_action_with_name(event_type)
+
+    # First get the event information
+
+    event_args: list[tuple[str, str]] = cursor.execute(
+        """
+        SELECT
+            name,
+            value
+        FROM event_args
+        WHERE uid=?;
+        """,
+        (event_id,),
+    ).fetchall()
+
+    final_description = action_type.description
+    for k, v in event_args:
+        final_description = final_description.replace("[" + k + "]", v)
+
+    return final_description
 
 
 class SchemeData(Component, ABC):
@@ -510,7 +657,7 @@ class Scheme(Component):
     """Amount of time required for this scheme to mature."""
     scheme_type: str
     """The name of this scheme type."""
-    start_date: SimDate
+    start_date: int
     """The date the scheme was started."""
     initiator: Entity
     """The character that initiated the scheme."""
@@ -525,14 +672,14 @@ class Scheme(Component):
         self,
         scheme_type: str,
         required_time: int,
-        date_started: SimDate,
+        date_started: int,
         initiator: Entity,
         data: SchemeData,
     ) -> None:
         super().__init__()
         self.scheme_type = scheme_type
         self.required_time = required_time
-        self.start_date = date_started.copy()
+        self.start_date = date_started
         self.initiator = initiator
         self.members = OrderedSet([])
         self.data = data

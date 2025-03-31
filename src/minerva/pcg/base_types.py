@@ -32,6 +32,7 @@ class CharacterGenOptions:
     age: Optional[int] = None
     n_max_personality_traits: int = 0
     randomize_stats: bool = True
+    brain: str = "cpu"
 
 
 class CharacterFactory(ABC):

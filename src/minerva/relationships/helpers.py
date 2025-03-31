@@ -2,20 +2,24 @@
 
 from __future__ import annotations
 
+from minerva.actions.base_types import ProclivityTracker
 from minerva.ecs import Entity
 from minerva.relationships.base_types import (
     Attraction,
     Opinion,
     Relationship,
     RelationshipManager,
-    SocialRuleLibrary,
 )
 from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import (
-    StatComponent,
-    StatModifierType,
+    StatModifier,
+    add_stat_modifier,
+    get_stat_value,
+    increment_stat_base,
+    remove_stat_modifier,
+    set_stat_base,
 )
-from minerva.traits.base_types import TraitManager
+from minerva.traits.base_types import Traits
 
 
 def get_relationship(
@@ -87,9 +91,10 @@ def add_relationship(owner: Entity, target: Entity) -> Entity:
     relationship = owner.world.entity()
 
     relationship.add_component(Relationship(owner=owner, target=target))
-    relationship.add_component(TraitManager())
-    relationship.add_component(Opinion(opinion_calc_strategy))
-    relationship.add_component(Attraction(attraction_calc_strategy))
+    relationship.add_component(Traits())
+    relationship.add_component(Opinion())
+    relationship.add_component(Attraction())
+    relationship.add_component(ProclivityTracker())
 
     relationship.name = f"[{owner.name} -> {target.name}]"
 
@@ -197,144 +202,51 @@ def _remove_incoming_relationship(character: Entity, relationship: Entity) -> bo
     return False
 
 
-def opinion_calc_strategy(stat_component: StatComponent) -> float:
-    """Calculation strategy for opinion stats."""
-
-    relationship = stat_component.entity
-    relationship_component = relationship.get_component(Relationship)
-    owner = relationship_component.owner
-    target = relationship_component.target
-
-    final_value: float = stat_component.base_value
-    sum_percent_add: float = 0.0
-
-    stat_component.active_modifiers.clear()
-
-    # Get all the stat modifiers
-    for modifier in stat_component.modifiers:
-        if modifier.modifier_type == StatModifierType.FLAT:
-            final_value += modifier.value
-
-        elif modifier.modifier_type == StatModifierType.PERCENT:
-            sum_percent_add += modifier.value
-
-    # Get modifiers from owners outgoing modifiers
-    owner_relationship_modifiers = owner.get_component(
-        RelationshipManager
-    ).outgoing_modifiers
-    for relationship_modifier in owner_relationship_modifiers:
-        if relationship_modifier.opinion_modifier is None:
-            continue
-
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.opinion_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
-
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
-
-    # Get modifiers from targets incoming relationship modifiers
-    target_relationship_modifiers = target.get_component(
-        RelationshipManager
-    ).incoming_modifiers
-    for relationship_modifier in target_relationship_modifiers:
-        if relationship_modifier.opinion_modifier is None:
-            continue
-
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.opinion_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
-
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
-
-    # Get modifiers from social rules
-    social_rule_library = relationship.world.get_resource(SocialRuleLibrary)
-    for rule in social_rule_library.iter_rules():
-        if rule.opinion_modifier is None:
-            continue
-
-        if rule.evaluate_precondition(relationship):
-            modifier = rule.opinion_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
-
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
-
-    final_value = final_value + (final_value * sum_percent_add)
-
-    return final_value
+def get_attraction(entity: Entity) -> int:
+    """Get the attraction stat for the relationship."""
+    return get_stat_value(entity.get_component(Attraction))
 
 
-def attraction_calc_strategy(stat_component: StatComponent) -> float:
-    """Calculation strategy for attraction stats."""
-    relationship = stat_component.entity
-    relationship_component = relationship.get_component(Relationship)
-    owner = relationship_component.owner
-    target = relationship_component.target
+def increment_attraction_base(entity: Entity, value: int) -> None:
+    """Increment the attraction base value by the given amount."""
+    increment_stat_base(entity.get_component(Attraction), value)
 
-    final_value: float = stat_component.base_value
-    sum_percent_add: float = 0.0
 
-    stat_component.active_modifiers.clear()
+def set_attraction_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's attraction."""
+    set_stat_base(entity.get_component(Attraction), value)
 
-    # Get all the stat modifiers
-    for modifier in stat_component.modifiers:
-        if modifier.modifier_type == StatModifierType.FLAT:
-            final_value += modifier.value
 
-        elif modifier.modifier_type == StatModifierType.PERCENT:
-            sum_percent_add += modifier.value
+def add_attraction_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to the attraction stat."""
+    add_stat_modifier(entity, entity.get_component(Attraction), modifier)
 
-    # Get modifiers from owners outgoing modifiers
-    owner_relationship_modifiers = owner.get_component(
-        RelationshipManager
-    ).outgoing_modifiers
-    for relationship_modifier in owner_relationship_modifiers:
-        if relationship_modifier.attraction_modifier is None:
-            continue
 
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.attraction_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
+def remove_attraction_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from the attraction stat."""
+    remove_stat_modifier(entity, entity.get_component(Attraction), modifier)
 
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
 
-    # Get modifiers from targets incoming relationship modifiers
-    target_relationship_modifiers = target.get_component(
-        RelationshipManager
-    ).incoming_modifiers
-    for relationship_modifier in target_relationship_modifiers:
-        if relationship_modifier.attraction_modifier is None:
-            continue
+def get_opinion(entity: Entity) -> int:
+    """Get the lifespan for the entity."""
+    return get_stat_value(entity.get_component(Opinion))
 
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.attraction_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
 
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
+def increment_opinion_base(entity: Entity, value: int) -> None:
+    """Increment the opinion base value by the given amount."""
+    increment_stat_base(entity.get_component(Opinion), value)
 
-    # Get modifiers from social rules
-    social_rule_library = relationship.world.get_resource(SocialRuleLibrary)
-    for rule in social_rule_library.iter_rules():
-        if rule.attraction_modifier is None:
-            continue
 
-        if rule.evaluate_precondition(relationship):
-            modifier = rule.attraction_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
+def set_opinion_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's opinion."""
+    set_stat_base(entity.get_component(Opinion), value)
 
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
 
-    final_value = final_value + (final_value * sum_percent_add)
+def add_opinion_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to the opinion stat."""
+    add_stat_modifier(entity, entity.get_component(Opinion), modifier)
 
-    return final_value
+
+def remove_opinion_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from the opinion stat."""
+    remove_stat_modifier(entity, entity.get_component(Opinion), modifier)

@@ -1,6 +1,4 @@
-"""An event bus for events fired by the simulation.
-
-"""
+"""An event bus for events fired by the simulation."""
 
 from minerva.ecs import Entity
 from minerva.viz.game_events import EventEmitter
