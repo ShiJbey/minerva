@@ -11,8 +11,9 @@ import pygame_gui.elements.ui_panel
 import pygame_gui.ui_manager
 
 from minerva.characters.components import Dynasty, DynastyTracker
+from minerva.game_action import ActionSystem
+from minerva.pcg.world_map import GenerateMap
 from minerva.simulation import Simulation
-from minerva.simulation_events import SimulationEvents
 from minerva.viz.camera import Camera
 from minerva.viz.constants import TILE_SIZE
 from minerva.viz.game_events import event_wiki_shown
@@ -120,12 +121,13 @@ class Game:
 
     def register_simulation_event_listeners(self):
         """Register callbacks for simulation events."""
-        sim_events = self.simulation.world.get_resource(SimulationEvents)
+        self.simulation.world.get_resource(ActionSystem).add_listener(
+            GenerateMap, self._on_map_generated, "post"
+        )
 
-        sim_events.map_generated.add_listener(self._on_map_generated)
-
-    def _on_map_generated(self, world_map: WorldMap) -> None:
+    def _on_map_generated(self, action: GenerateMap) -> None:
         """Callback for when the map is generated."""
+        world_map = action.world.get_resource(WorldMap)
         self._create_terrain_sprites(world_map)
         self._create_border_sprites(world_map)
         self._create_castle_sprites(world_map)

@@ -35,10 +35,16 @@ from minerva.characters.succession_helpers import SuccessionChartCache
 from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.ecs import Entity, World
+from minerva.game_action import ActionSystem
 from minerva.game_state import GameState
+from minerva.pcg.character import (
+    SpawnCharacter,
+    SpawnFamily,
+    generate_character,
+    generate_family,
+)
 from minerva.pcg.text_gen import Tracery
 from minerva.sim_db import SimDB
-from minerva.simulation_events import SimulationEvents
 from minerva.traits.base_types import CharacterTraitDatabase
 
 
@@ -70,10 +76,10 @@ class Simulation:
         self.world.add_resource(DynastyTracker())
         self.world.add_resource(ActionTypeDatabase())
         self.world.add_resource(Tracery(self.config.seed))
-        self.world.add_resource(SimulationEvents())
         self.world.add_resource(SimDB(_config.db_path))
         self.world.add_resource(AIBrainDatabase())
         self.world.add_resource(GlobalProclivities())
+        self.world.add_resource(ActionSystem())
 
         self.initialize_brains()
         self.initialize_systems()
@@ -81,6 +87,13 @@ class Simulation:
         self.initialize_actions()
         self.initialize_behaviors()
         self.initialize_species_types()
+        self.initialize_game_action_performers()
+
+    def initialize_game_action_performers(self) -> None:
+        """Initialize performers for GameActions."""
+        action_system = self.world.get_resource(ActionSystem)
+        action_system.attach_performer(SpawnCharacter, generate_character)
+        action_system.attach_performer(SpawnFamily, generate_family)
 
     def initialize_brains(self) -> None:
         """Initialize built-in brains."""

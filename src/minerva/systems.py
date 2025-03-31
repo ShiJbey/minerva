@@ -93,18 +93,13 @@ from minerva.characters.war_helpers import (
 )
 from minerva.config import Config
 from minerva.ecs import Active, Entity, System, SystemGroup, World
+from minerva.game_action import ActionSystem
 from minerva.game_state import GameState
 from minerva.pcg.character import FamilyGenOptions, spawn_family
-from minerva.pcg.world_map import generate_world_map
+from minerva.pcg.world_map import GenerateMap, generate_world_map
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship
-from minerva.simulation_events import SimulationEvents
-from minerva.world_map.components import (
-    InRevolt,
-    PopulationHappiness,
-    Territory,
-    WorldMap,
-)
+from minerva.world_map.components import InRevolt, PopulationHappiness, Territory
 from minerva.world_map.helpers import set_territory_controlling_family
 
 _logger = logging.getLogger(__name__)
@@ -1669,6 +1664,4 @@ class MapGenerationSystem(System):
     def on_update(self, world: World) -> None:
         generate_world_map(world)
         _logger.info("Generating map and territories.")
-        world.get_resource(SimulationEvents).map_generated.emit(
-            world.get_resource(WorldMap)
-        )
+        world.get_resource(ActionSystem).perform(GenerateMap(world))

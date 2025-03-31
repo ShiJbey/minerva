@@ -9,6 +9,7 @@ from typing import Any, Generator, Optional
 
 from minerva.config import Config
 from minerva.ecs import Entity, World
+from minerva.game_action import GameAction
 from minerva.pcg.text_gen import Tracery
 from minerva.sim_db import SimDB
 from minerva.world_map.components import (
@@ -61,6 +62,17 @@ def spawn_territory(
 ) -> Entity:
     """Spawn a new territory."""
     return generate_territory(world, options if options else TerritoryGenOptions())
+
+
+class GenerateMap(GameAction):
+    """Data associated with spawning a family."""
+
+    world: World
+
+    def __init__(self, world: World) -> None:
+        super().__init__()
+        self.world = world
+        self.entity = None
 
 
 TERRITORY_GENERATION_DEBUG_COLORS = [

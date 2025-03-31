@@ -10,7 +10,6 @@ from minerva.relationships.base_types import (
     Relationship,
     RelationshipManager,
 )
-from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import (
     StatModifier,
     add_stat_modifier,
@@ -100,8 +99,6 @@ def add_relationship(owner: Entity, target: Entity) -> Entity:
 
     _add_outgoing_relationship(owner, relationship)
     _add_incoming_relationship(target, relationship)
-
-    owner.world.get_resource(SimulationEvents).relationship_created.emit(relationship)
 
     return relationship
 

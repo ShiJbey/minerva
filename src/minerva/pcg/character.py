@@ -53,11 +53,11 @@ from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.war_data import WarTracker
 from minerva.config import Config
 from minerva.ecs import Entity, World
+from minerva.game_action import ActionSystem, GameAction
 from minerva.game_state import GameState
 from minerva.pcg.text_gen import Tracery
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
-from minerva.simulation_events import SimulationEvents
 from minerva.stats.base_types import StatModifiers
 from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase, Traits
 from minerva.traits.helpers import (
@@ -103,8 +103,25 @@ class CharacterGenOptions:
     brain: str = "cpu"
 
 
-def generate_character(world: World, options: CharacterGenOptions) -> Entity:
+class SpawnCharacter(GameAction):
+    """Data associated with spawning a character."""
+
+    world: World
+    options: CharacterGenOptions
+    entity: Optional[Entity]
+
+    def __init__(self, world: World, options: CharacterGenOptions) -> None:
+        super().__init__()
+        self.world = world
+        self.options = options
+        self.entity = None
+
+
+def generate_character(action: SpawnCharacter) -> None:
     """Create a new character."""
+    world = action.world
+    options = action.options
+
     rng = world.get_resource(random.Random)
     tracery_instance = world.get_resource(Tracery)
 
@@ -327,16 +344,18 @@ def generate_character(world: World, options: CharacterGenOptions) -> Entity:
 
     db.commit()
 
-    return obj
+    action.entity = obj
 
 
 def spawn_character(
     world: World, options: Optional[CharacterGenOptions] = None
 ) -> Entity:
     """Spawn a new character."""
-    character = generate_character(
-        world=world, options=options if options else CharacterGenOptions()
-    )
+    action_system = world.get_resource(ActionSystem)
+    action = SpawnCharacter(world, options if options else CharacterGenOptions())
+    action_system.perform(action)
+    character = action.entity
+    assert character is not None
     world.get_resource(GameState).characters.append(character)
     return character
 
@@ -389,7 +408,7 @@ def generate_child(
     option_overrides.n_max_personality_traits = 0
     option_overrides.surname = mothers_family.name
 
-    child = generate_character(
+    child = spawn_character(
         world=mother.world,
         options=option_overrides,
     )
@@ -476,8 +495,25 @@ class FamilyGenOptions:
     spawn_members: bool = False
 
 
-def generate_family(world: World, options: FamilyGenOptions) -> Entity:
+class SpawnFamily(GameAction):
+    """Data associated with spawning a family."""
+
+    world: World
+    options: FamilyGenOptions
+    entity: Optional[Entity]
+
+    def __init__(self, world: World, options: FamilyGenOptions) -> None:
+        super().__init__()
+        self.world = world
+        self.options = options
+        self.entity = None
+
+
+def generate_family(action: SpawnFamily) -> None:
     """Create a new family."""
+    world = action.world
+    options = action.options
+
     rng = world.get_resource(random.Random)
     config = world.get_resource(Config)
     current_date = world.get_resource(GameState).year
@@ -521,9 +557,7 @@ def generate_family(world: World, options: FamilyGenOptions) -> Entity:
     if options.spawn_members:
         fill_family(family)
 
-    world.get_resource(SimulationEvents).family_added.emit(family)
-
-    return family
+    action.entity = family
 
 
 def fill_family(family: Entity) -> Entity:
@@ -608,8 +642,10 @@ def fill_family(family: Entity) -> Entity:
 
 def spawn_family(world: World, options: Optional[FamilyGenOptions] = None) -> Entity:
     """Spawn a new character."""
-    family = generate_family(
-        world=world, options=options if options else FamilyGenOptions()
-    )
+    action_system = world.get_resource(ActionSystem)
+    action = SpawnFamily(world, options if options else FamilyGenOptions())
+    action_system.perform(action)
+    family = action.entity
+    assert family is not None
     world.get_resource(GameState).families.append(family)
     return family
