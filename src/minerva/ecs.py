@@ -218,8 +218,8 @@ class System(ABC):
         """
         self._active = value
 
-    def on_add(self, world: World) -> None:
-        """Lifecycle method called when the system is added to the world.
+    def on_start(self, world: World) -> None:
+        """Lifecycle method called when the system the simulation is started.
 
         Parameters
         ----------
@@ -279,6 +279,10 @@ class SystemGroup(System, ABC):
     def __init__(self) -> None:
         super().__init__()
         self._children = []
+
+    def on_start(self, world: World) -> None:
+        for child in self._children:
+            child.on_start(world)
 
     def set_active(self, value: bool) -> None:
         super().set_active(value)
@@ -516,6 +520,11 @@ class SystemManager(SystemGroup):
         super().__init__()
         self._world = world
 
+    def start_systems(self) -> None:
+        """Call on_start for all systems."""
+        for child in self._children:
+            child.on_start(self._world)
+
     def add_system(
         self,
         system: System,
@@ -638,6 +647,7 @@ class World:
         "_entity_names",
         "_dead_entities",
         "_resources",
+        "_systems_started",
     )
 
     _next_entity_id: int
@@ -654,6 +664,8 @@ class World:
     """Destroyed entities to clean-up at the start of a world step."""
     _resources: dict[Type[Any], Any]
     """Resources shared by the world instance."""
+    _systems_started: bool
+    """Have the individual systems been started."""
 
     def __init__(self) -> None:
         self._resources = {}
@@ -668,6 +680,7 @@ class World:
         self._uid_to_entity_map = {}
         self._entity_names = {}
         self._dead_entities = OrderedSet([])
+        self._systems_started = False
 
     def initialize(self) -> None:
         """Run initialization systems only."""
@@ -677,6 +690,10 @@ class World:
 
     def step(self) -> None:
         """Advance the simulation as single tick and call all the systems."""
+        if not self._systems_started:
+            self._systems_started = True
+            self._systems.start_systems()
+
         self._clear_dead_entities()
         self._systems.update_systems()
 

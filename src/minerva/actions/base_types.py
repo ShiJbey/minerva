@@ -349,7 +349,6 @@ class AIAction(GameAction):
 
     __slots__ = (
         "uid",
-        "world",
         "action_type",
         "initiator",
         "recipient",
@@ -383,10 +382,8 @@ class AIAction(GameAction):
         target: Optional[Entity] = None,
         context: Optional[dict[str, str]] = None,
     ) -> None:
-        super().__init__()
-        super().__init__()
+        super().__init__(initiator.world)
         self.uid = -1
-        self.world = initiator.world
         self.initiator = initiator
         self.timestamp = self.world.get_resource(GameState).year
         self.action_type = initiator.world.get_resource(
@@ -609,7 +606,7 @@ def get_event_description(world: World, event_id: int) -> str:
         WHERE uid=?;
         """,
         (event_id,),
-    ).fetchone()
+    ).fetchone()[0]
 
     return description
 

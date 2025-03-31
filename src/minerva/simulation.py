@@ -32,7 +32,12 @@ from minerva.characters.components import (
     Species,
     SpeciesLibrary,
 )
-from minerva.characters.succession_helpers import SuccessionChartCache
+from minerva.characters.helpers import (
+    RemoveCharacterFromPlay,
+    RemoveFamilyFromPlay,
+    remove_character_from_play,
+    remove_family_from_play,
+)
 from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.ecs import Entity, World
@@ -72,7 +77,6 @@ class Simulation:
         self.world.add_resource(random.Random(_config.seed))
         self.world.add_resource(SpeciesLibrary())
         self.world.add_resource(CharacterTraitDatabase())
-        self.world.add_resource(SuccessionChartCache())
         self.world.add_resource(AIBehaviorLibrary())
         self.world.add_resource(DynastyTracker())
         self.world.add_resource(ActionTypeDatabase())
@@ -96,6 +100,10 @@ class Simulation:
         action_system.attach_performer(SpawnCharacter, generate_character)
         action_system.attach_performer(SpawnFamily, generate_family)
         action_system.attach_performer(DieAction, handle_character_death)
+        action_system.attach_performer(
+            RemoveCharacterFromPlay, remove_character_from_play
+        )
+        action_system.attach_performer(RemoveFamilyFromPlay, remove_family_from_play)
 
     def initialize_brains(self) -> None:
         """Initialize built-in brains."""
@@ -117,7 +125,6 @@ class Simulation:
 
         self.world.add_system(minerva.systems.TimeSystem())
         self.world.add_system(minerva.systems.CharacterAgingSystem())
-        self.world.add_system(minerva.systems.SuccessionDepthChartUpdateSystem())
         self.world.add_system(minerva.systems.CharacterLifespanSystem())
         self.world.add_system(minerva.systems.FamilyHeadSuccessionSystem())
         self.world.add_system(minerva.systems.RulerSuccessionSystem())
@@ -356,7 +363,7 @@ class Simulation:
             AIActionType(
                 name="GiveBirth",
                 display_name="Give Birth",
-                description="",
+                description="[initiator] gave birth to a child.",
             )
         )
         database.add_action(

@@ -28,22 +28,22 @@ from minerva.characters.components import (
     Prowess,
     RelationType,
     RomanticAffair,
-    Ruler,
     Sex,
     SexualOrientation,
     Stewardship,
 )
 from minerva.characters.metric_data import CharacterMetrics
-from minerva.characters.succession_helpers import remove_current_ruler
 from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.ecs import Active, Entity
+from minerva.game_action import GameAction
 from minerva.game_state import GameState
 from minerva.relationships.helpers import deactivate_relationships
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import (
     StatModifier,
     add_stat_modifier,
+    get_stat_base,
     get_stat_value,
     increment_stat_base,
     remove_stat_modifier,
@@ -87,6 +87,11 @@ def get_fertility(entity: Entity) -> int:
 def increment_fertility_base(entity: Entity, value: int) -> None:
     """Increment the fertility base value by the given amount."""
     increment_stat_base(entity.get_component(Fertility), value)
+
+
+def get_fertility_base(entity: Entity) -> int:
+    """Set the base value for an entity's fertility."""
+    return get_stat_base(entity.get_component(Fertility))
 
 
 def set_fertility_base(entity: Entity, value: int) -> None:
@@ -407,9 +412,33 @@ def set_family_home_base(family: Entity, territory: Optional[Entity]) -> None:
     db.commit()
 
 
-def remove_family_from_play(family: Entity) -> None:
+class RemoveCharacterFromPlay(GameAction):
+    """Remove a character from being active in the simulation."""
+
+    __slots__ = ("character",)
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__(character.world)
+        self.character = character
+
+
+class RemoveFamilyFromPlay(GameAction):
+    """Remove a family from being active in the simulation."""
+
+    __slots__ = ("family",)
+
+    def __init__(self, family: Entity) -> None:
+        super().__init__(family.world)
+        self.family = family
+
+
+def remove_family_from_play(action: RemoveFamilyFromPlay) -> None:
     """Remove a family from play."""
-    world = family.world
+    if not action.family.is_active:
+        return
+
+    world = action.world
+    family = action.family
     family_component = family.get_component(Family)
 
     db = world.get_resource(SimDB).conn
@@ -433,7 +462,7 @@ def remove_family_from_play(family: Entity) -> None:
         )
 
         for member in [*family_component.active_members]:
-            remove_character_from_play(member)
+            action.add_reaction(RemoveCharacterFromPlay(member))
 
     # Remove the family from play
     set_family_home_base(family, None)
@@ -458,10 +487,13 @@ def remove_family_from_play(family: Entity) -> None:
     )
 
 
-def remove_character_from_play(character: Entity) -> None:
+def remove_character_from_play(action: RemoveCharacterFromPlay) -> None:
     """Remove a character from play."""
-    world = character.world
-    current_date = world.get_resource(GameState).year
+    if not action.character.is_active:
+        return
+
+    character = action.character
+
     character_component = character.get_component(Character)
 
     character.deactivate()
@@ -471,22 +503,11 @@ def remove_character_from_play(character: Entity) -> None:
         if heir_to_character.is_alive:
             remove_heir(character_component.heir_to)
 
-    # Remove the character from head of their family if applicable
-    if character.has_component(HeadOfFamily):
-        family_head_component = character.get_component(HeadOfFamily)
-        family = family_head_component.family
-        set_family_head(family, None)
-
-    if character.has_component(Ruler):
-        remove_current_ruler(world)
-
     if character_component.family:
         unassign_family_member_from_all_roles(character_component.family, character)
         family_component = character_component.family.get_component(Family)
         family_component.active_members.remove(character)
         family_component.former_members.add(character)
-
-    set_character_death_date(character, current_date)
 
     if character_component.spouse is not None:
         end_marriage(character, character_component.spouse)
@@ -704,10 +725,11 @@ def unassign_family_member_from_all_roles(family: Entity, character: Entity) -> 
     character_component = character.get_component(Character)
 
     if character not in family_component.active_members:
-        raise RuntimeError(
-            f"Error: Cannot unassign {character.name_with_uid} from any roles. "
-            f"They are not a current member of the {family.name_with_uid} family."
-        )
+        # raise RuntimeError(
+        #     f"Error: Cannot unassign {character.name_with_uid} from any roles. "
+        #     f"They are not a current member of the {family.name_with_uid} family."
+        # )
+        return
 
     if FamilyRoleFlags.WARRIOR in character_component.family_roles:
         family_component.warriors.remove(character)

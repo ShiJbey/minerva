@@ -11,6 +11,8 @@ from __future__ import annotations
 from abc import ABC
 from typing import Callable, Literal, Optional, Type, TypeVar, cast
 
+from minerva.ecs import World
+
 
 class GameAction(ABC):
     """An operation performed during the simulation.
@@ -21,17 +23,34 @@ class GameAction(ABC):
     GameActions to perform operations.
     """
 
-    __slots__ = ("pre_actions", "actions", "post_actions")
+    __slots__ = ("world", "pre_reactions", "reactions", "post_reactions")
 
-    pre_actions: list[GameAction]
-    actions: list[GameAction]
-    post_actions: list[GameAction]
+    world: World
+    pre_reactions: list[GameAction]
+    reactions: list[GameAction]
+    post_reactions: list[GameAction]
 
-    def __init__(self) -> None:
+    def __init__(self, world: World) -> None:
         super().__init__()
-        self.pre_actions = []
-        self.actions = []
-        self.post_actions = []
+        self.world = world
+        self.pre_reactions = []
+        self.reactions = []
+        self.post_reactions = []
+
+    def add_reaction(self, action: GameAction) -> None:
+        """Add a reaction to the action."""
+        self.world.get_resource(ActionSystem).add_reaction(action)
+
+    def on_execute(self) -> None:
+        """Callback executed when this action is executed"""
+        return
+
+    def execute(self) -> None:
+        """Execute the action."""
+        # self.world.get_resource(ActionSystem).attach_performer(
+        #     type(self), lambda _: self.on_execute()
+        # )
+        self.world.get_resource(ActionSystem).perform(self)
 
 
 _T_co = TypeVar("_T_co", covariant=True, bound=GameAction)
@@ -41,46 +60,46 @@ class ActionSystem:
     """Data used by the action system."""
 
     __slots__ = (
-        "listeners",
+        "reactions",
         "pre_listeners",
         "post_listeners",
         "performers",
     )
 
-    listeners: Optional[list[GameAction]]
+    reactions: Optional[list[GameAction]]
     pre_listeners: dict[Type[GameAction], list[Callable[[GameAction], None]]]
     post_listeners: dict[Type[GameAction], list[Callable[[GameAction], None]]]
     performers: dict[Type[GameAction], Callable[[GameAction], None]]
 
     def __init__(self) -> None:
-        self.listeners = None
+        self.reactions = None
         self.pre_listeners = {}
         self.post_listeners = {}
         self.performers = {}
 
     def perform(self, game_action: GameAction) -> None:
         """Perform the provided action."""
-        self.listeners = game_action.pre_actions
+        self.reactions = game_action.pre_reactions
         self._perform_subscribers(game_action, self.pre_listeners)
         self._perform_reactions()
 
-        self.listeners = game_action.actions
+        self.reactions = game_action.reactions
         self._perform_performer(game_action)
         self._perform_reactions()
 
-        self.listeners = game_action.post_actions
+        self.reactions = game_action.post_reactions
         self._perform_subscribers(game_action, self.post_listeners)
         self._perform_reactions()
 
     def add_reaction(self, game_action: GameAction) -> None:
         """Add the given action as a reaction."""
-        if self.listeners is not None:
-            self.listeners.append(game_action)
+        if self.reactions is not None:
+            self.reactions.append(game_action)
 
     def _perform_reactions(self) -> None:
         """Perform reaction list."""
-        if self.listeners is not None:
-            for action in self.listeners:
+        if self.reactions is not None:
+            for action in self.reactions:
                 self.perform(action)
 
     def _perform_subscribers(

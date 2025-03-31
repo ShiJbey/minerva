@@ -53,6 +53,8 @@ from minerva.characters.components import (
     SexualOrientation,
 )
 from minerva.characters.helpers import (
+    RemoveCharacterFromPlay,
+    RemoveFamilyFromPlay,
     assign_family_member_to_roles,
     get_advisor_candidates,
     get_family_of,
@@ -61,9 +63,9 @@ from minerva.characters.helpers import (
     get_lifespan,
     get_warrior_candidates,
     increment_prestige_base,
-    remove_family_from_play,
     set_character_age,
     set_character_life_stage,
+    set_family_head,
     set_family_home_base,
     set_fertility_base,
     set_heir,
@@ -71,10 +73,10 @@ from minerva.characters.helpers import (
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.stat_helpers import StatLevel, get_luck_level
 from minerva.characters.succession_helpers import (
-    SuccessionChartCache,
     end_current_dynasty,
     get_current_ruler,
     get_succession_depth_chart,
+    remove_current_ruler,
     set_current_ruler,
 )
 from minerva.characters.war_data import Alliance, War, WarRole
@@ -208,20 +210,6 @@ class CharacterLifespanSystem(System):
                 DieAction(character, cause="old age").execute()
 
 
-class SuccessionDepthChartUpdateSystem(System):
-    """Updates the succession depth chart for all family heads."""
-
-    __system_group__ = "EarlyUpdateSystems"
-
-    def on_update(self, world: World) -> None:
-        chart_cache = world.get_resource(SuccessionChartCache)
-
-        for _, (character, _, _) in world.query_components(
-            (Character, HeadOfFamily, Active)
-        ):
-            chart_cache.get_chart_for(character.entity, recalculate=True)
-
-
 class FamilyHeadSuccessionSystem(System):
     """Appoints new family heads to families without one.
 
@@ -230,7 +218,44 @@ class FamilyHeadSuccessionSystem(System):
 
     __system_group__ = "LateUpdateSystems"
 
-    def try_pass_power_to_heir(self, family_head: Entity, family: Entity) -> bool:
+    def on_start(self, world: World) -> None:
+        world.get_resource(ActionSystem).add_listener(
+            RemoveCharacterFromPlay, self.handle_succession, "pre"
+        )
+        world.get_resource(ActionSystem).add_listener(
+            RemoveCharacterFromPlay, self.handle_succession_fail, "post"
+        )
+
+    @staticmethod
+    def handle_succession(action: RemoveCharacterFromPlay) -> None:
+        """Handle a character death."""
+        if action.character.has_component(HeadOfFamily):
+            family = action.character.get_component(HeadOfFamily).family
+
+            set_family_head(family, None)
+
+            if FamilyHeadSuccessionSystem.try_pass_power_to_heir(
+                action.character, family
+            ):
+                return
+
+            FamilyHeadSuccessionSystem.try_pass_power_to_descendent(
+                action.character, family
+            )
+
+    @staticmethod
+    def handle_succession_fail(action: RemoveCharacterFromPlay) -> None:
+        """Handle removing a family from play if succession fails."""
+        family = action.character.get_component(Character).family
+        assert family
+
+        family_component = family.get_component(Family)
+
+        if family_component.head is None:
+            action.add_reaction(RemoveFamilyFromPlay(family))
+
+    @staticmethod
+    def try_pass_power_to_heir(family_head: Entity, family: Entity) -> bool:
         """Attempt to pass power over the family to their heir."""
 
         heir = family_head.get_component(Character).heir
@@ -245,7 +270,8 @@ class FamilyHeadSuccessionSystem(System):
 
         return False
 
-    def try_pass_power_to_descendent(self, family_head: Entity, family: Entity) -> bool:
+    @staticmethod
+    def try_pass_power_to_descendent(family_head: Entity, family: Entity) -> bool:
         """Attempt to pass power to someone in their succession chart."""
         world = family_head.world
 
@@ -265,23 +291,7 @@ class FamilyHeadSuccessionSystem(System):
         return False
 
     def on_update(self, world: World) -> None:
-        for _, (family, _) in world.query_components((Family, Active)):
-
-            if family.head is not None:
-                continue
-
-            if len(family.former_heads) == 0:
-                continue
-
-            last_family_head = family.former_heads[-1]
-
-            if self.try_pass_power_to_heir(last_family_head, family.entity):
-                continue
-
-            if self.try_pass_power_to_descendent(last_family_head, family.entity):
-                continue
-
-            remove_family_from_play(family.entity)
+        return
 
 
 class RulerSuccessionSystem(System):
@@ -293,26 +303,36 @@ class RulerSuccessionSystem(System):
 
     __system_group__ = "LateUpdateSystems"
 
-    def try_pass_crown_to_heir(self, last_ruler: Entity) -> bool:
-        """Attempt to pass the crown from the previous ruler to their heir."""
-        world = last_ruler.world
-        heir = last_ruler.get_component(Character).heir
+    def on_start(self, world: World) -> None:
+        world.get_resource(ActionSystem).add_listener(
+            RemoveCharacterFromPlay, self.handle_succession, "pre"
+        )
+        world.get_resource(ActionSystem).add_listener(
+            RemoveCharacterFromPlay, self.handle_succession_fail, "post"
+        )
 
-        if heir is None:
-            return False
+    @staticmethod
+    def handle_succession(action: RemoveCharacterFromPlay) -> None:
+        """Handle ruler succession when a character is removed from play."""
+        if action.character.has_component(Ruler):
+            remove_current_ruler(action.world)
 
-        heir_character = heir.get_component(Character)
+            character_component = action.character.get_component(Character)
+            heir = character_component.heir
 
-        if not heir_character.is_alive:
-            return False
+            if heir is None:
+                return
 
-        set_current_ruler(world, heir)
-        heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
+            if not heir.is_active:
+                return
 
-        return True
+            set_current_ruler(action.world, heir)
+            heir.get_component(CharacterMetrics).data.directly_inherited_throne = True
 
-    def on_update(self, world: World) -> None:
-        dynasty_tracker = world.get_resource(DynastyTracker)
+    @staticmethod
+    def handle_succession_fail(action: RemoveCharacterFromPlay) -> None:
+        """Handle case when succession fails."""
+        dynasty_tracker = action.world.get_resource(DynastyTracker)
         current_dynasty = dynasty_tracker.current_dynasty
 
         # Skip there is not a current dynasty
@@ -325,19 +345,10 @@ class RulerSuccessionSystem(System):
         if dynasty_component.current_ruler is not None:
             return
 
-        last_ruler = dynasty_component.last_ruler
+        end_current_dynasty(action.world)
 
-        if last_ruler is None:
-            # Generally we should never reach a point where a dynasty does not have
-            # a last ruler. However, in the weird case that we do, just end the dynasty
-            # and return
-            end_current_dynasty(world)
-            return
-
-        if self.try_pass_crown_to_heir(last_ruler):
-            return
-
-        end_current_dynasty(world)
+    def on_update(self, world: World) -> None:
+        return
 
 
 class EmptyFamilyCleanUpSystem(System):
@@ -348,7 +359,7 @@ class EmptyFamilyCleanUpSystem(System):
     def on_update(self, world: World) -> None:
         for _, (family, _) in world.query_components((Family, Active)):
             if len(family.active_members) == 0:
-                remove_family_from_play(family.entity)
+                RemoveFamilyFromPlay(family.entity).execute()
 
 
 class CharacterBehaviorSystem(System):
@@ -942,8 +953,7 @@ class PregnancyPlaceHolderSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.get_resource(random.Random)
-        current_date = world.get_resource(GameState).year
-        due_date = current_date + 1
+        current_year = world.get_resource(GameState).year
 
         for _, (marriage, _) in world.query_components((Marriage, Active)):
             character = marriage.character.get_component(Character)
@@ -955,8 +965,6 @@ class PregnancyPlaceHolderSystem(System):
             if character.entity.has_component(Pregnancy):
                 continue
 
-            character_fertility_comp = marriage.character.get_component(Fertility)
-
             character_fertility = get_fertility(marriage.character) / 100.0
             spouse_fertility = get_fertility(marriage.spouse) / 100.0
 
@@ -965,34 +973,27 @@ class PregnancyPlaceHolderSystem(System):
 
             chance_have_child = (character_fertility + spouse_fertility) / 2
 
-            if not rng.random() < chance_have_child:
-                continue
-
-            # Add pregnancy component to character
-            character.entity.add_component(
-                Pregnancy(
-                    assumed_father=spouse.entity,
-                    actual_father=spouse.entity,
-                    conception_date=current_date,
-                    due_date=due_date,
+            if rng.random() < chance_have_child:
+                character.entity.add_component(
+                    Pregnancy(
+                        assumed_father=spouse.entity,
+                        actual_father=spouse.entity,
+                        conception_date=current_year,
+                        due_date=current_year + 1,
+                    )
                 )
-            )
-
-            character_fertility_comp.base_value -= 25
-
-            # PregnancyEvent(character.entity).log_event()
 
 
 class ChildBirthSystem(System):
     """Spawns new children when pregnant characters reach their due dates."""
 
     def on_update(self, world: World) -> None:
-        current_date = world.get_resource(GameState).year
+        current_year = world.get_resource(GameState).year
 
         for _, (character, pregnancy, _) in world.query_components(
             (Character, Pregnancy, Active)
         ):
-            if pregnancy.due_date > current_date:
+            if pregnancy.due_date > current_year:
                 continue
 
             GiveBirth(character.entity).execute()

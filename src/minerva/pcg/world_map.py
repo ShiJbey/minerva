@@ -67,11 +67,8 @@ def spawn_territory(
 class GenerateMap(GameAction):
     """Data associated with spawning a family."""
 
-    world: World
-
     def __init__(self, world: World) -> None:
-        super().__init__()
-        self.world = world
+        super().__init__(world)
         self.entity = None
 
 

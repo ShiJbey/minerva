@@ -106,13 +106,11 @@ class CharacterGenOptions:
 class SpawnCharacter(GameAction):
     """Data associated with spawning a character."""
 
-    world: World
     options: CharacterGenOptions
     entity: Optional[Entity]
 
     def __init__(self, world: World, options: CharacterGenOptions) -> None:
-        super().__init__()
-        self.world = world
+        super().__init__(world)
         self.options = options
         self.entity = None
 
@@ -498,13 +496,11 @@ class FamilyGenOptions:
 class SpawnFamily(GameAction):
     """Data associated with spawning a family."""
 
-    world: World
     options: FamilyGenOptions
     entity: Optional[Entity]
 
     def __init__(self, world: World, options: FamilyGenOptions) -> None:
-        super().__init__()
-        self.world = world
+        super().__init__(world)
         self.options = options
         self.entity = None
 

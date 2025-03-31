@@ -24,15 +24,16 @@ from minerva.characters.components import (
     Sex,
 )
 from minerva.characters.helpers import (
+    RemoveCharacterFromPlay,
     get_fertility,
     get_prestige,
     increment_fertility_base,
     merge_family_with,
-    remove_character_from_play,
     remove_heir,
     set_character_alive,
     set_character_biological_father,
     set_character_birth_family,
+    set_character_death_date,
     set_character_family,
     set_character_father,
     set_character_life_stage,
@@ -55,7 +56,7 @@ from minerva.characters.war_helpers import (
     join_alliance,
 )
 from minerva.config import Config
-from minerva.ecs import Active, Entity, World
+from minerva.ecs import Active, Entity
 from minerva.game_action import ActionSystem, GameAction
 from minerva.game_state import GameState
 from minerva.pcg.character import spawn_baby_from
@@ -273,16 +274,14 @@ class DieAction(GameAction):
     display_name = "Die"
     description = "[character] died (cause: [cause])."
 
-    __slots__ = ("world", "character", "cause", "timestamp")
+    __slots__ = ("character", "cause", "timestamp")
 
-    world: World
     character: Entity
     cause: str
     timestamp: int
 
     def __init__(self, character: Entity, cause: str = "") -> None:
-        super().__init__()
-        self.world = character.world
+        super().__init__(character.world)
         self.character = character
         self.cause = cause
         self.timestamp = character.world.get_resource(GameState).year
@@ -297,9 +296,9 @@ def handle_character_death(action: DieAction) -> None:
 
     set_character_alive(action.character, False)
 
-    action.character.deactivate()
+    set_character_death_date(action.character, action.timestamp)
 
-    remove_character_from_play(action.character)
+    RemoveCharacterFromPlay(action.character).execute()
 
     event_id = get_next_event_uid(action.world)
 
@@ -1007,6 +1006,8 @@ class GiveBirth(AIAction):
         increment_fertility_base(
             self.character, -character.species.fertility_cost_per_child
         )
+
+        self.log_event(self.character, baby)
 
 
 class SexAction(AIAction):
