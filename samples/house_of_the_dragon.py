@@ -15,12 +15,11 @@ from minerva.characters.helpers import (
     set_character_biological_father,
     set_character_father,
     set_character_mother,
+    set_heir,
     set_relation_sibling,
     start_marriage,
-    set_heir,
 )
-from minerva.pcg.base_types import CharacterGenOptions
-from minerva.pcg.character import spawn_character
+from minerva.pcg.character import CharacterGenOptions, spawn_character
 from minerva.simulation import Simulation
 
 

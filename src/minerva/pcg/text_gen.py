@@ -12,8 +12,7 @@ from typing import Any, Optional, Union
 import tracery
 import tracery.modifiers as tracery_modifiers
 
-from minerva.ecs import Entity, World
-from minerva.pcg.base_types import NameFactory
+from minerva.ecs import World
 
 
 def render_string(template: str, bindings: dict[str, Any]) -> str:
@@ -74,24 +73,6 @@ class Tracery:
             The final string.
         """
         return self._grammar.flatten(start_string)
-
-
-class TraceryNameFactory(NameFactory):
-    """A name factory that uses Tracery."""
-
-    __slots__ = ("pattern",)
-
-    pattern: str
-    """A string pattern given to a tracery grammar."""
-
-    def __init__(self, pattern: str) -> None:
-        super().__init__()
-        self.pattern = pattern
-
-    def generate_name(self, entity: Entity) -> str:
-        world = entity.world
-        tracery_instance = world.get_resource(Tracery)
-        return tracery_instance.generate(self.pattern)
 
 
 def load_tracery_file(world: World, file_path: Union[str, pathlib.Path]) -> None:

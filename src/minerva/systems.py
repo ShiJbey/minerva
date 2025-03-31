@@ -94,8 +94,7 @@ from minerva.characters.war_helpers import (
 from minerva.config import Config
 from minerva.ecs import Active, Entity, System, SystemGroup, World
 from minerva.game_state import GameState
-from minerva.pcg.base_types import FamilyGenOptions
-from minerva.pcg.character import spawn_family
+from minerva.pcg.character import FamilyGenOptions, spawn_family
 from minerva.pcg.world_map import generate_world_map
 from minerva.relationships.base_types import Opinion
 from minerva.relationships.helpers import get_relationship

@@ -13,8 +13,7 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
-from minerva.pcg.base_types import CharacterGenOptions
-from minerva.pcg.character import spawn_character
+from minerva.pcg.character import CharacterGenOptions, spawn_character
 from minerva.simulation import Simulation
 
 

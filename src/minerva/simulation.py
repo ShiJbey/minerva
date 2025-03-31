@@ -36,14 +36,7 @@ from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.ecs import Entity, World
 from minerva.game_state import GameState
-from minerva.pcg.base_types import PCGFactories
-from minerva.pcg.character import (
-    DefaultBabyFactory,
-    DefaultCharacterFactory,
-    DefaultFamilyFactory,
-)
-from minerva.pcg.territory_pcg import DefaultTerritoryFactory
-from minerva.pcg.text_gen import Tracery, TraceryNameFactory
+from minerva.pcg.text_gen import Tracery
 from minerva.sim_db import SimDB
 from minerva.simulation_events import SimulationEvents
 from minerva.traits.base_types import CharacterTraitDatabase
@@ -70,22 +63,6 @@ class Simulation:
         self.world.add_resource(GameState())
         self.world.add_resource(_config)
         self.world.add_resource(random.Random(_config.seed))
-        self.world.add_resource(
-            PCGFactories(
-                character_factory=DefaultCharacterFactory(
-                    male_first_name_factory=TraceryNameFactory("#male_first_name#"),
-                    female_first_name_factory=TraceryNameFactory("#female_first_name#"),
-                    surname_factory=TraceryNameFactory("#surname#"),
-                ),
-                baby_factory=DefaultBabyFactory(),
-                family_factory=DefaultFamilyFactory(
-                    name_factory=TraceryNameFactory("#surname#")
-                ),
-                territory_factory=DefaultTerritoryFactory(
-                    name_factory=TraceryNameFactory("#territory_name#")
-                ),
-            )
-        )
         self.world.add_resource(SpeciesLibrary())
         self.world.add_resource(CharacterTraitDatabase())
         self.world.add_resource(SuccessionChartCache())

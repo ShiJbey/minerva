@@ -16,8 +16,12 @@ from minerva.characters.succession_helpers import (
     set_current_ruler,
 )
 from minerva.ecs import Entity
-from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
-from minerva.pcg.character import spawn_character, spawn_family
+from minerva.pcg.character import (
+    CharacterGenOptions,
+    FamilyGenOptions,
+    spawn_character,
+    spawn_family,
+)
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 

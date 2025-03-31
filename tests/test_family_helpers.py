@@ -27,8 +27,12 @@ from minerva.characters.helpers import (
     set_family_name,
     unassign_family_member_from_roles,
 )
-from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
-from minerva.pcg.character import spawn_character, spawn_family
+from minerva.pcg.character import (
+    CharacterGenOptions,
+    FamilyGenOptions,
+    spawn_character,
+    spawn_family,
+)
 from minerva.pcg.territory_pcg import spawn_territory
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation

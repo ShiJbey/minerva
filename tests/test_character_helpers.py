@@ -34,8 +34,12 @@ from minerva.characters.helpers import (
     start_marriage,
     start_romantic_affair,
 )
-from minerva.pcg.base_types import CharacterGenOptions, FamilyGenOptions
-from minerva.pcg.character import spawn_character, spawn_family
+from minerva.pcg.character import (
+    CharacterGenOptions,
+    FamilyGenOptions,
+    spawn_character,
+    spawn_family,
+)
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
 

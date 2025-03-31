@@ -2,20 +2,66 @@
 
 from __future__ import annotations
 
+import dataclasses
 import random
 from itertools import product
-from typing import Any, Generator
+from typing import Any, Generator, Optional
 
 from minerva.config import Config
 from minerva.ecs import Entity, World
-from minerva.pcg.territory_pcg import spawn_territory
+from minerva.pcg.text_gen import Tracery
+from minerva.sim_db import SimDB
 from minerva.world_map.components import (
     CartesianGrid,
     CompassDir,
+    PopulationHappiness,
     Territory,
     TerritoryInfo,
     WorldMap,
 )
+
+
+@dataclasses.dataclass
+class TerritoryGenOptions:
+    """Territory generation configuration settings."""
+
+    name: str = ""
+
+
+def generate_territory(world: World, options: TerritoryGenOptions) -> Entity:
+    """Construct a new territory."""
+    config = world.get_resource(Config)
+    tracery_instance = world.get_resource(Tracery)
+
+    territory = world.entity()
+    name = (
+        options.name if options.name else tracery_instance.generate("#territory_name#")
+    )
+    territory.add_component(Territory(name=name))
+    territory.add_component(
+        PopulationHappiness(
+            config.base_territory_happiness,
+        )
+    )
+    territory.name = name
+
+    db = world.get_resource(SimDB).conn
+
+    db.execute(
+        """INSERT INTO territories (uid, name) VALUES (?, ?);""",
+        (territory.uid, name),
+    )
+    db.commit()
+
+    return territory
+
+
+def spawn_territory(
+    world: World, options: Optional[TerritoryGenOptions] = None
+) -> Entity:
+    """Spawn a new territory."""
+    return generate_territory(world, options if options else TerritoryGenOptions())
+
 
 TERRITORY_GENERATION_DEBUG_COLORS = [
     "#e90000",  # red
