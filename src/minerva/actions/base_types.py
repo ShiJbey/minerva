@@ -37,7 +37,7 @@ class ActionSelectionStrategy(ABC):
     """A utility object that helps AIBrains choose an action to execute."""
 
     @abstractmethod
-    def choose_action(self, action_scores: ProclivityScores) -> AIAction:
+    def choose_action(self, action_scores: ProclivityScores) -> Optional[AIAction]:
         """Select an action from the given collection of actions."""
         raise NotImplementedError()
 

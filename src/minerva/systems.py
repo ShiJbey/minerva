@@ -412,40 +412,47 @@ class CharacterBehaviorSystem(System):
                 character_component = character.get_component(Character)
 
                 character_controller = character.get_component(CharacterController)
+                action_selector = character_controller.brain.action_selection_strategy
 
                 CharacterBehaviorSystem.update_blackboard_from_sensors(character)
 
                 for behavior in behavior_library.iter_behaviors():
-                    for potential_action in behavior.get_actions(character):
-                        if (
-                            character_controller.action_cooldowns[
-                                potential_action.get_name()
-                            ]
-                            <= 0
-                            and character_component.influence_points
-                            >= potential_action.get_cost()
-                        ):
-                            actions.append(potential_action)
+                    potential_actions = behavior.get_actions(character)
+
+                    action_scores = score_actions(potential_actions)
+
+                    selected_action = action_selector.choose_action(action_scores)
+
+                    if selected_action is None:
+                        continue
+
+                    if (
+                        character_controller.action_cooldowns[
+                            selected_action.get_name()
+                        ]
+                        <= 0
+                        and character_component.influence_points
+                        >= selected_action.get_cost()
+                    ):
+                        actions.append(selected_action)
 
                 if len(actions) > 0:
                     action_scores = score_actions(actions)
 
-                    selected_action: AIAction = (
-                        character_controller.brain.action_selection_strategy.choose_action(
-                            action_scores
-                        )
-                    )
+                    selected_action = action_selector.choose_action(action_scores)
 
-                    character_controller.action_cooldowns[
-                        selected_action.get_name()
-                    ] = selected_action.get_cooldown_time()
+                    if selected_action is not None:
 
-                    success = selected_action.execute()
+                        character_controller.action_cooldowns[
+                            selected_action.get_name()
+                        ] = selected_action.get_cooldown_time()
 
-                    if success:
-                        character_component.influence_points -= (
-                            selected_action.get_cost()
-                        )
+                        success = selected_action.execute()
+
+                        if success:
+                            character_component.influence_points -= (
+                                selected_action.get_cost()
+                            )
 
 
 class FamilyRoleSystem(System):

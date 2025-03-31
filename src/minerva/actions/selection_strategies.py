@@ -21,7 +21,7 @@ class MaxUtilActionSelectStrategy(ActionSelectionStrategy):
         super().__init__()
         self.utility_threshold = utility_threshold
 
-    def choose_action(self, action_scores: ProclivityScores) -> AIAction:
+    def choose_action(self, action_scores: ProclivityScores) -> Optional[AIAction]:
 
         max_utility: float = -999_999
         best_action: Optional[AIAction] = None
@@ -36,12 +36,6 @@ class MaxUtilActionSelectStrategy(ActionSelectionStrategy):
 
             if score > max_utility:
                 best_action = action_instance
-
-        if best_action is None:
-            raise ValueError(
-                "No actions found in list with utility greater than "
-                f"{self.utility_threshold}."
-            )
 
         return best_action
 
