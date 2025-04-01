@@ -3,34 +3,13 @@
 
 import pytest
 
-from minerva.characters.components import Sociability
 from minerva.ecs import Entity, World
-from minerva.relationships.base_types import (
-    Attraction,
-    RelationshipManager,
-    RelationshipModifier,
-    SocialRuleLibrary,
-)
+from minerva.relationships.base_types import Attraction, RelationshipManager
 from minerva.relationships.helpers import add_relationship
-from minerva.relationships.preconditions import ConstantPrecondition
 from minerva.sim_db import SimDB
-from minerva.simulation_events import SimulationEvents
-from minerva.stats.base_types import Stat, StatComponent, StatModifier, StatModifierType
-from minerva.stats.helpers import default_stat_calc_strategy
+from minerva.stats.base_types import StatModifier, StatModifierType
 from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase, Traits
-from minerva.traits.effects import (
-    AddIncomingRelationshipModifier,
-    AddOutgoingRelationshipModifier,
-    AddSociabilityModifier,
-)
 from minerva.traits.helpers import add_trait, has_trait, remove_trait
-
-
-class Hunger(Stat):
-    """Tracks an entity's hunger."""
-
-    def __init__(self, base_value: int = 0) -> None:
-        super().__init__(base_value, 0, 1000)
 
 
 @pytest.fixture
@@ -39,8 +18,6 @@ def world() -> World:
 
     w = World()
     w.add_resource(SimDB())
-    w.add_resource(SimulationEvents())
-    w.add_resource(SocialRuleLibrary())
     w.add_resource(CharacterTraitDatabase())
     w.get_resource(CharacterTraitDatabase).add_trait(
         CharacterTrait(
@@ -103,8 +80,6 @@ def create_test_character(world: World) -> Entity:
         components=[
             RelationshipManager(),
             Traits(),
-            Hunger(0),
-            Sociability(default_stat_calc_strategy),
         ]
     )
 
@@ -141,8 +116,6 @@ def test_add_remove_trait_effects(world: World) -> None:
     """Test that trait effects are added and removed with the trait."""
 
     farmer = create_test_character(world)
-
-    sociability = farmer.get_component(Sociability)
 
     sociability.base_value = 0
 

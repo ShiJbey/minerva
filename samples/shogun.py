@@ -135,7 +135,7 @@ if __name__ == "__main__":
     if logging_enabled:
         if log_to_terminal is False:
             logging.basicConfig(
-                filename=pathlib.Path(f"./{sim.config.seed}.minerva.log"),
+                filename=pathlib.Path(f"./minerva.log"),
                 encoding="utf-8",
                 level=log_level,
                 format="%(message)s",

@@ -3,6 +3,7 @@
 Source: https://ck3.paradoxwikis.com/Traits
 """
 
+from minerva.actions.base_types import Proclivity
 from minerva.ecs import World
 from minerva.stats.base_types import StatModifier, StatModifierType
 from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase
@@ -28,6 +29,7 @@ def load_traits(world: World) -> None:
             spawn_frequency=0,
             inheritance_chance_single=1.0,
             inheritance_chance_both=1.0,
+            proclivities=[Proclivity(5).where(lambda a: "succession" in a.tags)],
         )
     )
 
@@ -224,6 +226,9 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(25)),
             ],
+            proclivities=[
+                Proclivity(3).where(lambda a: "generous" in a.tags),
+            ],
         )
     )
 
@@ -237,6 +242,10 @@ def load_traits(world: World) -> None:
                 AddDiplomacyModifier(StatModifier(10)),
                 AddIntrigueModifier(StatModifier(-35)),
             ],
+            proclivities=[
+                Proclivity(5).where(lambda a: "infidelity" in a.tags),
+                Proclivity(-7).where(lambda a: "deceit" in a.tags),
+            ],
         )
     )
 
@@ -249,6 +258,10 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(-10)),
                 AddIntrigueModifier(StatModifier(35)),
+            ],
+            proclivities=[
+                Proclivity(7).where(lambda a: "infidelity" in a.tags),
+                Proclivity(7).where(lambda a: "deceit" in a.tags),
             ],
         )
     )
@@ -288,6 +301,7 @@ def load_traits(world: World) -> None:
                 AddStewardshipModifier(StatModifier(-15)),
                 AddDiplomacyModifier(StatModifier(15)),
             ],
+            proclivities=[Proclivity(5).where(lambda a: "diplomacy" in a.tags)],
         )
     )
 
@@ -314,5 +328,6 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(-15)),
             ],
+            proclivities=[Proclivity(2).where(lambda a: "diplomacy" in a.tags)],
         )
     )

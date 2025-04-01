@@ -159,7 +159,7 @@ class Simulation:
                 display_name="Give Back To Territory",
                 cost=100,
                 cooldown=4,
-                tags=["generosity"],
+                tags=["generosity", "give_back", "beneficent"],
                 description=(
                     "[initiator] gave back to the small folk of the "
                     "[recipient] territory."
@@ -172,6 +172,7 @@ class Simulation:
                 cost=400,
                 cooldown=4,
                 display_name="GrowPoliticalInfluence",
+                tags=["diplomacy", "grow-influence", "power"],
                 description=(
                     "[initiator] grew the political influence of the "
                     "[family] family in the "
@@ -186,6 +187,7 @@ class Simulation:
                 cooldown=0,
                 display_name="Get Married",
                 description=("[initiator] and [recipient] got married."),
+                tags=["romance", "marriage"],
             )
         )
         database.add_action(
@@ -264,6 +266,7 @@ class Simulation:
                 description=(
                     "[initiator] is attempting to cheat on [spouse] with [accomplice]."
                 ),
+                tags=["infidelity"],
             )
         )
         database.add_action(
@@ -273,6 +276,7 @@ class Simulation:
                 description=("[initiator] cheated on [spouse] with [accomplice]."),
                 cost=400,
                 cooldown=4,
+                tags=["infidelity"],
             )
         )
         database.add_action(
@@ -282,6 +286,7 @@ class Simulation:
                 description="[subject] had sex with [recipient].",
                 cost=400,
                 cooldown=3,
+                tags=["romance", "sex"],
             )
         )
         database.add_action(
@@ -299,6 +304,7 @@ class Simulation:
                     "[initiator] declared war against [opponent] for the "
                     "[territory] territory."
                 ),
+                tags=["war", "power"],
             )
         )
         database.add_action(
@@ -323,6 +329,7 @@ class Simulation:
                     "[target] for the "
                     "[territory] territory."
                 ),
+                tags=["war", "power"],
             )
         )
         database.add_action(
@@ -332,6 +339,7 @@ class Simulation:
                 cooldown=480,
                 display_name="Start Coup Scheme",
                 description=("[initiator] started a new coup scheme against [ruler]."),
+                tags=["war", "deceit"],
             )
         )
         database.add_action(
@@ -346,6 +354,7 @@ class Simulation:
                 name="DiscoverCoupScheme",
                 display_name="DiscoverCoupScheme",
                 description=("[initiator] discovered [target]'s coup scheme."),
+                tags=[],
             )
         )
         database.add_action(
@@ -382,6 +391,7 @@ class Simulation:
                 description=("[initiator] sent a gift to [recipient]."),
                 cost=200,
                 cooldown=4,
+                tags=["generosity", "diplomacy"],
             )
         )
         database.add_action(
@@ -391,6 +401,7 @@ class Simulation:
                 description="[initiator] sent aid to [recipient].",
                 cost=100,
                 cooldown=4,
+                tags=["diplomacy"],
             )
         )
         database.add_action(
@@ -425,6 +436,7 @@ class Simulation:
                 cooldown=6,
                 display_name="Became Ruler",
                 description="[initiator] became ruler.",
+                tags=["power", "greed", "succession"],
             )
         )
         database.add_action(

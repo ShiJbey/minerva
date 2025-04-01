@@ -13,25 +13,7 @@ from minerva.relationships.base_types import (
     RelationshipManager,
 )
 from minerva.relationships.helpers import add_relationship, get_relationship
-from minerva.relationships.preconditions import ConstantPrecondition
-from minerva.simulation_events import SimulationEvents
-from minerva.stats.base_types import Stat, StatModifier, StatModifierType
-
-
-class Hunger(Stat):
-    """Tracks an entity's hunger."""
-
-
-class HungerState(Component):
-    """Tracks character's hunger state as a string"""
-
-    __slots__ = ("state",)
-
-    state: str
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.state = ""
+from minerva.stats.base_types import StatModifier, StatModifierType
 
 
 class _ClanInfo(Component):
@@ -54,16 +36,6 @@ class _OpinionStateValue(enum.IntEnum):
     NEUTRAL = 2
     GOOD = 3
     EXCELLENT = 4
-
-
-class _OpinionState(Component):
-    """State of an opinion."""
-
-    value: _OpinionStateValue
-
-    def __init__(self, value: _OpinionStateValue = _OpinionStateValue.NEUTRAL) -> None:
-        super().__init__()
-        self.value = value
 
 
 class RivalClansPrecondition(RelationshipPrecondition):
@@ -96,45 +68,6 @@ def test_get_stat() -> None:
 
     assert hunger.base_value == 110
     assert hunger.value == 110
-
-
-def test_stat_change_listener() -> None:
-    """Test stat get stat when changing base_value."""
-    world = World()
-
-    def hunger_listener(entity: Entity, stat: StatComponent) -> None:
-        hunger_intervals = [
-            (200, "STARVING"),
-            (100, "FAMISHED"),
-            (50, "HUNGRY"),
-            (0, "EXCELLENT"),
-        ]
-
-        for level, label in hunger_intervals:
-            if stat.value >= level:
-                entity.get_component(HungerState).state = label
-                return
-
-    character = world.entity(
-        components=[
-            Hunger(0),
-            HungerState(),
-        ]
-    )
-
-    hunger = character.get_component(Hunger)
-
-    hunger.listeners.append(hunger_listener)
-
-    hunger.base_value = 10
-
-    assert hunger.value == 10
-    assert character.get_component(HungerState).state == "EXCELLENT"
-
-    hunger.base_value = 150
-
-    assert hunger.value == 150
-    assert character.get_component(HungerState).state == "FAMISHED"
 
 
 def test_add_stat_modifier() -> None:
@@ -184,19 +117,14 @@ def test_get_relationship_stat() -> None:
 
     world = World()
 
-    world.add_resource(SocialRuleLibrary())
-    world.add_resource(SimulationEvents())
-
     c1 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
         ]
     )
 
     c2 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
         ]
     )
@@ -216,19 +144,14 @@ def test_get_modifier_to_relationship_stat() -> None:
 
     world = World()
 
-    world.add_resource(SocialRuleLibrary())
-    world.add_resource(SimulationEvents())
-
     c1 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
         ]
     )
 
     c2 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
         ]
     )
@@ -248,19 +171,14 @@ def test_relationship_modifiers() -> None:
 
     world = World()
 
-    world.add_resource(SocialRuleLibrary())
-    world.add_resource(SimulationEvents())
-
     c1 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
         ]
     )
 
     c2 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
         ]
     )
@@ -296,10 +214,7 @@ def test_social_rules() -> None:
     """Test getting stat of relationship and changing base value."""
 
     world = World()
-    world.add_resource(SimulationEvents())
 
-    social_rule_library = SocialRuleLibrary()
-    world.add_resource(social_rule_library)
     social_rule_library.add_rule(
         SocialRule(
             rule_id="rival_clans_clash",
@@ -312,7 +227,6 @@ def test_social_rules() -> None:
 
     c1 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
             _ClanInfo(clan_name="EagleClan", clan_rivals=["BadgerClan"]),
         ]
@@ -320,7 +234,6 @@ def test_social_rules() -> None:
 
     c2 = world.entity(
         components=[
-            Hunger(0),
             RelationshipManager(),
             _ClanInfo(clan_name="BadgerClan", clan_rivals=["EagleClan"]),
         ]

@@ -404,6 +404,11 @@ class AIAction(GameAction):
         if context:
             self.context.update(context)
 
+    @property
+    def tags(self) -> set[str]:
+        """The tags associated with this action."""
+        return self.action_type.tags
+
     @abstractmethod
     def execute(self) -> None:
         """Execute the action using the instance information."""
