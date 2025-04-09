@@ -9,7 +9,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Iterable, Optional
 
-from minerva.actions.base_types import Proclivity
 from minerva.ecs import Component, Entity
 from minerva.pcg.content_selection import get_with_tags
 
@@ -43,8 +42,6 @@ class CharacterTrait:
         "inheritance_chance_single",
         "inheritance_chance_both",
         "tags",
-        "proclivities",
-        "target_proclivities",
     )
 
     uid: int
@@ -69,10 +66,6 @@ class CharacterTrait:
     """The probability of inheriting this trait if both parents have it."""
     tags: set[str]
     """Tags describing this definition."""
-    proclivities: list[Proclivity]
-    """Proclivities added to the character when this trait is attached."""
-    target_proclivities: list[Proclivity]
-    """Proclivities evaluated when the character is the target of an action."""
 
     def __init__(
         self,
@@ -86,8 +79,6 @@ class CharacterTrait:
         inheritance_chance_single: float = 0.0,
         inheritance_chance_both: float = 0.0,
         tags: Optional[list[str]] = None,
-        proclivities: Optional[Iterable[Proclivity]] = None,
-        target_proclivities: Optional[Iterable[Proclivity]] = None,
     ) -> None:
         self.trait_id = trait_id
         self.name = name
@@ -101,10 +92,6 @@ class CharacterTrait:
         self.inheritance_chance_single = inheritance_chance_single
         self.inheritance_chance_both = inheritance_chance_both
         self.tags = set(tags) if tags else set()
-        self.proclivities = list(proclivities if proclivities else [])
-        self.target_proclivities = list(
-            target_proclivities if target_proclivities else []
-        )
 
     def __hash__(self) -> int:
         return self.uid
@@ -123,7 +110,6 @@ class RelationshipTrait:
         "description",
         "effects",
         "tags",
-        "proclivities",
     )
 
     uid: int
@@ -136,8 +122,8 @@ class RelationshipTrait:
     """A short description of the tag."""
     effects: list[TraitEffect]
     """Effects to apply when the tag is added."""
-    proclivities: list[Proclivity]
-    """Proclivities added to the character when this trait is attached."""
+    tags: set[str]
+    """Tags associated with this trait."""
 
     def __init__(
         self,
@@ -145,13 +131,13 @@ class RelationshipTrait:
         name: str,
         description: str = "",
         effects: Optional[list[TraitEffect]] = None,
-        proclivities: Optional[Iterable[Proclivity]] = None,
+        tags: Optional[Iterable[str]] = None,
     ) -> None:
         self.trait_id = trait_id
         self.name = name
         self.description = description
         self.effects = list(effects) if effects else []
-        self.proclivities = list(proclivities) if proclivities else []
+        self.tags = set(tags if tags else [])
 
     def __hash__(self) -> int:
         return self.uid

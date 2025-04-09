@@ -8,16 +8,16 @@ from typing import Optional
 
 import minerva.systems
 from minerva.actions import behaviors
-from minerva.actions.actions import DieAction, handle_character_death
+from minerva.actions.actions import SeizeTerritoryAction
 from minerva.actions.base_types import (
-    ActionTypeDatabase,
-    AIActionType,
+    P_ALWAYS,
     AIBehaviorLibrary,
     AIBrain,
     AIBrainDatabase,
-    GlobalProclivities,
+    Proclivity,
+    ProclivityDatabase,
 )
-from minerva.actions.selection_strategies import MaxUtilActionSelectStrategy
+from minerva.actions.selection_strategies import WeightedActionSelectStrategy
 from minerva.actions.sensors import (
     TerritoriesControlledByOppsSensor,
     TerritoriesInRevoltSensor,
@@ -32,25 +32,50 @@ from minerva.characters.components import (
     Species,
     SpeciesLibrary,
 )
-from minerva.characters.helpers import (
-    RemoveCharacterFromPlay,
-    RemoveFamilyFromPlay,
-    remove_character_from_play,
-    remove_family_from_play,
-)
 from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.ecs import Entity, World
+from minerva.events import (
+    AllianceDisbandedEvent,
+    BecomeAdolescentEvent,
+    BecomeAdultEvent,
+    BecomeChildEvent,
+    BecomeFamilyHeadEvent,
+    BecomeSeniorEvent,
+    BecomeYoungAdultEvent,
+    CheatOnSpouseEvent,
+    CoupSchemeDiscoveredEvent,
+    DeathEvent,
+    DeclareWarEvent,
+    GiveBirthEvent,
+    GiveToTerritoriesEvent,
+    GlobalEventHistory,
+    JoinAllianceEvent,
+    JoinCoupSchemeEvent,
+    LeaveAllianceEvent,
+    LoseControlOfTerritoryEvent,
+    MarriageEvent,
+    PregnancyEvent,
+    SentenceToDeathEvent,
+    StartAllianceEvent,
+    StartCoupSchemeEvent,
+    StartWarSchemeEvent,
+    TakeControlOfTerritoryEvent,
+    UsurpThroneEvent,
+    WarLostEvent,
+    WarWonEvent,
+)
 from minerva.game_action import ActionSystem
 from minerva.game_state import GameState
-from minerva.pcg.character import (
-    SpawnCharacter,
-    SpawnFamily,
-    generate_character,
-    generate_family,
-)
 from minerva.pcg.text_gen import Tracery
+from minerva.relationships import social_rules
+from minerva.relationships.base_types import (
+    RelationshipManager,
+    RelationshipModifierDatabase,
+)
+from minerva.relationships.helpers import RelationshipSystem
 from minerva.sim_db import SimDB
+from minerva.status.systems import StatusSystem
 from minerva.traits.base_types import CharacterTraitDatabase
 
 
@@ -79,31 +104,29 @@ class Simulation:
         self.world.add_resource(CharacterTraitDatabase())
         self.world.add_resource(AIBehaviorLibrary())
         self.world.add_resource(DynastyTracker())
-        self.world.add_resource(ActionTypeDatabase())
         self.world.add_resource(Tracery(self.config.seed))
         self.world.add_resource(SimDB(_config.db_path))
         self.world.add_resource(AIBrainDatabase())
-        self.world.add_resource(GlobalProclivities())
         self.world.add_resource(ActionSystem())
+        self.world.add_resource(RelationshipManager())
+        self.world.add_resource(RelationshipModifierDatabase())
+        self.world.add_resource(ProclivityDatabase())
+        self.world.add_resource(GlobalEventHistory())
 
         self.initialize_brains()
         self.initialize_systems()
         self.initialize_database()
-        self.initialize_actions()
+        self.initialize_social_rules()
         self.initialize_behaviors()
         self.initialize_species_types()
         self.initialize_game_action_performers()
+        self.configure_events()
 
     def initialize_game_action_performers(self) -> None:
         """Initialize performers for GameActions."""
-        action_system = self.world.get_resource(ActionSystem)
-        action_system.attach_performer(SpawnCharacter, generate_character)
-        action_system.attach_performer(SpawnFamily, generate_family)
-        action_system.attach_performer(DieAction, handle_character_death)
-        action_system.attach_performer(
-            RemoveCharacterFromPlay, remove_character_from_play
+        self.world.get_resource(ProclivityDatabase).add_proclivity(
+            SeizeTerritoryAction, Proclivity(P_ALWAYS)
         )
-        action_system.attach_performer(RemoveFamilyFromPlay, remove_family_from_play)
 
     def initialize_brains(self) -> None:
         """Initialize built-in brains."""
@@ -116,7 +139,7 @@ class Simulation:
                     UnControlledTerritoriesSensor(),
                     TerritoriesControlledByOppsSensor(),
                 ],
-                action_selection_strategy=MaxUtilActionSelectStrategy(),
+                action_selection_strategy=WeightedActionSelectStrategy(),
             )
         )
 
@@ -125,7 +148,7 @@ class Simulation:
 
         self.world.add_system(minerva.systems.TimeSystem())
         self.world.add_system(minerva.systems.CharacterAgingSystem())
-        self.world.add_system(minerva.systems.CharacterLifespanSystem())
+        self.world.add_system(minerva.systems.CharacterDeathSystem())
         self.world.add_system(minerva.systems.FamilyHeadSuccessionSystem())
         self.world.add_system(minerva.systems.RulerSuccessionSystem())
         self.world.add_system(minerva.systems.EmptyFamilyCleanUpSystem())
@@ -135,8 +158,8 @@ class Simulation:
         self.world.add_system(minerva.systems.RevoltUpdateSystem())
         self.world.add_system(minerva.systems.TerritoryRandomEventSystem())
         self.world.add_system(minerva.systems.InfluencePointGainSystem())
-        self.world.add_system(minerva.systems.PlaceholderMarriageSystem())
-        self.world.add_system(minerva.systems.PregnancyPlaceHolderSystem())
+        self.world.add_system(minerva.systems.MarriageSystem())
+        self.world.add_system(minerva.systems.PregnancySystem())
         self.world.add_system(minerva.systems.ChildBirthSystem())
         self.world.add_system(minerva.systems.TerritoryInfluencePointBoostSystem())
         self.world.add_system(minerva.systems.SchemeUpdateSystems())
@@ -144,426 +167,41 @@ class Simulation:
         self.world.add_system(minerva.systems.WarSchemeUpdateSystem())
         self.world.add_system(minerva.systems.CoupSchemeUpdateSystem())
         self.world.add_system(minerva.systems.WarUpdateSystem())
-        self.world.add_system(minerva.systems.ActionCooldownSystem())
         self.world.add_system(minerva.systems.FamilyRefillSystem())
         self.world.add_system(minerva.systems.HeirDeclarationSystem())
         self.world.add_system(minerva.systems.OrphanAdoptionSystem())
         self.world.add_system(minerva.systems.MapGenerationSystem())
-
-    def initialize_actions(self) -> None:
-        """Initialize actions."""
-        database = self.world.get_resource(ActionTypeDatabase)
-        database.add_action(
-            AIActionType(
-                name="GiveBackToTerritory",
-                display_name="Give Back To Territory",
-                cost=100,
-                cooldown=4,
-                tags=["generosity", "give_back", "beneficent"],
-                description=(
-                    "[initiator] gave back to the small folk of the "
-                    "[recipient] territory."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="GrowPoliticalInfluence",
-                cost=400,
-                cooldown=4,
-                display_name="GrowPoliticalInfluence",
-                tags=["diplomacy", "grow-influence", "power"],
-                description=(
-                    "[initiator] grew the political influence of the "
-                    "[family] family in the "
-                    "[territory] territory."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="GetMarried",
-                cost=0,
-                cooldown=0,
-                display_name="Get Married",
-                description=("[initiator] and [recipient] got married."),
-                tags=["romance", "marriage"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="Die",
-                cost=0,
-                cooldown=0,
-                display_name="Die",
-                description="[initiator] died (cause: [cause]).",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="BecomeChild",
-                display_name="Become Child",
-                description="[initiator] became a child.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="BecomeAdolescent",
-                display_name="Become Adolescent",
-                description="[initiator] became an adolescent.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="BecomeYoungAdult",
-                display_name="Become Young Adult",
-                description="[initiator] became a young adult.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="BecomeAdult",
-                display_name="Become Adult",
-                description="[initiator] became an adult.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="BecomeSenior",
-                display_name="Become Senior",
-                description="[initiator] became a senior.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="BecameFamilyHead",
-                display_name="Became Family Head",
-                description=("[initiator] became head of the [recipient] family."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="ChildBirth",
-                display_name="ChildBirth",
-                description=("[initiator] gave birth to [recipient]."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="SentenceToDeath",
-                display_name="Sentenced to Death",
-                description=(
-                    "[initiator] sentenced [recipient] to death for [reason]."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="TryCheatOnSpouse",
-                display_name="Try to Cheat on Spouse",
-                cost=400,
-                cooldown=4,
-                description=(
-                    "[initiator] is attempting to cheat on [spouse] with [accomplice]."
-                ),
-                tags=["infidelity"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="CheatOnSpouse",
-                display_name="Cheat on Spouse",
-                description=("[initiator] cheated on [spouse] with [accomplice]."),
-                cost=400,
-                cooldown=4,
-                tags=["infidelity"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="Sex",
-                display_name="Sex",
-                description="[subject] had sex with [recipient].",
-                cost=400,
-                cooldown=3,
-                tags=["romance", "sex"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="LoseControlOfTerritory",
-                display_name="Lose Control of Territory",
-                description="[initiator] lost control of the [territory] territory.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="DeclareWar",
-                display_name="DeclareWar",
-                description=(
-                    "[initiator] declared war against [opponent] for the "
-                    "[territory] territory."
-                ),
-                tags=["war", "power"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="WarWon",
-                display_name="WarWon",
-                description=(
-                    "[initiator] won their war against "
-                    "[opponent] for the "
-                    "[territory] territory."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="StartWarScheme",
-                display_name="Start War Scheme",
-                cooldown=3,
-                cost=300,
-                description=(
-                    "[initiator] started a war scheme against "
-                    "[target] for the "
-                    "[territory] territory."
-                ),
-                tags=["war", "power"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="StartCoupScheme",
-                cost=7000,
-                cooldown=480,
-                display_name="Start Coup Scheme",
-                description=("[initiator] started a new coup scheme against [ruler]."),
-                tags=["war", "deceit"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="OverthrowRuler",
-                display_name="OverthrowRuler",
-                description=("[initiator] overthrew [ruler] for the throne."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="DiscoverCoupScheme",
-                display_name="DiscoverCoupScheme",
-                description=("[initiator] discovered [target]'s coup scheme."),
-                tags=[],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="QuellRevolt",
-                cost=200,
-                cooldown=2,
-                display_name="QuellRevolt",
-                description=(
-                    "[initiator] quelled a revolt in the [territory] territory."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="GiveBirth",
-                display_name="Give Birth",
-                description="[initiator] gave birth to a child.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="LeaveAlliance",
-                cost=1000,
-                cooldown=12,
-                display_name="Leave Alliance",
-                description=("[initiator] left their alliance."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="SendGift",
-                display_name="Send Gift",
-                description=("[initiator] sent a gift to [recipient]."),
-                cost=200,
-                cooldown=4,
-                tags=["generosity", "diplomacy"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="SendAid",
-                display_name="Send Aid",
-                description="[initiator] sent aid to [recipient].",
-                cost=100,
-                cooldown=4,
-                tags=["diplomacy"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="ExtortTerritoryOwners",
-                display_name="Extort Territory Owners",
-                description="[initiator] extorted the territory controllers.",
-                cost=500,
-                cooldown=4,
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="ExtortLocalFamilies",
-                display_name="Extort Local Families",
-                description="[initiator] extorted the families in their territories.",
-                cost=500,
-                cooldown=4,
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="GetPregnant",
-                display_name="GetPregnant",
-                description="[initiator] became pregnant.",
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="ClaimThrone",
-                cost=600,
-                cooldown=6,
-                display_name="Became Ruler",
-                description="[initiator] became ruler.",
-                tags=["power", "greed", "succession"],
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="TaxTerritories",
-                cost=100,
-                cooldown=3,
-                display_name="TaxTerritories",
-                description=("[initiator] taxed their territories."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="JoinCoupScheme",
-                cost=3000,
-                cooldown=12,
-                display_name="Join Coup Scheme",
-                description=("[initiator] joined [coup_planner]'s coup scheme."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="JoinAlliance",
-                display_name="Join Alliance",
-                description=("[initiator] joined an alliance."),
-                cost=400,
-                cooldown=4,
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="Revolt",
-                display_name="Revolt",
-                description=(
-                    "The [territory] territory is revolting against the "
-                    "[family] family."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="BecomeFamilyHead",
-                display_name="Become Family Head",
-                description=("[initiator] became head of their family."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="JoinAllianceScheme",
-                cost=0,
-                cooldown=5,
-                display_name="JoinAllianceScheme",
-                description=(
-                    "[initiator] joined [scheme_initiator]'s alliance scheme."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="CreateAlliance",
-                cost=0,
-                cooldown=0,
-                display_name="Create Alliance",
-                description=("[initiator] created a new alliance."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="StartAllianceScheme",
-                cost=500,
-                cooldown=6,
-                display_name="Attempting to Form An Alliance",
-                description=("[initiator] is attempting to form a alliance."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="ExpandIntoTerritory",
-                cooldown=6,
-                cost=500,
-                display_name="Expanded Family Territory",
-                description=(
-                    "[initiator] started building influence in the "
-                    "[territory] territory."
-                ),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="SeizeTerritory",
-                cooldown=3,
-                cost=200,
-                display_name="Take Over Territory",
-                description=("[initiator] took control of the [territory] territory."),
-            )
-        )
-        database.add_action(
-            AIActionType(
-                name="LeftDisbandedAlliance",
-                display_name="Left Disbanded Alliance",
-                description=("[initiator] left their alliance after it disbanded."),
-            )
-        )
+        self.world.add_system(RelationshipSystem())
+        self.world.add_system(minerva.systems.AllianceSystem())
+        self.world.add_system(StatusSystem())
+        self.world.add_system(minerva.systems.GiftGivingSystem())
+        self.world.add_system(minerva.systems.AidSendingSystem())
+        self.world.add_system(minerva.systems.SeizeTerritoryControlSystem())
 
     def initialize_behaviors(self) -> None:
         """Initialize behaviors."""
         database = self.world.get_resource(AIBehaviorLibrary)
 
-        database.add_behavior(behaviors.SendGiftBehavior())
-        database.add_behavior(behaviors.SendAidBehavior())
-        database.add_behavior(behaviors.GiveToSmallFolkBehavior())
-        database.add_behavior(behaviors.GrowPoliticalInfluenceBehavior())
+        database.add_behavior(behaviors.GiveBackToTerritoriesBehavior())
         database.add_behavior(behaviors.ExtortTerritoryOwners())
         database.add_behavior(behaviors.ExtortLocalFamiliesBehavior())
         database.add_behavior(behaviors.QuellRevolt())
         database.add_behavior(behaviors.TaxTerritories())
-        database.add_behavior(behaviors.ExpandPoliticalDomain())
-        database.add_behavior(behaviors.SeizeControlOfTerritory())
         database.add_behavior(behaviors.StartAllianceSchemeBehavior())
-        database.add_behavior(behaviors.JoinAllianceSchemeBehavior())
-        database.add_behavior(behaviors.JoinExistingAlliance())
-        database.add_behavior(behaviors.LeaveAlliance())
+        # database.add_behavior(behaviors.JoinAllianceSchemeBehavior())
+        # database.add_behavior(behaviors.JoinExistingAlliance())
+        # database.add_behavior(behaviors.LeaveAlliance())
         database.add_behavior(behaviors.DeclareWarBehavior())
         database.add_behavior(behaviors.PlanCoupBehavior())
         database.add_behavior(behaviors.JoinCoupSchemeBehavior())
         database.add_behavior(behaviors.ClaimThroneBehavior())
-        database.add_behavior(behaviors.CheatOnSpouseBehavior())
+        # database.add_behavior(behaviors.CheatOnSpouseBehavior())
+
+    def initialize_social_rules(self) -> None:
+        """Initialize social rules"""
+        social_rule_db = self.world.get_resource(RelationshipModifierDatabase)
+        social_rule_db.add_attraction_modifiers(social_rules.ATTRACTION_RULES)
+        social_rule_db.add_opinion_modifiers(social_rules.OPINION_RULES)
 
     def initialize_species_types(self) -> None:
         """Initialize species types."""
@@ -635,6 +273,37 @@ class Simulation:
         sqlite3.register_converter("SexualOrientation", convert_sexual_orientation)
         sqlite3.register_adapter(WarRole, adapt_war_role)
         sqlite3.register_converter("WarRole", convert_war_role)
+
+    def configure_events(self) -> None:
+        """Configure simulation events."""
+
+        BecomeFamilyHeadEvent.configure_db_table(self.world)
+        DeathEvent.configure_db_table(self.world)
+        BecomeSeniorEvent.configure_db_table(self.world)
+        BecomeAdultEvent.configure_db_table(self.world)
+        BecomeYoungAdultEvent.configure_db_table(self.world)
+        BecomeAdolescentEvent.configure_db_table(self.world)
+        BecomeChildEvent.configure_db_table(self.world)
+        MarriageEvent.configure_db_table(self.world)
+        PregnancyEvent.configure_db_table(self.world)
+        GiveBirthEvent.configure_db_table(self.world)
+        TakeControlOfTerritoryEvent.configure_db_table(self.world)
+        LoseControlOfTerritoryEvent.configure_db_table(self.world)
+        AllianceDisbandedEvent.configure_db_table(self.world)
+        LeaveAllianceEvent.configure_db_table(self.world)
+        JoinAllianceEvent.configure_db_table(self.world)
+        GiveToTerritoriesEvent.configure_db_table(self.world)
+        JoinCoupSchemeEvent.configure_db_table(self.world)
+        StartCoupSchemeEvent.configure_db_table(self.world)
+        StartWarSchemeEvent.configure_db_table(self.world)
+        DeclareWarEvent.configure_db_table(self.world)
+        WarLostEvent.configure_db_table(self.world)
+        WarWonEvent.configure_db_table(self.world)
+        StartAllianceEvent.configure_db_table(self.world)
+        CoupSchemeDiscoveredEvent.configure_db_table(self.world)
+        SentenceToDeathEvent.configure_db_table(self.world)
+        UsurpThroneEvent.configure_db_table(self.world)
+        CheatOnSpouseEvent.configure_db_table(self.world)
 
     @property
     def config(self) -> Config:

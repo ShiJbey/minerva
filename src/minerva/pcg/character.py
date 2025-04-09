@@ -11,8 +11,8 @@ from minerva.actions.base_types import (
     CharacterController,
     EventHistory,
     ProclivityTracker,
-    SchemeManager,
 )
+from minerva.actions.scheme_types import SchemeManager
 from minerva.characters.components import (
     FERTILITY_MAX,
     FERTILITY_MIN,
@@ -37,9 +37,9 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import (
     set_character_biological_father,
-    set_character_birth_date,
     set_character_birth_family,
     set_character_birth_surname,
+    set_character_birth_year,
     set_character_family,
     set_character_father,
     set_character_mother,
@@ -59,6 +59,7 @@ from minerva.pcg.text_gen import Tracery
 from minerva.relationships.base_types import RelationshipManager
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import StatModifiers
+from minerva.status.data import StatusManager
 from minerva.traits.base_types import CharacterTrait, CharacterTraitDatabase, Traits
 from minerva.traits.helpers import (
     add_trait,
@@ -113,6 +114,9 @@ class SpawnCharacter(GameAction):
         super().__init__(world)
         self.options = options
         self.entity = None
+
+    def on_execute(self) -> None:
+        generate_character(self)
 
 
 def generate_character(action: SpawnCharacter) -> None:
@@ -213,10 +217,11 @@ def generate_character(action: SpawnCharacter) -> None:
     obj.name = character.full_name
 
     obj.add_component(Traits())
+    obj.add_component(StatusManager())
     obj.add_component(StatModifiers())
+    obj.add_component(RelationshipManager())
     obj.add_component(ProclivityTracker())
     obj.add_component(CharacterMetrics())
-    obj.add_component(RelationshipManager())
     obj.add_component(
         CharacterController(
             world.get_resource(AIBrainDatabase).get_brain_by_name("cpu")
@@ -292,7 +297,7 @@ def generate_character(action: SpawnCharacter) -> None:
 
     db.execute(
         """
-            INSERT INTO characters
+            INSERT INTO Character
             (
                 uid, first_name, surname, birth_surname,
                 sex, sexual_orientation, life_stage, is_alive, age
@@ -411,7 +416,7 @@ def generate_child(
         options=option_overrides,
     )
 
-    set_character_birth_date(child, mother.world.get_resource(GameState).year)
+    set_character_birth_year(child, mother.world.get_resource(GameState).year)
     set_character_birth_surname(child, mothers_family.name)
     set_character_birth_family(child, mothers_family)
     set_character_family(child, mothers_family)
@@ -504,6 +509,9 @@ class SpawnFamily(GameAction):
         self.options = options
         self.entity = None
 
+    def on_execute(self) -> None:
+        generate_family(self)
+
 
 def generate_family(action: SpawnFamily) -> None:
     """Create a new family."""
@@ -512,7 +520,7 @@ def generate_family(action: SpawnFamily) -> None:
 
     rng = world.get_resource(random.Random)
     config = world.get_resource(Config)
-    current_date = world.get_resource(GameState).year
+    current_year = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     tracery_instance = world.get_resource(Tracery)
 
@@ -541,11 +549,11 @@ def generate_family(action: SpawnFamily) -> None:
 
     db.execute(
         """
-        INSERT INTO families
-        (uid, name, founding_date)
+        INSERT INTO Family
+        (uid, name, founding_year)
         VALUES (?, ?, ?);
         """,
-        (family.uid, family.name, current_date),
+        (family.uid, family.name, current_year),
     )
 
     db.commit()

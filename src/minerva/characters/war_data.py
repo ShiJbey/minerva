@@ -30,8 +30,8 @@ class War(Component):
         "aggressor_allies",
         "defender_allies",
         "contested_territory",
-        "start_date",
-        "end_date",
+        "start_year",
+        "end_year",
     )
 
     contested_territory: Entity
@@ -44,9 +44,9 @@ class War(Component):
     """Families allied with the aggressor in this war."""
     defender_allies: OrderedSet[Entity]
     """Families allied with the defender in this war."""
-    start_date: int
+    start_year: int
     """The date the war started"""
-    end_date: Optional[int]
+    end_year: Optional[int]
     """The date the war ended."""
 
     def __init__(
@@ -54,16 +54,16 @@ class War(Component):
         aggressor: Entity,
         defender: Entity,
         contested_territory: Entity,
-        start_date: int,
+        start_year: int,
     ) -> None:
         super().__init__()
         self.contested_territory = contested_territory
         self.aggressor = aggressor
         self.defender = defender
-        self.start_date = start_date
+        self.start_year = start_year
         self.aggressor_allies = OrderedSet([])
         self.defender_allies = OrderedSet([])
-        self.end_date = None
+        self.end_year = None
 
 
 class WarTracker(Component):
@@ -89,8 +89,8 @@ class Alliance(Component):
         "founder",
         "founder_family",
         "member_families",
-        "start_date",
-        "end_date",
+        "start_year",
+        "end_year",
     )
 
     founder: Entity
@@ -99,9 +99,9 @@ class Alliance(Component):
     """The family the alliance's founder was the head of."""
     member_families: OrderedSet[Entity]
     """All families that belong to the alliance."""
-    start_date: int
+    start_year: int
     """The date the alliance started."""
-    end_date: Optional[int]
+    end_year: Optional[int]
     """The date the alliance ended."""
 
     def __init__(
@@ -109,11 +109,11 @@ class Alliance(Component):
         founder: Entity,
         founder_family: Entity,
         member_families: Iterable[Entity],
-        start_date: int,
+        start_year: int,
     ) -> None:
         super().__init__()
         self.founder = founder
         self.founder_family = founder_family
         self.member_families = OrderedSet(member_families)
-        self.start_date = start_date
-        self.end_date = None
+        self.start_year = start_year
+        self.end_year = None

@@ -3,31 +3,23 @@
 from __future__ import annotations
 
 import sqlite3
+from typing import Any
+
+from drolta import QueryEngine
 
 DB_CONFIG = """
-DROP TABLE IF EXISTS characters;
-DROP TABLE IF EXISTS character_traits;
-DROP TABLE IF EXISTS relations;
-DROP TABLE IF EXISTS territories;
-DROP TABLE IF EXISTS families;
-DROP TABLE IF EXISTS family_heads;
-DROP TABLE IF EXISTS marriages;
-DROP TABLE IF EXISTS romantic_affairs;
-DROP TABLE IF EXISTS rulers;
-DROP TABLE IF EXISTS dynasties;
-DROP TABLE IF EXISTS betrothals;
-DROP TABLE IF EXISTS alliances;
-DROP TABLE IF EXISTS alliance_members;
-DROP TABLE IF EXISTS wars;
-DROP TABLE IF EXISTS war_participants;
-DROP TABLE IF EXISTS schemes;
-DROP TABLE IF EXISTS scheme_members;
-DROP TABLE IF EXISTS scheme_targets;
-DROP TABLE IF EXISTS events;
-DROP TABLE IF EXISTS event_args;
-DROP TABLE IF EXISTS deaths;
+DROP TABLE IF EXISTS Character;
+DROP TABLE IF EXISTS CharacterTrait;
+DROP TABLE IF EXISTS Relation;
+DROP TABLE IF EXISTS Relationship;
+DROP TABLE IF EXISTS Territory;
+DROP TABLE IF EXISTS Family;
+DROP TABLE IF EXISTS Ruler;
+DROP TABLE IF EXISTS Dynasty;
+DROP TABLE IF EXISTS Alliance;
+DROP TABLE IF EXISTS War;
 
-CREATE TABLE characters (
+CREATE TABLE Character (
     uid INT NOT NULL PRIMARY KEY,
     first_name TEXT,
     surname TEXT,
@@ -37,212 +29,103 @@ CREATE TABLE characters (
     sexual_orientation TEXT,
     life_stage TEXT,
     is_alive INT,
-    family INT,
-    birth_family INT,
-    birth_date INT,
-    death_date INT,
-    FOREIGN KEY (uid) REFERENCES entities(uid),
-    FOREIGN KEY (family) REFERENCES families(uid),
-    FOREIGN KEY (birth_family) REFERENCES families(uid)
+    family_uid INT,
+    birth_family_uid INT,
+    birth_year INT,
+    death_year INT,
+    FOREIGN KEY (family_uid) REFERENCES Family(uid),
+    FOREIGN KEY (birth_family_uid) REFERENCES Family(uid)
 ) STRICT;
 
-CREATE TABLE relations (
-    character_id INT NOT NULL,
-    target_id INT NOT NULL,
+CREATE TABLE Relationship (
+    uid INT NOT NULL PRIMARY KEY,
+    owner_uid INT NOT NULL,
+    target_uid INT NOT NULL,
+    opinion INT NOT NULL,
+    attraction INT NOT NULL,
+    FOREIGN KEY (owner_uid) REFERENCES Character(uid),
+    FOREIGN KEY (target_uid) REFERENCES Character(uid)
+) STRICT;
+
+CREATE TABLE Relation (
+    character_uid INT NOT NULL,
+    target_uid INT NOT NULL,
     relation_type TEXT,
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (target_id) REFERENCES characters(uid)
+    FOREIGN KEY (character_uid) REFERENCES Character(uid),
+    FOREIGN KEY (target_uid) REFERENCES Character(uid)
 ) STRICT;
 
-CREATE TABLE character_traits (
-    character_id INT NOT NULL,
+CREATE TABLE CharacterTrait (
+    character_uid INT NOT NULL,
     trait_id TEXT NOT NULL,
-    PRIMARY KEY(character_id, trait_id),
-    FOREIGN KEY (character_id) REFERENCES characters(uid)
+    PRIMARY KEY(character_uid, trait_id),
+    FOREIGN KEY (character_uid) REFERENCES Character(uid)
 ) STRICT;
 
-CREATE TABLE territories (
+CREATE TABLE Territory (
     uid INT NOT NULL PRIMARY KEY,
     name TEXT,
-    controlling_family INT,
-    FOREIGN KEY (controlling_family) REFERENCES families(uid)
+    controlling_family_uid INT,
+    FOREIGN KEY (controlling_family_uid) REFERENCES Family(uid)
 ) STRICT;
 
-CREATE TABLE families (
+CREATE TABLE Family (
     uid INT PRIMARY KEY,
     name TEXT,
-    parent_id INT,
-    head INT,
-    alliance_id INT,
-    founding_date INT,
-    home_base_id INT,
-    defunct_date INT,
-    FOREIGN KEY (head) REFERENCES characters(uid),
-    FOREIGN KEY (alliance_id) REFERENCES alliances(uid),
-    FOREIGN KEY (home_base_id) REFERENCES territories(uid),
-    FOREIGN KEY (parent_id) REFERENCES families(uid)
+    family_head_uid INT,
+    alliance_uid INT,
+    founding_year INT,
+    home_base_uid INT,
+    defunct_year INT,
+    FOREIGN KEY (family_head_uid) REFERENCES Character(uid),
+    FOREIGN KEY (alliance_uid) REFERENCES Alliance(uid),
+    FOREIGN KEY (home_base_uid) REFERENCES Territory(uid)
 ) STRICT;
 
-CREATE TABLE family_heads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    head INT NOT NULL,
-    family INT NOT NULL,
-    start_date INT,
-    end_date INT,
-    predecessor INT,
-    FOREIGN KEY (head) REFERENCES characters(uid),
-    FOREIGN KEY (family) REFERENCES families(uid),
-    FOREIGN KEY (predecessor) REFERENCES characters(uid)
+CREATE TABLE Ruler (
+    character_uid INT NOT NULL,
+    dynasty_uid INT NOT NULL,
+    start_year INT NOT NULL,
+    end_year INT,
+    predecessor_uid INT,
+    PRIMARY KEY (character_uid, start_year),
+    FOREIGN KEY (character_uid) REFERENCES Character(uid),
+    FOREIGN KEY (dynasty_uid) REFERENCES Dynasty(uid),
+    FOREIGN KEY (predecessor_uid) REFERENCES Character(uid)
 ) STRICT;
 
-CREATE TABLE marriages (
-    uid INT NOT NULL PRIMARY KEY,
-    character_id INT NOT NULL,
-    spouse_id INT NOT NULL,
-    start_date INT NOT NULL,
-    end_date INT,
-    times_cheated INT,
-    last_cheat_partner_id INT,
-    FOREIGN KEY (last_cheat_partner_id) REFERENCES characters(uid),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (spouse_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE betrothals (
-    uid INT NOT NULL PRIMARY KEY,
-    character_id INT NOT NULL,
-    betrothed_id INT NOT NULL,
-    start_date INT NOT NULL,
-    end_date INT,
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (betrothed_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE romantic_affairs (
-    uid INT NOT NULL PRIMARY KEY,
-    character_id INT NOT NULL,
-    lover_id INT NOT NULL,
-    start_date INT NOT NULL,
-    end_date INT,
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (lover_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE events (
-    uid INTEGER NOT NULL PRIMARY KEY,
-    event_type TEXT NOT NULL,
-    initiator INT NOT NULL,
-    recipient INT,
-    target INT,
-    description TEXT,
-    timestamp INT NOT NULL
-) STRICT;
-
-CREATE TABLE event_args (
-    uid INT NOT NULL,
-    name TEXT NOT NULL,
-    value TEXT NOT NULL,
-    PRIMARY KEY (uid, name)
-) STRICT;
-
-CREATE TABLE deaths (
-    uid INTEGER NOT NULL PRIMARY KEY,
-    character INT NOT NULL,
-    year INT NOT NULL,
-    cause TEXT,
-    FOREIGN KEY (uid) REFERENCES events (uid),
-    FOREIGN KEY (character) REFERENCES characters (uid)
-) STRICT;
-
-CREATE TABLE rulers (
-    character_id INT NOT NULL,
-    dynasty_id INT NOT NULL,
-    start_date INT NOT NULL,
-    end_date INT,
-    predecessor_id INT,
-    PRIMARY KEY (character_id, start_date),
-    FOREIGN KEY (character_id) REFERENCES characters(uid),
-    FOREIGN KEY (dynasty_id) REFERENCES dynasties(uid),
-    FOREIGN KEY (predecessor_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE dynasties (
+CREATE TABLE Dynasty (
     uid INT PRIMARY KEY,
-    family_id INT,
-    founder_id INT,
-    start_date INT,
-    end_date INT,
-    previous_dynasty_id INT,
-    FOREIGN KEY (family_id) REFERENCES families(uid),
-    FOREIGN KEY (founder_id) REFERENCES characters(uid),
-    FOREIGN KEY (previous_dynasty_id) REFERENCES dynasties(uid)
+    family_uid INT,
+    founder_uid INT,
+    start_year INT,
+    end_year INT,
+    previous_dynasty_uid INT,
+    FOREIGN KEY (family_uid) REFERENCES Family(uid),
+    FOREIGN KEY (founder_uid) REFERENCES Character(uid),
+    FOREIGN KEY (previous_dynasty_uid) REFERENCES Dynasty(uid)
 ) STRICT;
 
-CREATE TABLE alliances (
+CREATE TABLE Alliance (
     uid INT NOT NULL PRIMARY KEY,
-    founder_id INT NOT NULL,
-    founder_family_id INT NOT NULL,
-    start_date INT,
-    end_date INT,
-    FOREIGN KEY (founder_id) REFERENCES characters(uid),
-    FOREIGN KEY (founder_family_id) REFERENCES families(uid)
+    founder_uid INT NOT NULL,
+    founder_family_uid INT NOT NULL,
+    start_year INT,
+    end_year INT,
+    FOREIGN KEY (founder_uid) REFERENCES Character(uid),
+    FOREIGN KEY (founder_family_uid) REFERENCES Family(uid)
 ) STRICT;
 
-CREATE TABLE alliance_members (
-    family_id INT NOT NULL,
-    alliance_id INT NOT NULL,
-    date_joined INT NOT NULL,
-    date_left INT,
-    PRIMARY KEY (family_id, alliance_id),
-    FOREIGN KEY (family_id) REFERENCES families(uid),
-    FOREIGN KEY (alliance_id) REFERENCES alliances(uid)
-) STRICT;
-
-CREATE TABLE wars (
+CREATE TABLE War (
     uid INT NOT NULL PRIMARY KEY,
-    aggressor_id INT NOT NULL,
-    defender_id INT NOT NULL,
-    start_date INT,
-    end_date INT,
-    winner_id INT,
-    FOREIGN KEY (aggressor_id) REFERENCES families(uid),
-    FOREIGN KEY (defender_id) REFERENCES families(uid),
-    FOREIGN KEY (winner_id) REFERENCES families(uid)
-) STRICT;
-
-CREATE TABLE war_participants (
-    row_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    family_id INT NOT NULL,
-    war_id INT NOT NULL,
-    role TEXT NOT NULL,
-    date_joined INT,
-    FOREIGN KEY (family_id) REFERENCES families(uid),
-    FOREIGN KEY (war_id) REFERENCES wars(uid)
-) STRICT;
-
-CREATE TABLE schemes (
-    uid INT PRIMARY KEY,
-    scheme_type TEXT,
-    start_date INT,
-    initiator_id INT,
-    description TEXT,
-    FOREIGN KEY (initiator_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE scheme_members (
-    scheme_id INT,
-    member_id INT,
-    PRIMARY KEY (scheme_id, member_id),
-    FOREIGN KEY (scheme_id) REFERENCES schemes(uid),
-    FOREIGN KEY (member_id) REFERENCES characters(uid)
-) STRICT;
-
-CREATE TABLE scheme_targets (
-    scheme_id INT,
-    target_id INT,
-    PRIMARY KEY (scheme_id, target_id),
-    FOREIGN KEY (scheme_id) REFERENCES schemes(uid),
-    FOREIGN KEY (target_id) REFERENCES characters(uid)
+    aggressor_uid INT NOT NULL,
+    defender_uid INT NOT NULL,
+    start_year INT,
+    end_year INT,
+    winner_uid INT,
+    FOREIGN KEY (aggressor_uid) REFERENCES Family(uid),
+    FOREIGN KEY (defender_uid) REFERENCES Family(uid),
+    FOREIGN KEY (winner_uid) REFERENCES Family(uid)
 ) STRICT;
 """
 
@@ -250,15 +133,27 @@ CREATE TABLE scheme_targets (
 class SimDB:
     """A simulation database."""
 
-    __slots__ = ("conn",)
+    __slots__ = ("conn", "_cursor", "query_engine")
 
     conn: sqlite3.Connection
     """Connection to the SQLite instance."""
+    _cursor: sqlite3.Cursor
+    """Database cursor."""
+    query_engine: QueryEngine
+    """Drolta query engine instance."""
 
     def __init__(self, db_path: str = ":memory:") -> None:
         self.conn = sqlite3.connect(db_path)
-
-        # Initialize the database.
-        cur = self.conn.cursor()
-        cur.executescript(DB_CONFIG)
+        self._cursor = self.conn.cursor()
+        self._cursor.executescript(DB_CONFIG)
         self.conn.commit()
+        self._cursor.close()
+        self.query_engine = QueryEngine()
+
+    def __enter__(self):
+        self._cursor = self.conn.cursor()
+        return self._cursor
+
+    def __exit__(self, *exc: Any):
+        self.conn.commit()
+        self._cursor.close()

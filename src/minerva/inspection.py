@@ -6,7 +6,6 @@ Tools and helper functions for inspecting simulations.
 
 from typing import Any
 
-import rich.columns
 import rich.console
 import rich.markdown
 import rich.panel
@@ -20,17 +19,14 @@ from minerva.actions.base_types import (
 from minerva.characters.components import (
     FERTILITY_MAX,
     SKILL_MAX,
-    Betrothal,
     Character,
     Dynasty,
     DynastyTracker,
     Family,
     FamilyRoleFlags,
     HeadOfFamily,
-    Marriage,
     Pregnancy,
     RelationType,
-    RomanticAffair,
     Ruler,
 )
 from minerva.characters.helpers import (
@@ -139,8 +135,8 @@ class SimulationInspector:
             a.name_with_uid for a in war_component.defender_allies
         )
         contested_territory = war_component.contested_territory.name_with_uid
-        start_date = str(war_component.start_date)
-        end_date = str(war_component.end_date)
+        start_year = str(war_component.start_year)
+        end_year = str(war_component.end_year)
 
         console.print(
             rich.panel.Panel(
@@ -149,8 +145,8 @@ class SimulationInspector:
                 f"[orange1 bold]Aggressor Allies[/orange1 bold]: {aggressor_allies}\n"
                 f"[orange1 bold]Defender Allies[/orange1 bold]: {defender_allies}\n"
                 f"[orange1 bold]Contested Territory[/orange1 bold]: {contested_territory}\n"
-                f"[orange1 bold]Start Year[/orange1 bold]: {start_date}\n"
-                f"[orange1 bold]End Year[/orange1 bold]: {end_date}",
+                f"[orange1 bold]Start Year[/orange1 bold]: {start_year}\n"
+                f"[orange1 bold]End Year[/orange1 bold]: {end_year}",
                 title=f"War ({war_id})",
                 title_align="left",
                 expand=False,
@@ -166,8 +162,8 @@ class SimulationInspector:
         founder = alliance_component.founder.name_with_uid
         founder_family = alliance_component.founder_family.name_with_uid
         members = ", ".join(m.name_with_uid for m in alliance_component.member_families)
-        start_date = str(alliance_component.start_date)
-        end_date = str(alliance_component.end_date)
+        start_year = str(alliance_component.start_year)
+        end_year = str(alliance_component.end_year)
 
         console = rich.console.Console()
         console.print(
@@ -175,8 +171,8 @@ class SimulationInspector:
                 f"[orange1 bold]Founder[/orange1 bold]: {founder}\n"
                 f"[orange1 bold]Founder Family[/orange1 bold]: {founder_family}\n"
                 f"[orange1 bold]Members[/orange1 bold]: {members}\n"
-                f"[orange1 bold]Start Year[/orange1 bold]: {start_date}\n"
-                f"[orange1 bold]End Year[/orange1 bold]: {end_date}",
+                f"[orange1 bold]Start Year[/orange1 bold]: {start_year}\n"
+                f"[orange1 bold]End Year[/orange1 bold]: {end_year}",
                 title=f"Alliance ({alliance_id})",
                 title_align="left",
                 expand=False,
@@ -208,40 +204,14 @@ class SimulationInspector:
             if character_component.spouse
             else "None"
         )
-        former_spouses = (
-            ", ".join(
-                x.get_component(Marriage).spouse.name_with_uid
-                for x in character_component.past_marriages
-            )
-            if character_component.past_marriages
-            else None
-        )
-        betrothed_to = (
-            character_component.betrothed_to.name_with_uid
-            if character_component.betrothed_to
-            else "None"
-        )
-        former_betrothals = (
-            ", ".join(
-                x.get_component(Betrothal).betrothed.name_with_uid
-                for x in character_component.past_betrothals
-            )
-            if character_component.past_betrothals
-            else None
-        )
-        lover = (
-            character_component.lover.name_with_uid
-            if character_component.lover
-            else "None"
-        )
-        former_lovers = (
-            ", ".join(
-                x.get_component(RomanticAffair).lover.name_with_uid
-                for x in character_component.past_love_affairs
-            )
-            if character_component.past_love_affairs
-            else None
-        )
+        # former_spouses = (
+        #     ", ".join(
+        #         x.get_component(Marriage).spouse.name_with_uid
+        #         for x in character_component.past_marriages
+        #     )
+        #     if character_component.past_marriages
+        #     else None
+        # )
         heir = (
             character_component.heir.name_with_uid
             if character_component.heir
@@ -319,9 +289,9 @@ class SimulationInspector:
             f"[orange1 bold]Is Alive[/orange1 bold]: {character_component.is_alive}\n"
             f"[orange1 bold]Titles[/orange1 bold]: {titles}\n"
             "[orange1 bold]Birth Year[/orange1 bold]: "
-            f"{character_component.birth_date}\n"
+            f"{character_component.birth_year}\n"
             "[orange1 bold]Death Year[/orange1 bold]: "
-            f"{character_component.death_date}\n"
+            f"{character_component.death_year}\n"
             f"[orange1 bold]Traits[/orange1 bold]: {traits}\n"
             f"[orange1 bold]Family[/orange1 bold]: {family}\n"
             f"[orange1 bold]Family Roles[/orange1 bold]: {family_roles}\n"
@@ -340,8 +310,8 @@ class SimulationInspector:
 
         if character.has_component(Pregnancy):
             pregnancy = character.get_component(Pregnancy)
-            conception = str(pregnancy.conception_date)
-            due = str(pregnancy.due_date)
+            conception = str(pregnancy.conception_year)
+            due = str(pregnancy.due_year)
             assumed_father = (
                 pregnancy.assumed_father.name_with_uid
                 if pregnancy.assumed_father
@@ -410,11 +380,7 @@ class SimulationInspector:
             f"[orange1 bold]Siblings[/orange1 bold]: {siblings}\n"
             f"[orange1 bold]Children[/orange1 bold]: {children}\n"
             f"[orange1 bold]Spouse[/orange1 bold]: {spouse}\n"
-            f"[orange1 bold]Former Spouses[/orange1 bold]: {former_spouses}\n"
-            f"[orange1 bold]Betrothed To[/orange1 bold]: {betrothed_to}\n"
-            f"[orange1 bold]Former Betrothals[/orange1 bold]: {former_betrothals}\n"
-            f"[orange1 bold]Lover[/orange1 bold]: {lover}\n"
-            f"[orange1 bold]Former Lovers[/orange1 bold]: {former_lovers}\n"
+            # f"[orange1 bold]Former Spouses[/orange1 bold]: {former_spouses}\n"
             f"[orange1 bold]Heir[/orange1 bold]: {heir}\n"
             f"[orange1 bold]Heir To[/orange1 bold]: {heir_to}",
             title="Relations",
@@ -484,18 +450,6 @@ class SimulationInspector:
 
         family_component = family.get_component(Family)
 
-        parent_family = (
-            family_component.parent_family.name_with_uid
-            if family_component.parent_family
-            else "None"
-        )
-
-        branch_families = (
-            ", ".join(b.name_with_uid for b in family_component.branch_families)
-            if family_component.branch_families
-            else "None"
-        )
-
         head_name = (
             family_component.head.name_with_uid if family_component.head else "None"
         )
@@ -533,12 +487,6 @@ class SimulationInspector:
             else "None"
         )
 
-        territories = (
-            ", ".join(t.name_with_uid for t in family_component.territories_present_in)
-            if family_component.territories_present_in
-            else "None"
-        )
-
         controlled_territories = (
             ", ".join(t.name_with_uid for t in family_component.controlled_territories)
             if family_component.controlled_territories
@@ -559,15 +507,12 @@ class SimulationInspector:
         general_info_panel = rich.panel.Panel(
             f"[orange1 bold]Name[/orange1 bold]: {family.name}\n"
             f"[orange1 bold]Is Active[/orange1 bold]: {family.is_active}\n"
-            f"[orange1 bold]Parent Family[/orange1 bold]: {parent_family}\n"
-            f"[orange1 bold]Branch Families[/orange1 bold]: {branch_families}\n"
             f"[orange1 bold]Family Head[/orange1 bold]: {head_name}\n"
             f"[orange1 bold]Active Members[/orange1 bold]: {active_members}\n"
             f"[orange1 bold]Former Heads[/orange1 bold]: {former_heads}\n"
             f"[orange1 bold]Former Members[/orange1 bold]: {former_members}\n"
             f"[orange1 bold]Home Base[/orange1 bold]: {home_base}\n"
-            f"[orange1 bold]Territories[/orange1 bold]: {territories}\n"
-            f"[orange1 bold]Controlled Territories[/orange1 bold]: {controlled_territories}\n"
+            f"[orange1 bold]Territories[/orange1 bold]: {controlled_territories}\n"
             f"[orange1 bold]Warriors[/orange1 bold]: {warriors}\n"
             f"[orange1 bold]Advisors[/orange1 bold]: {advisors}\n"
             f"[orange1 bold]Allied Families[/orange1 bold]: {allies}",
@@ -614,12 +559,6 @@ class SimulationInspector:
             f.name_with_uid for f in territory_component.families
         )
 
-        political_influence_table = rich.table.Table(
-            "Family", "Influence", title_justify="left", highlight=True
-        )
-        for family, influence in territory_component.political_influence.items():
-            political_influence_table.add_row(f"{family.name_with_uid}", f"{influence}")
-
         console = rich.console.Console()
 
         happiness = territory.get_component(PopulationHappiness).value
@@ -643,21 +582,9 @@ class SimulationInspector:
             highlight=True,
         )
 
-        political_influence_panel = rich.panel.Panel(
-            political_influence_table,
-            title="Political Influence",
-            title_align="left",
-            expand=False,
-            highlight=True,
-        )
-
         console.print(
             rich.panel.Panel(
-                rich.console.Group(
-                    general_info_panel,
-                    stats_panel,
-                    political_influence_panel,
-                ),
+                rich.console.Group(general_info_panel, stats_panel),
                 title=territory.name_with_uid,
                 title_align="left",
                 expand=False,
@@ -697,8 +624,8 @@ class SimulationInspector:
             f"[orange1 bold]Current Ruler[/orange1 bold]: {current_ruler}\n"
             f"[orange1 bold]Founder[/orange1 bold]: {dynasty_component.founder.name_with_uid}\n"
             f"[orange1 bold]Family[/orange1 bold]: {dynasty_component.family.name_with_uid}\n"
-            f"[orange1 bold]Founding Year[/orange1 bold]: {dynasty_component.founding_date}\n"
-            f"[orange1 bold]Ending Year[/orange1 bold]: {dynasty_component.ending_date}\n"
+            f"[orange1 bold]Founding Year[/orange1 bold]: {dynasty_component.founding_year}\n"
+            f"[orange1 bold]Ending Year[/orange1 bold]: {dynasty_component.ending_year}\n"
             f"[orange1 bold]Previous Rulers[/orange1 bold]: {previous_rulers}\n"
             f"[orange1 bold]Previous Dynasty[/orange1 bold]: {previous_dynasty}",
         )
@@ -743,8 +670,8 @@ class SimulationInspector:
                 f"{is_current_marker}",
                 f"{uid}",
                 f"{family_name}",
-                f"{dynasty.founding_date}",
-                f"{dynasty.ending_date}",
+                f"{dynasty.founding_year}",
+                f"{dynasty.ending_year}",
             )
 
         console = rich.console.Console()
@@ -846,7 +773,7 @@ class SimulationInspector:
         for uid, alliance in alliances:
             table.add_row(
                 str(uid),
-                str(alliance.start_date),
+                str(alliance.start_year),
                 str(alliance.founder.name_with_uid),
                 ", ".join(m.name_with_uid for m in alliance.member_families),
             )
@@ -875,7 +802,7 @@ class SimulationInspector:
         for uid, war in wars:
             table.add_row(
                 str(uid),
-                str(war.start_date),
+                str(war.start_year),
                 str(war.aggressor.name_with_uid),
                 str(war.defender.name_with_uid),
                 str(war.contested_territory.name_with_uid),

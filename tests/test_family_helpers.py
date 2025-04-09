@@ -15,12 +15,11 @@ from minerva.characters.components import (
     Stewardship,
 )
 from minerva.characters.helpers import (
-    add_branch_family,
+    RemoveFamilyFromPlay,
     assign_family_member_to_roles,
     get_advisor_candidates,
     get_warrior_candidates,
     merge_family_with,
-    remove_family_from_play,
     set_character_family,
     set_family_head,
     set_family_home_base,
@@ -44,31 +43,6 @@ def test_sim() -> Simulation:
     sim = Simulation()
 
     return sim
-
-
-def test_add_branch_family(test_sim: Simulation):
-    """Test adding a branch to a family."""
-
-    family_0 = spawn_family(test_sim.world)
-    family_1 = spawn_family(test_sim.world)
-    family_2 = spawn_family(test_sim.world)
-    family_3 = spawn_family(test_sim.world)
-
-    add_branch_family(family_0, family_1)
-    add_branch_family(family_0, family_2)
-    add_branch_family(family_2, family_3)
-
-    family_0_component = family_0.get_component(Family)
-    family_1_component = family_1.get_component(Family)
-    family_2_component = family_2.get_component(Family)
-    family_3_component = family_3.get_component(Family)
-
-    assert family_1 in family_0_component.branch_families
-    assert family_2 in family_0_component.branch_families
-    assert family_0 == family_1_component.parent_family
-    assert family_0 == family_2_component.parent_family
-    assert family_2 == family_3_component.parent_family
-    assert family_3 in family_2_component.branch_families
 
 
 def test_set_family_head(test_sim: Simulation):
@@ -99,7 +73,7 @@ def test_set_family_head(test_sim: Simulation):
     assert result[0] == c0.uid
 
     cur = db.execute(
-        """SELECT start_date, end_date, predecessor FROM family_heads WHERE head=?;""",
+        """SELECT start_year, end_year, predecessor FROM family_heads WHERE head=?;""",
         (c0.uid,),
     )
     result = cur.fetchone()
@@ -122,13 +96,13 @@ def test_set_family_head(test_sim: Simulation):
     assert result[0] == c1.uid
 
     cur = db.execute(
-        """SELECT start_date, end_date FROM family_heads WHERE head=?;""", (c0.uid,)
+        """SELECT start_year, end_year FROM family_heads WHERE head=?;""", (c0.uid,)
     )
     result = cur.fetchone()
     assert result == ("0001-01", "0001-01")
 
     cur = db.execute(
-        """SELECT start_date, predecessor FROM family_heads WHERE head=?;""", (c1.uid,)
+        """SELECT start_year, predecessor FROM family_heads WHERE head=?;""", (c1.uid,)
     )
     result = cur.fetchone()
     assert result == ("0001-01", c0.uid)
@@ -242,7 +216,7 @@ def test_remove_family_from_play(test_sim: Simulation):
 
     set_character_family(c0, test_family)
 
-    remove_family_from_play(test_family)
+    RemoveFamilyFromPlay(test_family).execute()
 
     assert c0.is_active is False
     assert test_family.is_active is False

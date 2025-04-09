@@ -60,8 +60,6 @@ class Config(pydantic.BaseModel):
     """The max number of influence points that a character can have."""
     influence_points_base: int = 100
     """The starting number of influence points given to each character."""
-    behavior_utility_threshold: float = 0.01
-    """The required utility score for a behavior to be considered."""
 
     # === Family Settings ===
 
@@ -120,8 +118,6 @@ class Config(pydantic.BaseModel):
 
     # === Territory Settings ===
 
-    max_political_influence: int = 100
-    """Max political influence a family can have in a territory."""
     base_territory_happiness: int = 50
     """The starting population happiness score for territories."""
     max_territory_happiness: int = 100

@@ -97,7 +97,7 @@ def test_set_current_ruler(sim: Simulation):
 
     # Verify ruler data is in the database
     result = db.execute(
-        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
         (viserys.uid,),
     ).fetchone()
     assert result == ("0001-01", None, None)
@@ -105,7 +105,7 @@ def test_set_current_ruler(sim: Simulation):
     # Verify that the database entry for the dynasty is up to date
     result = db.execute(
         """
-        SELECT family_id, founder_id, start_date, end_date, previous_dynasty_id
+        SELECT family_id, founder_id, start_year, end_year, previous_dynasty_id
         FROM dynasties WHERE uid=?;""",
         (dynasty_tracker.current_dynasty.uid,),
     ).fetchone()
@@ -120,7 +120,7 @@ def test_set_current_ruler(sim: Simulation):
     # Verify that the dynasty has not changed
     result = db.execute(
         """
-        SELECT family_id, founder_id, start_date, end_date, previous_dynasty_id
+        SELECT family_id, founder_id, start_year, end_year, previous_dynasty_id
         FROM dynasties WHERE uid=?;""",
         (dynasty_tracker.current_dynasty.uid,),
     ).fetchone()
@@ -133,13 +133,13 @@ def test_set_current_ruler(sim: Simulation):
     )
 
     result = db.execute(
-        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
         (rhaenyra.uid,),
     ).fetchone()
     assert result == ("0001-01", None, viserys.uid)
 
     result = db.execute(
-        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
         (viserys.uid,),
     ).fetchone()
     assert result == ("0001-01", "0001-01", None)
@@ -148,14 +148,14 @@ def test_set_current_ruler(sim: Simulation):
     set_current_ruler(sim.world, corlys)
 
     result = db.execute(
-        """SELECT start_date, end_date, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
         (rhaenyra.uid,),
     ).fetchone()
     assert result == ("0001-01", "0001-01", viserys.uid)
 
     result = db.execute(
         """
-        SELECT family_id, founder_id, start_date, end_date, previous_dynasty_id
+        SELECT family_id, founder_id, start_year, end_year, previous_dynasty_id
         FROM dynasties WHERE uid=?;""",
         (dynasty_tracker.current_dynasty.uid,),
     ).fetchone()

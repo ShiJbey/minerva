@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import Type
+
+from minerva.actions.base_types import AIAction, IProclivity, ProclivityTracker
 from minerva.characters.helpers import (
     add_diplomacy_skill_modifier,
     add_fertility_modifier,
@@ -21,6 +24,7 @@ from minerva.characters.helpers import (
     remove_stewardship_skill_modifier,
 )
 from minerva.ecs import Entity
+from minerva.relationships.base_types import RelationshipManager, RelationshipModifier
 from minerva.stats.base_types import StatModifier
 from minerva.traits.base_types import TraitEffect
 
@@ -167,3 +171,67 @@ class AddLuckModifier(TraitEffect):
 
     def remove(self, target: Entity) -> None:
         remove_luck_skill_modifier(target, self.modifier)
+
+
+class AddProclivity(TraitEffect):
+    """Add a proclivity to the effect."""
+
+    __slots__ = ("proclivity", "action_type")
+
+    proclivity: IProclivity
+    action_type: Type[AIAction]
+
+    def __init__(
+        self, proclivity: IProclivity, action_type: Type[AIAction] = AIAction
+    ) -> None:
+        super().__init__()
+        self.proclivity = proclivity
+        self.action_type = action_type
+
+    def apply(self, target: Entity) -> None:
+        entity_proclivities = target.get_component(ProclivityTracker)
+        entity_proclivities.add_proclivity(self.action_type, self.proclivity)
+
+    def remove(self, target: Entity) -> None:
+        entity_proclivities = target.get_component(ProclivityTracker)
+        entity_proclivities.add_proclivity(self.action_type, self.proclivity)
+
+
+class AddOpinionModifier(TraitEffect):
+    """Add an opinion modifier to the character."""
+
+    __slots__ = ("modifier",)
+
+    modifier: RelationshipModifier
+
+    def __init__(self, modifier: RelationshipModifier) -> None:
+        super().__init__()
+        self.modifier = modifier
+
+    def apply(self, target: Entity) -> None:
+        relationship_manager = target.get_component(RelationshipManager)
+        relationship_manager.add_opinion_modifier(self.modifier)
+
+    def remove(self, target: Entity) -> None:
+        relationship_manager = target.get_component(RelationshipManager)
+        relationship_manager.remove_opinion_modifier(self.modifier)
+
+
+class AddAttractionModifier(TraitEffect):
+    """Add an attraction modifier to the character."""
+
+    __slots__ = ("modifier",)
+
+    modifier: RelationshipModifier
+
+    def __init__(self, modifier: RelationshipModifier) -> None:
+        super().__init__()
+        self.modifier = modifier
+
+    def apply(self, target: Entity) -> None:
+        relationship_manager = target.get_component(RelationshipManager)
+        relationship_manager.add_attraction_modifier(self.modifier)
+
+    def remove(self, target: Entity) -> None:
+        relationship_manager = target.get_component(RelationshipManager)
+        relationship_manager.remove_attraction_modifier(self.modifier)

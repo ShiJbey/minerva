@@ -9,17 +9,18 @@ import json
 import pathlib
 from typing import Any, Optional, Union
 
+import jinja2
 import tracery
 import tracery.modifiers as tracery_modifiers
 
 from minerva.ecs import World
 
 
-def render_string(template: str, bindings: dict[str, Any]) -> str:
+def render_string(template: str, context: dict[str, Any]) -> str:
     """Substitute bindings into provided template"""
-    output = template
-    for key, value in bindings.items():
-        output = output.replace(f"[{key}]", str(value))
+
+    rtemplate = jinja2.Environment(loader=jinja2.BaseLoader()).from_string(template)
+    output = rtemplate.render(context)
     return output
 
 

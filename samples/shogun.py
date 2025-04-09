@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
     logging_enabled = bool(args.enable_logging)
     log_to_terminal: bool = False
-    log_level = "DEBUG" if args.debug else "INFO"
+    log_level: str = "DEBUG" if args.debug else "INFO"
 
     sim = Simulation(
         Config(
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     if logging_enabled:
         if log_to_terminal is False:
             logging.basicConfig(
-                filename=pathlib.Path(f"./minerva.log"),
+                filename=pathlib.Path("./minerva.log"),
                 encoding="utf-8",
                 level=log_level,
                 format="%(message)s",

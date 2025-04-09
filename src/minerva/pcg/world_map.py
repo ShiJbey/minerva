@@ -49,7 +49,7 @@ def generate_territory(world: World, options: TerritoryGenOptions) -> Entity:
     db = world.get_resource(SimDB).conn
 
     db.execute(
-        """INSERT INTO territories (uid, name) VALUES (?, ?);""",
+        """INSERT INTO Territory (uid, name) VALUES (?, ?);""",
         (territory.uid, name),
     )
     db.commit()
@@ -70,6 +70,9 @@ class GenerateMap(GameAction):
     def __init__(self, world: World) -> None:
         super().__init__(world)
         self.entity = None
+
+    def on_execute(self) -> None:
+        generate_world_map(self.world)
 
 
 TERRITORY_GENERATION_DEBUG_COLORS = [

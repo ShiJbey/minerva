@@ -160,7 +160,7 @@ def set_current_ruler(world: World, character: Entity) -> None:
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
     dynasty_tracker = world.get_resource(DynastyTracker)
-    current_date = world.get_resource(GameState).year
+    current_year = world.get_resource(GameState).year
 
     current_dynasty = dynasty_tracker.current_dynasty
 
@@ -186,19 +186,19 @@ def set_current_ruler(world: World, character: Entity) -> None:
 
     cur.execute(
         """
-        INSERT INTO rulers
+        INSERT INTO Ruler
         (
-            character_id,
-            dynasty_id,
-            start_date,
-            predecessor_id
+            character_uid,
+            dynasty_uid,
+            start_year,
+            predecessor_uid
         )
         VALUES (?, ?, ?, ?);
         """,
         (
             character.uid,
             current_dynasty.uid,
-            current_date,
+            current_year,
             last_ruler,
         ),
     )
@@ -224,17 +224,17 @@ def remove_current_ruler(world: World) -> bool:
     if current_ruler is None:
         return False
 
-    current_date = world.get_resource(GameState).year
+    current_year = world.get_resource(GameState).year
 
     current_ruler.remove_component(Ruler)
     cur.execute(
         """
-        UPDATE rulers
-        SET end_date=?
-        WHERE character_id=?;
+        UPDATE Ruler
+        SET end_year=?
+        WHERE character_uid=?;
         """,
         (
-            current_date,
+            current_year,
             current_ruler.uid,
         ),
     )
@@ -264,7 +264,7 @@ def start_new_dynasty(founding_character: Entity) -> Entity:
     """Start a new dynasty and return it."""
     world = founding_character.world
 
-    current_date = world.get_resource(GameState).year
+    current_year = world.get_resource(GameState).year
     dynasty_tracker = world.get_resource(DynastyTracker)
 
     if dynasty_tracker.current_dynasty is not None:
@@ -279,7 +279,7 @@ def start_new_dynasty(founding_character: Entity) -> Entity:
             Dynasty(
                 founder=founding_character,
                 family=family,
-                founding_date=world.get_resource(GameState).year,
+                founding_year=world.get_resource(GameState).year,
             )
         ],
         name=f"The {character_component.surname} dynasty",
@@ -304,13 +304,13 @@ def start_new_dynasty(founding_character: Entity) -> Entity:
     cur = db.cursor()
     cur.execute(
         """
-        INSERT INTO dynasties
+        INSERT INTO Dynasty
         (
             uid,
-            family_id,
-            founder_id,
-            start_date,
-            previous_dynasty_id
+            family_uid,
+            founder_uid,
+            start_year,
+            previous_dynasty_uid
         )
         VALUES (?, ?, ?, ?, ?);
         """,
@@ -318,25 +318,25 @@ def start_new_dynasty(founding_character: Entity) -> Entity:
             dynasty_obj.uid,
             dynasty_component.family.uid,
             founding_character.uid,
-            current_date,
+            current_year,
             dynasty_component.previous_dynasty,
         ),
     )
     cur.execute(
         """
-        INSERT INTO rulers
+        INSERT INTO Ruler
         (
-            character_id,
-            dynasty_id,
-            start_date,
-            predecessor_id
+            character_uid,
+            dynasty_uid,
+            start_year,
+            predecessor_uid
         )
         VALUES (?, ?, ?, ?);
         """,
         (
             founding_character.uid,
             dynasty_obj.uid,
-            current_date,
+            current_year,
             previous_ruler,
         ),
     )
@@ -350,7 +350,7 @@ def end_current_dynasty(world: World) -> bool:
     db = world.get_resource(SimDB).conn
     cur = db.cursor()
     dynasty_tracker = world.get_resource(DynastyTracker)
-    current_date = world.get_resource(GameState).year
+    current_year = world.get_resource(GameState).year
 
     current_dynasty = dynasty_tracker.current_dynasty
 
@@ -359,17 +359,17 @@ def end_current_dynasty(world: World) -> bool:
 
     dynasty_component = current_dynasty.get_component(Dynasty)
 
-    dynasty_component.ending_date = current_date
+    dynasty_component.ending_year = current_year
 
     cur.execute(
         """
-        UPDATE dynasties
+        UPDATE Dynasty
         SET
-        end_date=?
+        end_year=?
         WHERE
         uid=?;
         """,
-        (current_date, dynasty_component.entity.uid),
+        (current_year, dynasty_component.entity.uid),
     )
 
     dynasty_tracker.previous_dynasties.add(current_dynasty)

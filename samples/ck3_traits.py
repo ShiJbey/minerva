@@ -13,6 +13,7 @@ from minerva.traits.effects import (
     AddIntrigueModifier,
     AddLifespanModifier,
     AddMartialModifier,
+    AddProclivity,
     AddProwessModifier,
     AddStewardshipModifier,
 )
@@ -29,7 +30,9 @@ def load_traits(world: World) -> None:
             spawn_frequency=0,
             inheritance_chance_single=1.0,
             inheritance_chance_both=1.0,
-            proclivities=[Proclivity(5).where(lambda a: "succession" in a.tags)],
+            effects=[
+                AddProclivity(Proclivity(5).where(lambda a: "succession" in a.tags))
+            ],
         )
     )
 
@@ -225,9 +228,7 @@ def load_traits(world: World) -> None:
             spawn_frequency=1,
             effects=[
                 AddDiplomacyModifier(StatModifier(25)),
-            ],
-            proclivities=[
-                Proclivity(3).where(lambda a: "generous" in a.tags),
+                AddProclivity(Proclivity(3).where(lambda a: "generous" in a.tags)),
             ],
         )
     )
@@ -241,10 +242,8 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(10)),
                 AddIntrigueModifier(StatModifier(-35)),
-            ],
-            proclivities=[
-                Proclivity(5).where(lambda a: "infidelity" in a.tags),
-                Proclivity(-7).where(lambda a: "deceit" in a.tags),
+                AddProclivity(Proclivity(5).where(lambda a: "infidelity" in a.tags)),
+                AddProclivity(Proclivity(-7).where(lambda a: "deceit" in a.tags)),
             ],
         )
     )
@@ -258,10 +257,8 @@ def load_traits(world: World) -> None:
             effects=[
                 AddDiplomacyModifier(StatModifier(-10)),
                 AddIntrigueModifier(StatModifier(35)),
-            ],
-            proclivities=[
-                Proclivity(7).where(lambda a: "infidelity" in a.tags),
-                Proclivity(7).where(lambda a: "deceit" in a.tags),
+                AddProclivity(Proclivity(7).where(lambda a: "infidelity" in a.tags)),
+                AddProclivity(Proclivity(7).where(lambda a: "deceit" in a.tags)),
             ],
         )
     )
@@ -300,8 +297,8 @@ def load_traits(world: World) -> None:
             effects=[
                 AddStewardshipModifier(StatModifier(-15)),
                 AddDiplomacyModifier(StatModifier(15)),
+                AddProclivity(Proclivity(5).where(lambda a: "diplomacy" in a.tags)),
             ],
-            proclivities=[Proclivity(5).where(lambda a: "diplomacy" in a.tags)],
         )
     )
 
@@ -327,7 +324,7 @@ def load_traits(world: World) -> None:
             spawn_frequency=1,
             effects=[
                 AddDiplomacyModifier(StatModifier(-15)),
+                AddProclivity(Proclivity(2).where(lambda a: "diplomacy" in a.tags)),
             ],
-            proclivities=[Proclivity(2).where(lambda a: "diplomacy" in a.tags)],
         )
     )

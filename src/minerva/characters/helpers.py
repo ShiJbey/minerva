@@ -7,10 +7,13 @@ import logging
 import math
 from typing import Iterable, Optional
 
-from minerva.actions.base_types import Scheme, SchemeManager
-from minerva.actions.scheme_helpers import remove_member_from_scheme
+from minerva.actions.scheme_types import (
+    AllianceScheme,
+    CoupScheme,
+    SchemeManager,
+    WarScheme,
+)
 from minerva.characters.components import (
-    Betrothal,
     Character,
     Diplomacy,
     Family,
@@ -27,13 +30,11 @@ from minerva.characters.components import (
     Prestige,
     Prowess,
     RelationType,
-    RomanticAffair,
     Sex,
     SexualOrientation,
     Stewardship,
 )
 from minerva.characters.metric_data import CharacterMetrics
-from minerva.characters.war_helpers import end_alliance
 from minerva.config import Config
 from minerva.ecs import Active, Entity
 from minerva.game_action import GameAction
@@ -50,7 +51,7 @@ from minerva.stats.base_types import (
     set_stat_base,
 )
 from minerva.world_map.components import Territory
-from minerva.world_map.helpers import set_territory_controlling_family
+from minerva.world_map.helpers import SetTerritoryControllingFamily
 
 _logger = logging.getLogger(__name__)
 
@@ -259,55 +260,25 @@ def remove_prestige_modifier(entity: Entity, modifier: StatModifier) -> None:
 # ===================================
 
 
-def set_family_name(
-    family: Entity,
-    name: str,
-) -> None:
+def set_family_name(family: Entity, name: str) -> None:
     """Set the name of the given family."""
     family_component = family.get_component(Family)
 
     family.name = name
     family_component.name = name
 
-    db = family.world.get_resource(SimDB).conn
-    cur = db.cursor()
-    cur.execute(
-        """UPDATE families SET name=? WHERE uid=?;""",
-        (name, family),
-    )
-    db.commit()
+    with family.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Family SET name=? WHERE uid=?;""",
+            (name, family.uid),
+        )
 
 
-def add_branch_family(family: Entity, branch_family: Entity) -> None:
-    """Set the parent family of a family."""
-
-    branch_family_component = branch_family.get_component(Family)
-    family_component = family.get_component(Family)
-
-    branch_family_component.parent_family = family
-    family_component.branch_families.add(branch_family)
-
-    world = branch_family.world
-    db = world.get_resource(SimDB).conn
-    cursor = db.cursor()
-
-    cursor.execute(
-        """UPDATE families SET parent_id=? WHERE uid=?;""",
-        (family.uid, branch_family.uid),
-    )
-
-    db.commit()
-
-
-def set_family_head(
-    family: Entity,
-    character: Optional[Entity],
-) -> None:
+def set_family_head(family: Entity, character: Optional[Entity]) -> None:
     """Set the current head of a family."""
-    current_date = family.world.get_resource(GameState).year
-    db = family.world.get_resource(SimDB).conn
-    cur = db.cursor()
+    world = family.world
     family_component = family.get_component(Family)
+
     # Do nothing if already set properly
     if family_component.head == character:
         return
@@ -321,39 +292,25 @@ def set_family_head(
         former_head.add_component(FormerFamilyHead(family))
         family_component.head = None
         family_component.former_heads.add(former_head)
-        cur.execute(
-            """UPDATE family_heads SET end_date=? WHERE head=?;""",
-            (current_date, former_head.uid),
-        )
 
-    # Set the new family head
+        with world.get_resource(SimDB) as db:
+            db.execute(
+                """UPDATE Family SET family_head_uid=? WHERE uid=?;""",
+                (None, family),
+            )
+
     if character is not None:
         character.add_component(HeadOfFamily(family=family))
         family_component.head = character
-        previous_head = (
-            family_component.former_heads[-1] if family_component.former_heads else None
-        )
-        cur.execute(
-            """
-            INSERT INTO family_heads
-            (head, family, start_date, predecessor)
-            VALUES (?, ?, ?, ?);
-            """,
-            (character, family, current_date, previous_head),
-        )
 
-    cur.execute(
-        """UPDATE families SET head=? WHERE uid=?;""",
-        (character, family),
-    )
-
-    db.commit()
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                """UPDATE Family SET family_head_uid=? WHERE uid=?;""",
+                (character.uid, family.uid),
+            )
 
 
-def set_character_family(
-    character: Entity,
-    family: Optional[Entity],
-) -> None:
+def set_character_family(character: Entity, family: Optional[Entity]) -> None:
     """Set a character's current family."""
     character_component = character.get_component(Character)
 
@@ -373,43 +330,36 @@ def set_character_family(
         family_component.active_members.add(character)
         character_component.family = family
 
-    db = character.world.get_resource(SimDB).conn
-    cur = db.cursor()
-    cur.execute(
-        """UPDATE characters SET family=? WHERE uid=?;""",
-        (family, character),
-    )
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET family_uid=? WHERE uid=?;""",
+            (family.uid if family else None, character.uid),
+        )
 
 
 def set_family_home_base(family: Entity, territory: Optional[Entity]) -> None:
     """Set the home base for the given family."""
     family_component = family.get_component(Family)
 
-    db = family.world.get_resource(SimDB).conn
-    cur = db.cursor()
-
     if family_component.home_base is not None:
         former_home_base = family_component.home_base
         territory_component = former_home_base.get_component(Territory)
         territory_component.families.remove(family)
         family_component.home_base = None
-        cur.execute("""UPDATE families SET home_base_id=NULL WHERE uid=?""", (family,))
-        if family in territory_component.political_influence:
-            del territory_component.political_influence[family]
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                """UPDATE Family SET home_base_uid=NULL WHERE uid=?""", (family,)
+            )
 
     if territory is not None:
         territory_component = territory.get_component(Territory)
         territory_component.families.append(family)
         family_component.home_base = territory
-        cur.execute(
-            """UPDATE families SET home_base_id=? WHERE uid=?""",
-            (territory.uid, family),
-        )
-        if family not in territory_component.political_influence:
-            territory_component.political_influence[family] = 0
-
-    db.commit()
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                """UPDATE Family SET home_base_uid=? WHERE uid=?""",
+                (territory.uid, family),
+            )
 
 
 class RemoveCharacterFromPlay(GameAction):
@@ -421,6 +371,55 @@ class RemoveCharacterFromPlay(GameAction):
         super().__init__(character.world)
         self.character = character
 
+    def on_execute(self) -> None:
+        if not self.character.is_active:
+            return
+
+        character = self.character
+
+        character_component = character.get_component(Character)
+
+        character.deactivate()
+
+        if character_component.heir_to:
+            heir_to_character = character_component.heir_to.get_component(Character)
+            if heir_to_character.is_alive:
+                remove_heir(character_component.heir_to)
+
+        if character_component.family:
+            unassign_family_member_from_all_roles(character_component.family, character)
+            family_component = character_component.family.get_component(Family)
+            family_component.active_members.remove(character)
+            family_component.former_members.add(character)
+
+        if character_component.spouse is not None:
+            end_marriage(character, character_component.spouse)
+
+        deactivate_relationships(character)
+
+        # Invalidate all schemes
+        scheme_manager = character.get_component(SchemeManager)
+        if scheme_manager.alliance_scheme:
+            alliance_scheme = scheme_manager.alliance_scheme.get_component(
+                AllianceScheme
+            )
+            if alliance_scheme.initiator == character:
+                alliance_scheme.is_valid = False
+            else:
+                alliance_scheme.remove_character(character)
+
+        if scheme_manager.coup_scheme:
+            coup_scheme = scheme_manager.coup_scheme.get_component(CoupScheme)
+            if coup_scheme.initiator == character:
+                coup_scheme.is_valid = False
+            else:
+                coup_scheme.remove_character(character)
+
+        if scheme_manager.war_scheme:
+            war_scheme = scheme_manager.war_scheme.get_component(WarScheme)
+            if war_scheme.initiator == character:
+                war_scheme.is_valid = False
+
 
 class RemoveFamilyFromPlay(GameAction):
     """Remove a family from being active in the simulation."""
@@ -431,98 +430,49 @@ class RemoveFamilyFromPlay(GameAction):
         super().__init__(family.world)
         self.family = family
 
+    def on_execute(self) -> None:
 
-def remove_family_from_play(action: RemoveFamilyFromPlay) -> None:
-    """Remove a family from play."""
-    if not action.family.is_active:
-        return
+        if not self.family.is_active:
+            return
 
-    world = action.world
-    family = action.family
-    family_component = family.get_component(Family)
+        world = self.world
+        family = self.family
+        family_component = family.get_component(Family)
 
-    db = world.get_resource(SimDB).conn
-    current_date = world.get_resource(GameState).year
-    db_cursor = db.cursor()
-    db_cursor.execute(
-        """
-        UPDATE families
-        SET defunct_date=?
-        WHERE uid=?;
-        """,
-        (current_date, family.uid),
-    )
-    db.commit()
+        with world.get_resource(SimDB) as db:
+            db.execute(
+                """
+                UPDATE Family
+                SET defunct_year=?
+                WHERE uid=?;
+                """,
+                (world.get_resource(GameState).year, family.uid),
+            )
 
-    # Remove any remaining characters from play
-    if len(family_component.active_members) != 0:
-        _logger.debug(
-            "%s is not empty. Removing remaining characters from play.",
+        # Remove any remaining characters from play
+        if len(family_component.active_members) != 0:
+            _logger.debug(
+                "%s is not empty. Removing remaining characters from play.",
+                family.name_with_uid,
+            )
+
+            for member in [*family_component.active_members]:
+                self.add_reaction(RemoveCharacterFromPlay(member))
+
+        # Remove the family from play
+        set_family_home_base(family, None)
+
+        for _, (territory, _) in world.query_components((Territory, Active)):
+            if territory.controlling_family == family:
+                self.add_reaction(SetTerritoryControllingFamily(territory.entity, None))
+
+        family.deactivate()
+
+        _logger.info(
+            "[%04d]: The %s family has been removed from play.",
+            world.get_resource(GameState).year,
             family.name_with_uid,
         )
-
-        for member in [*family_component.active_members]:
-            action.add_reaction(RemoveCharacterFromPlay(member))
-
-    # Remove the family from play
-    set_family_home_base(family, None)
-
-    for _, (territory, _) in world.query_components((Territory, Active)):
-        if family in territory.political_influence:
-            del territory.political_influence[family]
-
-        if territory.controlling_family == family:
-            set_territory_controlling_family(territory.entity, None)
-
-    family.deactivate()
-
-    # Remove family from their alliance and disband it
-    if family_component.alliance:
-        end_alliance(family_component.alliance)
-
-    _logger.info(
-        "[%04d]: The %s family has been removed from play.",
-        current_date,
-        family.name_with_uid,
-    )
-
-
-def remove_character_from_play(action: RemoveCharacterFromPlay) -> None:
-    """Remove a character from play."""
-    if not action.character.is_active:
-        return
-
-    character = action.character
-
-    character_component = character.get_component(Character)
-
-    character.deactivate()
-
-    if character_component.heir_to:
-        heir_to_character = character_component.heir_to.get_component(Character)
-        if heir_to_character.is_alive:
-            remove_heir(character_component.heir_to)
-
-    if character_component.family:
-        unassign_family_member_from_all_roles(character_component.family, character)
-        family_component = character_component.family.get_component(Family)
-        family_component.active_members.remove(character)
-        family_component.former_members.add(character)
-
-    if character_component.spouse is not None:
-        end_marriage(character, character_component.spouse)
-
-    deactivate_relationships(character)
-
-    # Invalidate all schemes
-    scheme_manager = character.get_component(SchemeManager)
-    for scheme in [*scheme_manager.get_schemes()]:
-        scheme_component = scheme.get_component(Scheme)
-
-        if scheme_component.initiator == character:
-            scheme_component.is_valid = False
-
-        remove_member_from_scheme(scheme, character)
 
 
 def set_character_birth_family(
@@ -541,13 +491,11 @@ def set_character_birth_family(
     if family is not None:
         character_component.birth_family = family
 
-    db = character.world.get_resource(SimDB).conn
-    cur = db.cursor()
-    cur.execute(
-        """UPDATE characters SET birth_family=? WHERE uid=?;""",
-        (family, character),
-    )
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET birth_family_uid=? WHERE uid=?;""",
+            (family, character),
+        )
 
 
 def merge_family_with(source_family: Entity, destination_family: Entity) -> None:
@@ -754,14 +702,11 @@ def set_character_first_name(character: Entity, name: str) -> None:
     character_component.first_name = name
     character.name = character_component.full_name
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET first_name=? WHERE uid=?;""",
-        (name, character.uid),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET first_name=? WHERE uid=?;""",
+            (name, character.uid),
+        )
 
 
 def set_character_surname(character: Entity, name: str) -> None:
@@ -771,14 +716,11 @@ def set_character_surname(character: Entity, name: str) -> None:
     character_component.surname = name
     character.name = character_component.full_name
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET surname=? WHERE uid=?;""",
-        (name, character.uid),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET surname=? WHERE uid=?;""",
+            (name, character.uid),
+        )
 
 
 def set_character_birth_surname(character: Entity, name: str) -> None:
@@ -786,14 +728,11 @@ def set_character_birth_surname(character: Entity, name: str) -> None:
 
     character.get_component(Character).birth_surname = name
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET birth_surname=? WHERE uid=?;""",
-        (name, character.uid),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET birth_surname=? WHERE uid=?;""",
+            (name, character.uid),
+        )
 
 
 def set_character_sex(character: Entity, sex: Sex) -> None:
@@ -801,14 +740,11 @@ def set_character_sex(character: Entity, sex: Sex) -> None:
 
     character.get_component(Character).sex = sex
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET sex=? WHERE uid=?;""",
-        (sex, character.uid),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET sex=? WHERE uid=?;""",
+            (sex, character.uid),
+        )
 
 
 def set_character_sexual_orientation(
@@ -818,14 +754,11 @@ def set_character_sexual_orientation(
 
     character.get_component(Character).sexual_orientation = orientation
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET sexual_orientation=? WHERE uid=?;""",
-        (orientation, character.uid),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET sexual_orientation=? WHERE uid=?;""",
+            (orientation, character.uid),
+        )
 
 
 def set_character_life_stage(character: Entity, life_stage: LifeStage) -> None:
@@ -833,14 +766,11 @@ def set_character_life_stage(character: Entity, life_stage: LifeStage) -> None:
 
     character.get_component(Character).life_stage = life_stage
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET life_stage=? WHERE uid=?;""",
-        (life_stage, character.uid),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET life_stage=? WHERE uid=?;""",
+            (life_stage, character.uid),
+        )
 
 
 def set_character_age(character: Entity, age: float) -> None:
@@ -851,100 +781,81 @@ def set_character_age(character: Entity, age: float) -> None:
     character_component.age = age
 
     if math.floor(previous_age) != math.floor(age):
-        db = character.world.get_resource(SimDB).conn
-
-        db.execute(
-            """UPDATE characters SET age=? WHERE uid=?;""",
-            (math.floor(age), character.uid),
-        )
-
-        db.commit()
+        with character.world.get_resource(SimDB) as db:
+            db.execute(
+                """UPDATE Character SET age=? WHERE uid=?;""",
+                (math.floor(age), character.uid),
+            )
 
 
-def set_character_birth_date(character: Entity, birth_date: int) -> None:
+def set_character_birth_year(character: Entity, birth_year: int) -> None:
     """Set the birth date of a character."""
 
-    character.get_component(Character).birth_date = birth_date
+    character.get_component(Character).birth_year = birth_year
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET birth_date=? WHERE uid=?;""",
-        (str(birth_date), character),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET birth_year=? WHERE uid=?;""",
+            (str(birth_year), character),
+        )
 
 
-def set_character_death_date(character: Entity, death_date: int) -> None:
+def set_character_death_year(character: Entity, death_year: int) -> None:
     """Set the death date of a character."""
 
-    character.get_component(Character).death_date = death_date
+    character.get_component(Character).death_year = death_year
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET death_date=? WHERE uid=?;""",
-        (str(death_date), character),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET death_year=? WHERE uid=?;""",
+            (str(death_year), character),
+        )
 
 
 def set_relation(
     character_a: Entity, character_b: Entity, relation_type: RelationType
 ) -> None:
     """Adds a given relation type between two characters."""
-    world = character_a.world
-    db = world.get_resource(SimDB).conn
-    cursor = db.cursor()
+    with character_a.world.get_resource(SimDB) as db:
 
-    # Check that these characters don't already have the given relation.
-    result: int = cursor.execute(
-        """
-        SELECT
-            EXISTS(
-                SELECT 1
-                FROM relations
-                WHERE character_id=? AND target_id=? AND relation_type=?
-            )
-        ;
-        """,
-        (character_a.uid, character_b.uid, relation_type.name),
-    ).fetchone()[0]
+        # Check that these characters don't already have the given relation.
+        result: int = db.execute(
+            """
+            SELECT
+                EXISTS(
+                    SELECT 1
+                    FROM Relation
+                    WHERE character_uid=? AND target_uid=? AND relation_type=?
+                )
+            ;
+            """,
+            (character_a.uid, character_b.uid, relation_type.name),
+        ).fetchone()[0]
 
-    if result == 1:
-        return
+        if result == 1:
+            return
 
-    cursor.execute(
-        """
-        INSERT INTO relations (character_id, target_id, relation_type)
-        VALUES (?, ?, ?);
-        """,
-        (character_a.uid, character_b.uid, relation_type.name),
-    )
-
-    db.commit()
+        db.execute(
+            """
+            INSERT INTO Relation (character_uid, target_uid, relation_type)
+            VALUES (?, ?, ?);
+            """,
+            (character_a.uid, character_b.uid, relation_type.name),
+        )
 
 
 def unset_relation(
     character_a: Entity, character_b: Entity, relation_type: RelationType
 ) -> None:
     """Removes a given relation type between two characters."""
-
-    world = character_a.world
-    db = world.get_resource(SimDB).conn
-    cursor = db.cursor()
-
-    cursor.execute(
-        """
-        DELETE FROM relations
-        WHERE character_id=? AND target_id=? AND relation_type=?;
-        """,
-        (character_a.uid, character_b.uid, relation_type.name),
-    )
-
-    db.commit()
+    with character_a.world.get_resource(SimDB) as db:
+        db.execute(
+            """
+            DELETE FROM Relation
+            WHERE character_uid=? AND target_uid=? AND relation_type=?;
+            """,
+            (character_a.uid, character_b.uid, relation_type.name),
+        )
 
 
 def get_relations(character: Entity, relation_type: RelationType) -> list[Entity]:
@@ -956,9 +867,9 @@ def get_relations(character: Entity, relation_type: RelationType) -> list[Entity
 
     result = cursor.execute(
         """
-        SELECT target_id
-        FROM relations
-        WHERE character_id=? AND relation_type=?;
+        SELECT target_uid
+        FROM Relation
+        WHERE character_uid=? AND relation_type=?;
         """,
         (character.uid, relation_type.name),
     ).fetchall()
@@ -1016,9 +927,7 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
     if character_b_component.spouse:
         raise RuntimeError(f"Error: {character_b.name_with_uid} is already married.")
 
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    cur = db.cursor()
+    current_year = world.get_resource(GameState).year
 
     # Set the spouse references in the component data
     character_a_component.spouse = character_b
@@ -1031,33 +940,17 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
     # Create a new marriage entries into the database
     a_to_b = world.entity(
         components=[
-            Marriage(character_a, character_b, current_date),
+            Marriage(character_a, character_b, current_year),
         ]
     )
     character_a_component.marriage = a_to_b
-    cur.execute(
-        """
-        INSERT INTO marriages (uid, character_id, spouse_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (a_to_b.uid, character_a.uid, character_b.uid, current_date),
-    )
 
     b_to_a = world.entity(
         components=[
-            Marriage(character_b, character_a, current_date),
+            Marriage(character_b, character_a, current_year),
         ]
     )
     character_b_component.marriage = b_to_a
-    cur.execute(
-        """
-        INSERT INTO marriages (uid, character_id, spouse_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (b_to_a.uid, character_b.uid, character_a.uid, current_date),
-    )
-
-    db.commit()
 
     character_a.get_component(CharacterMetrics).data.times_married += 1
     character_b.get_component(CharacterMetrics).data.times_married += 1
@@ -1066,7 +959,6 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
 def end_marriage(character_a: Entity, character_b: Entity) -> None:
     """Unset the current spouse of a character and end the marriage."""
 
-    world = character_a.world
     character_a_component = character_a.get_component(Character)
     character_b_component = character_b.get_component(Character)
 
@@ -1087,10 +979,6 @@ def end_marriage(character_a: Entity, character_b: Entity) -> None:
     character_a_component.spouse = None
     character_b_component.spouse = None
 
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    cur = db.cursor()
-
     # Update the spouse IDs in the database
     unset_relation(character_b, character_a, RelationType.SPOUSE)
     unset_relation(character_a, character_b, RelationType.SPOUSE)
@@ -1099,146 +987,10 @@ def end_marriage(character_a: Entity, character_b: Entity) -> None:
 
     # Update marriage entries in the database
     assert character_a_component.marriage
-
-    cur.execute(
-        """
-        UPDATE marriages SET end_date=?
-        WHERE uid=?;
-        """,
-        (current_date, character_a_component.marriage.uid),
-    )
-    character_a_component.past_marriages.append(character_a_component.marriage)
     character_a_component.marriage = None
 
     assert character_b_component.marriage
-
-    cur.execute(
-        """
-        UPDATE marriages SET end_date=?
-        WHERE uid=?;
-        """,
-        (current_date, character_b_component.marriage.uid),
-    )
-    character_b_component.past_marriages.append(character_b_component.marriage)
     character_b_component.marriage = None
-
-    db.commit()
-
-
-def start_romantic_affair(character_a: Entity, character_b: Entity) -> None:
-    """Start a romantic affair between two characters."""
-    world = character_a.world
-    character_a_component = character_a.get_component(Character)
-    character_b_component = character_b.get_component(Character)
-
-    # Check that both characters are not married
-    if character_a_component.lover:
-        raise RuntimeError(f"Error: {character_a.name_with_uid} already has a lover.")
-
-    if character_b_component.lover:
-        raise RuntimeError(f"Error: {character_b.name_with_uid} already has a lover.")
-
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    cur = db.cursor()
-
-    # Set the lover references in the component data
-    character_a_component.lover = character_b
-    character_b_component.lover = character_a
-
-    # Update the lover IDs in the database
-    set_relation(character_b, character_a, RelationType.LOVER)
-    set_relation(character_a, character_b, RelationType.LOVER)
-
-    # Create a new romantic affair entries into the database
-    a_to_b = world.entity(
-        components=[
-            RomanticAffair(character_a, character_b, current_date),
-        ]
-    )
-    character_a_component.love_affair = a_to_b
-    cur.execute(
-        """
-        INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (a_to_b.uid, character_b.uid, character_a.uid, current_date),
-    )
-
-    b_to_a = world.entity(
-        components=[
-            RomanticAffair(character_b, character_a, current_date),
-        ]
-    )
-    character_b_component.love_affair = b_to_a
-    cur.execute(
-        """
-        INSERT INTO romantic_affairs (uid, character_id, lover_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (b_to_a.uid, character_a.uid, character_b.uid, current_date),
-    )
-
-    db.commit()
-
-
-def end_romantic_affair(character_a: Entity, character_b: Entity) -> None:
-    """End a romantic affair between two characters."""
-    world = character_a.world
-    character_a_component = character_a.get_component(Character)
-    character_b_component = character_b.get_component(Character)
-
-    # Check that both characters are lovers with each other
-    if character_a_component.lover != character_b:
-        raise RuntimeError(
-            f"Error: {character_a.name_with_uid} is not in a romantic affair with"
-            f" {character_b.name_with_uid}."
-        )
-
-    if character_b_component.lover != character_a:
-        raise RuntimeError(
-            f"Error: {character_b.name_with_uid} is not in a romantic affair with"
-            f" {character_a.name_with_uid}."
-        )
-
-    # Set the spouse references in the component data
-    character_a_component.lover = None
-    character_b_component.lover = None
-
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    cur = db.cursor()
-
-    # Update the spouse IDs in the database
-    unset_relation(character_b, character_a, RelationType.LOVER)
-    unset_relation(character_a, character_b, RelationType.LOVER)
-
-    # Update romantic affair entries in the database
-    assert character_a_component.love_affair
-
-    cur.execute(
-        """
-        UPDATE romantic_affairs SET end_date=?
-        WHERE uid=?;
-        """,
-        (current_date, character_a_component.love_affair.uid),
-    )
-    character_a_component.past_love_affairs.append(character_a_component.love_affair)
-    character_a_component.love_affair = None
-
-    assert character_b_component.love_affair
-
-    cur.execute(
-        """
-        UPDATE romantic_affairs SET end_date=?
-        WHERE uid=?;
-        """,
-        (current_date, character_b_component.love_affair.uid),
-    )
-    character_b_component.past_love_affairs.append(character_b_component.love_affair)
-    character_b_component.love_affair = None
-
-    db.commit()
 
 
 def set_character_alive(character: Entity, is_alive: bool) -> None:
@@ -1246,14 +998,11 @@ def set_character_alive(character: Entity, is_alive: bool) -> None:
 
     character.get_component(Character).is_alive = is_alive
 
-    db = character.world.get_resource(SimDB).conn
-
-    db.execute(
-        """UPDATE characters SET is_alive=? WHERE uid=?;""",
-        (is_alive, character.uid),
-    )
-
-    db.commit()
+    with character.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Character SET is_alive=? WHERE uid=?;""",
+            (is_alive, character.uid),
+        )
 
 
 def set_relation_sibling(character: Entity, sibling: Entity) -> None:
@@ -1352,116 +1101,3 @@ def remove_heir(character: Entity) -> None:
 
     set_relation(character, heir, RelationType.HEIR)
     set_relation(heir, character, RelationType.HEIR_TO)
-
-
-def init_betrothal(character_a: Entity, character_b: Entity) -> None:
-    """Initialize a betrothal between two characters."""
-    world = character_a.world
-    character_a_component = character_a.get_component(Character)
-    character_b_component = character_b.get_component(Character)
-
-    # Check that both characters are not married
-    if character_a_component.betrothed_to:
-        raise RuntimeError(f"Error: {character_a.name_with_uid} is already betrothed.")
-
-    if character_b_component.betrothed_to:
-        raise RuntimeError(f"Error: {character_b.name_with_uid} is already betrothed.")
-
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    cur = db.cursor()
-
-    # Update the relations in the database
-    set_relation(character_b, character_a, RelationType.BETROTHED)
-    set_relation(character_a, character_b, RelationType.BETROTHED)
-
-    # Create a new marriage entries into the database
-    a_to_b = world.entity(
-        components=[
-            Betrothal(character_a, character_b, current_date),
-        ]
-    )
-    character_a_component.betrothed_to = character_b
-    character_a_component.betrothal = a_to_b
-    cur.execute(
-        """
-        INSERT INTO betrothals (uid, character_id, betrothed_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (a_to_b.uid, character_b.uid, character_a.uid, current_date),
-    )
-
-    b_to_a = world.entity(
-        components=[
-            Betrothal(character_b, character_a, current_date),
-        ]
-    )
-    character_b_component.betrothed_to = character_a
-    character_b_component.betrothal = b_to_a
-    cur.execute(
-        """
-        INSERT INTO betrothals (uid, character_id, betrothed_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (b_to_a.uid, character_a.uid, character_b.uid, current_date),
-    )
-
-    db.commit()
-
-
-def terminate_betrothal(character_a: Entity, character_b: Entity) -> None:
-    """Remove the betrothal from the characters."""
-    world = character_a.world
-    character_a_component = character_a.get_component(Character)
-    character_b_component = character_b.get_component(Character)
-
-    if character_a_component.betrothed_to != character_b:
-        raise RuntimeError(
-            f"Error: {character_a.name_with_uid} is not betrothed to"
-            f" {character_b.name_with_uid}."
-        )
-
-    if character_b_component.betrothed_to != character_a:
-        raise RuntimeError(
-            f"Error: {character_b.name_with_uid} is not married to"
-            f" {character_a.name_with_uid}."
-        )
-
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    cur = db.cursor()
-
-    character_a_current_betrothal = character_a_component.betrothal
-    character_b_current_betrothal = character_b_component.betrothal
-
-    assert character_a_current_betrothal is not None
-    assert character_b_current_betrothal is not None
-
-    # Update the relations in the database
-    unset_relation(character_b, character_a, RelationType.BETROTHED)
-    unset_relation(character_a, character_b, RelationType.BETROTHED)
-
-    # Update marriage entries in the database
-    cur.execute(
-        """
-        UPDATE betrothals SET end_date=?
-        WHERE uid=?;
-        """,
-        (current_date, character_a_current_betrothal.uid),
-    )
-    character_a_component.past_betrothals.append(character_a_current_betrothal)
-    character_a_component.betrothal = None
-    character_a_component.betrothed_to = None
-
-    cur.execute(
-        """
-        UPDATE betrothals SET end_date=?
-        WHERE uid=?;
-        """,
-        (current_date, character_b_current_betrothal.uid),
-    )
-    character_b_component.past_betrothals.append(character_b_current_betrothal)
-    character_b_component.betrothal = None
-    character_b_component.betrothed_to = None
-
-    db.commit()

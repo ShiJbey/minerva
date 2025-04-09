@@ -62,16 +62,17 @@ class UnControlledTerritoriesSensor(AISensor):
             family_head_component = entity.get_component(HeadOfFamily)
             family_component = family_head_component.family.get_component(Family)
 
-            for territory in family_component.territories_present_in:
-                territory_component = territory.get_component(Territory)
-                if territory_component.controlling_family is None:
-                    uncontrolled_territories.add(territory)
+            for territory in family_component.controlled_territories:
+                for neighbor in territory.get_component(Territory).neighbors:
+                    territory_component = neighbor.get_component(Territory)
+                    if territory_component.controlling_family is None:
+                        uncontrolled_territories.add(territory)
 
         blackboard["uncontrolled_territories"] = list(uncontrolled_territories)
 
 
 class TerritoriesControlledByOppsSensor(AISensor):
-    """Get all territories a family is within that are controlled by other families.
+    """Get all neighboring territories not controlled by an ally.
 
     This sensor excludes territories controlled by allies
     """
@@ -90,12 +91,24 @@ class TerritoriesControlledByOppsSensor(AISensor):
                 for member in alliance_component.member_families:
                     allies.add(member)
 
-            for territory in family_component.territories_present_in:
-                territory_component = territory.get_component(Territory)
+            if family_component.controlled_territories:
+                for territory in family_component.controlled_territories:
+                    territory_component = territory.get_component(Territory)
+                    if (
+                        territory_component.controlling_family is not None
+                        and territory_component.controlling_family not in allies
+                    ):
+                        enemy_territories.add(territory)
+
+            elif family_component.home_base is not None:
+                territory_component = family_component.home_base.get_component(
+                    Territory
+                )
+
                 if (
                     territory_component.controlling_family is not None
                     and territory_component.controlling_family not in allies
                 ):
-                    enemy_territories.add(territory)
+                    enemy_territories.add(family_component.home_base)
 
         blackboard["enemy_territories"] = list(enemy_territories)

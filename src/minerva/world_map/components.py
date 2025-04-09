@@ -279,10 +279,8 @@ class Territory(Component):
     __slots__ = (
         "name",
         "controlling_family",
-        "territory_id",
         "neighbors",
         "castle_position",
-        "political_influence",
         "families",
     )
 
@@ -294,8 +292,6 @@ class Territory(Component):
     """Neighboring territories."""
     castle_position: tuple[int, int]
     """The position of the castle on the screen."""
-    political_influence: dict[Entity, int]
-    """The Political influence held by all families in the territory."""
     families: OrderedSet[Entity]
     """The families that reside at this territory."""
 
@@ -309,7 +305,6 @@ class Territory(Component):
         self.controlling_family = controlling_family
         self.neighbors = OrderedSet([])
         self.castle_position: tuple[int, int] = (0, 0)
-        self.political_influence = {}
         self.families = OrderedSet([])
 
 
@@ -320,10 +315,10 @@ class PopulationHappiness(Stat):
 class InRevolt(Component):
     """Tags a territory as being in revolt."""
 
-    __slots__ = ("start_date",)
+    __slots__ = ("start_year",)
 
-    start_date: int
+    start_year: int
 
-    def __init__(self, start_date: int) -> None:
+    def __init__(self, start_year: int) -> None:
         super().__init__()
-        self.start_date = start_date
+        self.start_year = start_year

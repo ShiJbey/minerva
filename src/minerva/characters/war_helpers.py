@@ -1,88 +1,142 @@
 """Helper functions for wrs and alliances."""
 
+from __future__ import annotations
+
 import statistics
 from typing import Optional
 
-from minerva.actions.scheme_helpers import create_scheme, destroy_scheme
-from minerva.actions.scheme_types import AllianceScheme, CoupScheme, WarScheme
-from minerva.characters.components import Family, Martial, Prowess
-from minerva.characters.stat_helpers import (
-    StatLevel,
-    get_martial_level,
-    get_stewardship_level,
+from minerva.actions.scheme_types import (
+    AllianceScheme,
+    AllianceSchemeMember,
+    CoupScheme,
+    SchemeManager,
+    WarScheme,
 )
+from minerva.characters.components import (
+    SKILL_BAD,
+    SKILL_EXCELLENT,
+    SKILL_NEUTRAL,
+    Character,
+    Family,
+    Martial,
+    Prowess,
+)
+from minerva.characters.helpers import get_martial_skill, get_stewardship_skill
 from minerva.characters.war_data import Alliance, War, WarRole, WarTracker
 from minerva.ecs import Entity
+from minerva.game_action import GameAction
 from minerva.game_state import GameState
 from minerva.sim_db import SimDB
 
 
-def start_alliance(*families: Entity) -> Entity:
+class StartAllianceScheme(GameAction):
+    """Start a new alliance scheme."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class EndAllianceScheme(GameAction):
+    """End an alliance scheme."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class StartAlliance(GameAction):
+    """Add a new alliance to the simulation."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class EndAlliance(GameAction):
+    """Remove an alliance from the simulation."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class AddFamilyToAlliance(GameAction):
+    """Add a family to an alliance."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class RemoveFamilyFromAlliance(GameAction):
+    """Remove a family from an alliance."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class StartWarScheme(GameAction):
+    """Start a new scheme to go to war."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class EndWarScheme(GameAction):
+    """End a war scheme."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class StartCoupScheme(GameAction):
+    """Start a scheme to overthrow the current ruler."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+class EndCoupScheme(GameAction):
+    """End a scheme to overthrow the current ruler."""
+
+    def on_execute(self) -> None:
+        pass
+
+
+def start_alliance(
+    founder: Entity, founder_family: Entity, members: list[AllianceSchemeMember]
+) -> Entity:
     """Start a new alliance between the two families."""
 
-    if len(families) < 2:
-        raise ValueError("An alliance requires a minimum of two families.")
-
-    founder_family = families[0]
-    founder_family_component = founder_family.get_component(Family)
-    founder = founder_family_component.head
-
     world = founder_family.world
-    current_date = world.get_resource(GameState).year
-
-    if founder is None:
-        raise TypeError("Alliance founding family is missing a family head.")
+    current_year = world.get_resource(GameState).year
 
     # Create the new alliance object
-    alliance = world.entity()
-    alliance_component = alliance.add_component(
+    founder_surname = founder.get_component(Character).surname
+    alliance = world.entity(name=f"The {founder_surname} Alliance")
+    alliance.add_component(
         Alliance(
             founder=founder,
             founder_family=founder_family,
-            member_families=families,
-            start_date=current_date,
+            member_families=[],
+            start_year=current_year,
         )
     )
 
+    with world.get_resource(SimDB) as db:
+        db.execute(
+            """
+            INSERT INTO Alliance (uid, founder_uid, founder_family_uid, start_year)
+            VALUES (?, ?, ?, ?);
+            """,
+            (
+                alliance.uid,
+                founder.uid,
+                founder_family.uid,
+                current_year,
+            ),
+        )
+
     # Verify that none of the families are currently in an alliance and set
     # their alliance variables
-    for family in alliance_component.member_families:
-        family_component = family.get_component(Family)
-        if family_component.alliance is not None:
-            raise RuntimeError(
-                f"The {family_component.name} family already belongs to an alliance."
-            )
-        else:
-            family_component.alliance = alliance
-
-    db = world.get_resource(SimDB).conn
-    db_cursor = db.cursor()
-
-    db_cursor.execute(
-        """
-        INSERT INTO alliances (uid, founder_id, founder_family_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (
-            alliance.uid,
-            founder.uid,
-            founder_family.uid,
-            current_date,
-        ),
-    )
-
-    db_cursor.executemany(
-        """
-        INSERT INTO alliance_members (family_id, alliance_id, date_joined)
-        VALUES (?, ?, ?);
-        """,
-        [
-            (f.uid, alliance.uid, current_date)
-            for f in alliance_component.member_families
-        ],
-    )
-
-    db.commit()
+    for entry in [AllianceSchemeMember(founder, founder_family), *members]:
+        join_alliance(alliance, entry.family)
 
     return alliance
 
@@ -101,56 +155,34 @@ def join_alliance(alliance: Entity, family: Entity) -> None:
     family_component.alliance = alliance
     alliance_component.member_families.add(family)
 
-    world = alliance.world
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    cursor = db.cursor()
-
-    cursor.execute(
-        """
-        INSERT INTO alliance_members (family_id, alliance_id, date_joined)
-        VALUES (?, ?, ?);
-        """,
-        (family.uid, alliance.uid, current_date),
-    )
-
-    db.commit()
+    with alliance.world.get_resource(SimDB) as db:
+        db.execute(
+            """
+            UPDATE Family SET alliance_uid=? WHERE uid=?;
+            """,
+            (alliance.uid, family.uid),
+        )
 
 
 def end_alliance(alliance: Entity) -> None:
     """End an existing alliance between families."""
 
     world = alliance.world
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    db_cursor = db.cursor()
+    current_year = world.get_resource(GameState).year
 
     alliance_component = alliance.get_component(Alliance)
-    alliance_component.end_date = current_date
+    alliance_component.end_year = current_year
 
     # Remove the alliance from all member families
     for family in alliance_component.member_families:
         family_component = family.get_component(Family)
         family_component.alliance = None
 
-    db_cursor.execute(
-        """UPDATE alliances SET end_date=? WHERE uid=?""",
-        (current_date, alliance.uid),
-    )
-
-    db_cursor.executemany(
-        """
-        UPDATE alliance_members
-        SET date_left=?
-        WHERE family_id=? AND alliance_id=?;
-        """,
-        [
-            (current_date, f.uid, alliance.uid)
-            for f in alliance_component.member_families
-        ],
-    )
-
-    db.commit()
+    with world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Alliance SET end_year=? WHERE uid=?""",
+            (current_year, alliance.uid),
+        )
 
     alliance.destroy()
 
@@ -160,9 +192,7 @@ def start_war(
 ) -> Entity:
     """One family declares war on another."""
     world = family_a.world
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    db_cursor = db.cursor()
+    current_year = world.get_resource(GameState).year
 
     family_a_wars = family_a.get_component(WarTracker)
     family_b_wars = family_b.get_component(WarTracker)
@@ -172,7 +202,7 @@ def start_war(
             War(
                 family_a,
                 family_b,
-                start_date=current_date,
+                start_year=current_year,
                 contested_territory=contested_territory,
             )
         ]
@@ -181,27 +211,15 @@ def start_war(
     family_a_wars.offensive_wars.add(war_obj)
     family_b_wars.defensive_wars.add(war_obj)
 
-    db_cursor.execute(
-        """
-        INSERT INTO wars
-        (uid, aggressor_id, defender_id, start_date)
-        VALUES (?, ?, ?, ?);
-        """,
-        (war_obj.uid, family_a.uid, family_b.uid, current_date),
-    )
-
-    db_cursor.executemany(
-        """
-        INSERT INTO war_participants (family_id, war_id, role, date_joined)
-        VALUES (?, ?, ?, ?);
-        """,
-        [
-            (family_a.uid, war_obj.uid, WarRole.AGGRESSOR, current_date),
-            (family_b.uid, war_obj.uid, WarRole.DEFENDER, current_date),
-        ],
-    )
-
-    db.commit()
+    with world.get_resource(SimDB) as db:
+        db.execute(
+            """
+            INSERT INTO War
+            (uid, aggressor_uid, defender_uid, start_year)
+            VALUES (?, ?, ?, ?);
+            """,
+            (war_obj.uid, family_a.uid, family_b.uid, current_year),
+        )
 
     return war_obj
 
@@ -210,7 +228,7 @@ def end_war(war: Entity, winner: Optional[Entity]) -> None:
     """End a war between families."""
 
     world = war.world
-    current_date = world.get_resource(GameState).year
+    current_year = world.get_resource(GameState).year
     db = world.get_resource(SimDB).conn
     db_cursor = db.cursor()
 
@@ -235,9 +253,9 @@ def end_war(war: Entity, winner: Optional[Entity]) -> None:
 
     db_cursor.execute(
         """
-        UPDATE wars SET end_date=?, winner_id=? WHERE uid=?;
+        UPDATE War SET end_year=?, winner_uid=? WHERE uid=?;
         """,
-        (current_date, winner, war.uid),
+        (current_year, winner, war.uid),
     )
 
     db.commit()
@@ -247,11 +265,6 @@ def end_war(war: Entity, winner: Optional[Entity]) -> None:
 
 def join_war_as(war: Entity, family: Entity, role: WarRole) -> None:
     """Join a war under the given role."""
-
-    world = war.world
-    current_date = world.get_resource(GameState).year
-    db = world.get_resource(SimDB).conn
-    db_cursor = db.cursor()
 
     war_component = war.get_component(War)
     family_wars = family.get_component(WarTracker)
@@ -269,75 +282,76 @@ def join_war_as(war: Entity, family: Entity, role: WarRole) -> None:
     else:
         raise ValueError("Error: Unrecognized war role.")
 
-    db_cursor.execute(
-        """
-        INSERT INTO war_participants (family_id, war_id, role, date_joined)
-        VALUES (?, ?, ?, ?);
-        """,
-        (family.uid, war.uid, role, current_date),
-    )
-
-    db.commit()
-
-
-def create_alliance_scheme(initiator: Entity) -> Entity:
-    """Creates a new alliance scheme."""
-    scheme = create_scheme(
-        world=initiator.world,
-        scheme_type="alliance",
-        required_time=3,
-        initiator=initiator,
-        data=AllianceScheme(),
-    )
-
-    # Update the database with scheme-specific information
-
-    return scheme
+    # TODO: Log event when a family joins a war
 
 
 def destroy_alliance_scheme(scheme: Entity) -> None:
     """Destroy an alliance scheme."""
-    destroy_scheme(scheme)
+    alliance_scheme = scheme.get_component(AllianceScheme)
+
+    alliance_scheme.initiator.get_component(SchemeManager).alliance_scheme = None
+
+    for member in alliance_scheme.members:
+        member.character.get_component(SchemeManager).alliance_scheme = None
+
+    scheme.destroy()
 
 
 def create_war_scheme(initiator: Entity, target: Entity, territory: Entity) -> Entity:
     """Create a new war scheme."""
-    scheme = create_scheme(
-        world=initiator.world,
-        scheme_type="war",
-        required_time=3,
-        initiator=initiator,
-        data=WarScheme(aggressor=initiator, defender=target, territory=territory),
-    )
+    scheme = initiator.world.entity(name=f"{initiator.name_with_uid}'s War Scheme")
 
-    # Update the database with scheme-specific information
+    scheme.add_component(
+        WarScheme(
+            initiator=initiator,
+            aggressor=initiator,
+            defender=target,
+            territory=territory,
+            start_year=initiator.world.get_resource(GameState).year,
+        )
+    )
 
     return scheme
 
 
 def destroy_war_scheme(scheme: Entity) -> None:
     """Destroy a war scheme."""
-    destroy_scheme(scheme)
+    war_scheme = scheme.get_component(WarScheme)
+
+    war_scheme.initiator.get_component(SchemeManager).war_scheme = None
+
+    for member in war_scheme.members:
+        member.get_component(SchemeManager).war_scheme = None
+
+    scheme.destroy()
 
 
 def create_coup_scheme(initiator: Entity, target: Entity) -> Entity:
     """Create a new war scheme."""
-    scheme = create_scheme(
-        world=initiator.world,
-        scheme_type="coup",
-        required_time=5,
-        initiator=initiator,
-        data=CoupScheme(target=target),
-    )
 
-    # Update the database with scheme-specific information
+    scheme = initiator.world.entity(name=f"{initiator.name_with_uid}'s Coup Scheme")
+
+    scheme.add_component(
+        CoupScheme(
+            initiator=initiator,
+            target=target,
+            start_year=initiator.world.get_resource(GameState).year,
+        )
+    )
 
     return scheme
 
 
 def destroy_coup_scheme(scheme: Entity) -> None:
     """Destroy a coup scheme."""
-    destroy_scheme(scheme)
+    coup_scheme = scheme.get_component(CoupScheme)
+
+    coup_scheme.initiator.get_component(SchemeManager).coup_scheme = None
+
+    for member in coup_scheme.members:
+        member.get_component(SchemeManager).coup_scheme = None
+
+    scheme.destroy()
 
 
 def calculate_alliance_martial(*families: Entity) -> float:
@@ -409,29 +423,29 @@ def calculate_war_score(lead_family: Entity, allies: list[Entity]) -> int:
     # Apply changes for lead family head martial skill
     lead_family_head = lead_family.get_component(Family).head
     assert lead_family_head is not None
-    martial_skill_level = get_martial_level(lead_family_head)
+    martial_skill_level = get_martial_skill(lead_family_head)
 
-    if martial_skill_level == StatLevel.TERRIBLE:
+    if martial_skill_level < SKILL_BAD:
         final_score = final_score * 0.6  # Final score - 40%
 
-    elif martial_skill_level == StatLevel.BAD:
+    elif martial_skill_level < SKILL_NEUTRAL:
         final_score = final_score * 0.9  # Final score - 10%
 
-    elif martial_skill_level == StatLevel.GOOD:
+    elif SKILL_NEUTRAL < martial_skill_level < SKILL_EXCELLENT:
         final_score = final_score * 1.1  # Final score + 10%
 
-    elif martial_skill_level == StatLevel.EXCELLENT:
+    elif martial_skill_level >= SKILL_EXCELLENT:
         final_score = final_score * 1.4  # Final score + 40%
 
     # Apply changes for lead family head stewardship
     if allies:
         lead_family_head = lead_family.get_component(Family).head
         assert lead_family_head is not None
-        stewardship_skill_level = get_stewardship_level(lead_family_head)
+        stewardship_skill_level = get_stewardship_skill(lead_family_head)
 
-        if stewardship_skill_level == StatLevel.TERRIBLE:
+        if stewardship_skill_level < SKILL_BAD:
             final_score = final_score * 0.5  # Final score - 50%
-        elif stewardship_skill_level == StatLevel.BAD:
+        elif stewardship_skill_level < SKILL_NEUTRAL:
             final_score = final_score * 0.6  # Final score - 40%
 
     return int(final_score)

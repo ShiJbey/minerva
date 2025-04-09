@@ -8,7 +8,7 @@ by The Code Otter: https://www.youtube.com/watch?v=ls5zeiDCfvI
 
 from __future__ import annotations
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Callable, Literal, Optional, Type, TypeVar, cast
 
 from minerva.ecs import World
@@ -41,15 +41,13 @@ class GameAction(ABC):
         """Add a reaction to the action."""
         self.world.get_resource(ActionSystem).add_reaction(action)
 
+    @abstractmethod
     def on_execute(self) -> None:
-        """Callback executed when this action is executed"""
-        return
+        """Executes logic of this action."""
+        raise NotImplementedError()
 
     def execute(self) -> None:
         """Execute the action."""
-        # self.world.get_resource(ActionSystem).attach_performer(
-        #     type(self), lambda _: self.on_execute()
-        # )
         self.world.get_resource(ActionSystem).perform(self)
 
 
@@ -84,7 +82,7 @@ class ActionSystem:
         self._perform_reactions()
 
         self.reactions = game_action.reactions
-        self._perform_performer(game_action)
+        game_action.on_execute()
         self._perform_reactions()
 
         self.reactions = game_action.post_reactions
@@ -111,21 +109,6 @@ class ActionSystem:
         if type(game_action) in subscribers:
             for listener in subscribers[type(game_action)]:
                 listener(game_action)
-
-    def _perform_performer(self, game_action: GameAction) -> None:
-        """Perform the action."""
-        if type(game_action) in self.performers:
-            self.performers[type(game_action)](game_action)
-
-    def attach_performer(
-        self, action_type: Type[_T_co], performer: Callable[[_T_co], None]
-    ) -> None:
-        """Attach a performer function for the given game action type."""
-        self.performers[action_type] = cast(Callable[[GameAction], None], performer)
-
-    def detach_performer(self, action_type: Type[_T_co]) -> None:
-        """Detach a performer function for the given game action type."""
-        del self.performers[action_type]
 
     def add_listener(
         self,
@@ -161,9 +144,14 @@ class ActionSystem:
         if action_type not in listener_collection:
             return
 
-        listener_collection[action_type].append(
-            cast(Callable[[GameAction], None], listener)
-        )
+        try:
+            listener_collection[action_type].remove(
+                cast(Callable[[GameAction], None], listener)
+            )
 
-        if len(listener_collection[action_type]) == 0:
-            del listener_collection[action_type]
+        except ValueError:
+            pass
+
+        finally:
+            if len(listener_collection[action_type]) == 0:
+                del listener_collection[action_type]

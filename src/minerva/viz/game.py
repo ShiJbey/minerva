@@ -7,7 +7,6 @@ import pathlib
 import pygame
 import pygame.gfxdraw
 import pygame_gui
-import pygame_gui.elements.ui_panel
 import pygame_gui.ui_manager
 
 from minerva.characters.components import Dynasty, DynastyTracker

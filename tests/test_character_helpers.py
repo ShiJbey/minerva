@@ -12,15 +12,14 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import (
     end_marriage,
-    end_romantic_affair,
     get_relations,
     set_character_age,
     set_character_alive,
     set_character_biological_father,
-    set_character_birth_date,
     set_character_birth_family,
     set_character_birth_surname,
-    set_character_death_date,
+    set_character_birth_year,
+    set_character_death_year,
     set_character_father,
     set_character_first_name,
     set_character_life_stage,
@@ -32,7 +31,6 @@ from minerva.characters.helpers import (
     set_relation_child,
     set_relation_sibling,
     start_marriage,
-    start_romantic_affair,
 )
 from minerva.pcg.character import (
     CharacterGenOptions,
@@ -312,7 +310,7 @@ def test_set_age(sim: Simulation):
     assert result[0] == 35
 
 
-def test_set_birth_date(sim: Simulation):
+def test_set_birth_year(sim: Simulation):
     """Test updating a character's birth date."""
 
     rhaenyra = spawn_character(
@@ -330,28 +328,28 @@ def test_set_birth_date(sim: Simulation):
     character_component = rhaenyra.get_component(Character)
     db = sim.world.get_resource(SimDB).conn
 
-    assert character_component.birth_date is None
+    assert character_component.birth_year is None
 
     cur = db.execute(
-        """SELECT birth_date FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
     assert result[0] is None
 
-    set_character_birth_date(rhaenyra, 16)
+    set_character_birth_year(rhaenyra, 16)
 
-    assert character_component.birth_date == 16
+    assert character_component.birth_year == 16
 
     cur = db.execute(
-        """SELECT birth_date FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
     assert result[0] == "0016-01"
 
 
-def test_set_death_date(sim: Simulation):
+def test_set_death_year(sim: Simulation):
     """Test updating a character's death date."""
 
     rhaenyra = spawn_character(
@@ -369,21 +367,21 @@ def test_set_death_date(sim: Simulation):
     character_component = rhaenyra.get_component(Character)
     db = sim.world.get_resource(SimDB).conn
 
-    assert character_component.death_date is None
+    assert character_component.death_year is None
 
     cur = db.execute(
-        """SELECT death_date FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT death_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
     assert result[0] is None
 
-    set_character_death_date(rhaenyra, 78)
+    set_character_death_year(rhaenyra, 78)
 
-    assert character_component.death_date == 78
+    assert character_component.death_year == 78
 
     cur = db.execute(
-        """SELECT death_date FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT death_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -845,138 +843,8 @@ def test_end_marriage(sim: Simulation):
     assert result[0] is None
 
     cur = db.execute(
-        """SELECT end_date FROM marriages WHERE character_id=? AND spouse_id=?;""",
+        """SELECT end_year FROM marriages WHERE character_id=? AND spouse_id=?;""",
         (viserys.uid, aemma.uid),
-    )
-    result = cur.fetchone()
-    assert result[0] == "0001-01"
-
-
-def test_start_romantic_affair(sim: Simulation):
-    """Test starting a romantic lover relationship and updating lover references."""
-
-    alicent = spawn_character(
-        sim.world,
-        CharacterGenOptions(
-            first_name="Alicent",
-            surname="Hightower",
-            sex=Sex.FEMALE,
-            life_stage=LifeStage.ADULT,
-            sexual_orientation=SexualOrientation.BISEXUAL,
-        ),
-    )
-
-    cole = spawn_character(
-        sim.world,
-        CharacterGenOptions(
-            first_name="Cristen",
-            surname="Cole",
-            sex=Sex.MALE,
-            life_stage=LifeStage.ADULT,
-            sexual_orientation=SexualOrientation.HETEROSEXUAL,
-            species="human",
-        ),
-    )
-
-    alicent_character_component = alicent.get_component(Character)
-    cole_character_component = cole.get_component(Character)
-    db = sim.world.get_resource(SimDB).conn
-
-    assert cole_character_component.lover is None
-    assert alicent_character_component.lover is None
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
-    start_romantic_affair(alicent, cole)
-
-    assert cole_character_component.lover == alicent
-    assert alicent_character_component.lover == cole
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
-    result = cur.fetchone()
-    assert result[0] == cole.uid
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
-    result = cur.fetchone()
-    assert result[0] == alicent.uid
-
-
-def test_end_romantic_affair(sim: Simulation):
-    """Test ending romantic lover relationships and updating lover references."""
-
-    alicent = spawn_character(
-        sim.world,
-        CharacterGenOptions(
-            first_name="Alicent",
-            surname="Hightower",
-            sex=Sex.FEMALE,
-            life_stage=LifeStage.ADULT,
-            sexual_orientation=SexualOrientation.BISEXUAL,
-        ),
-    )
-
-    cole = spawn_character(
-        sim.world,
-        CharacterGenOptions(
-            first_name="Cristen",
-            surname="Cole",
-            sex=Sex.MALE,
-            life_stage=LifeStage.ADULT,
-            sexual_orientation=SexualOrientation.HETEROSEXUAL,
-            species="human",
-        ),
-    )
-
-    alicent_character_component = alicent.get_component(Character)
-    cole_character_component = cole.get_component(Character)
-    db = sim.world.get_resource(SimDB).conn
-
-    assert cole_character_component.spouse is None
-    assert alicent_character_component.spouse is None
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
-    start_romantic_affair(alicent, cole)
-
-    assert cole_character_component.lover == alicent
-    assert alicent_character_component.lover == cole
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
-    result = cur.fetchone()
-    assert result[0] == cole.uid
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
-    result = cur.fetchone()
-    assert result[0] == alicent.uid
-
-    end_romantic_affair(alicent, cole)
-
-    assert cole_character_component.lover is None
-    assert alicent_character_component.lover is None
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (alicent.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
-    cur = db.execute("""SELECT lover FROM characters WHERE uid=?;""", (cole.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
-    cur = db.execute(
-        """SELECT end_date FROM romantic_affairs WHERE character_id=? AND lover_id=?;""",
-        (alicent.uid, cole.uid),
     )
     result = cur.fetchone()
     assert result[0] == "0001-01"

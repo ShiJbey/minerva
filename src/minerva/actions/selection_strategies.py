@@ -27,6 +27,7 @@ class MaxUtilActionSelectStrategy(ActionSelectionStrategy):
         best_action: Optional[AIAction] = None
 
         num_actions = len(action_scores.actions)
+
         for i in range(num_actions):
             action_instance = action_scores.actions[i]
             score = action_scores.scores[i]

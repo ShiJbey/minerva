@@ -43,7 +43,7 @@ def add_trait(entity: Entity, trait_id: str) -> bool:
     db = entity.world.get_resource(SimDB).conn
 
     db.execute(
-        """INSERT INTO character_traits (character_id, trait_id) VALUES (?, ?);""",
+        """INSERT INTO CharacterTrait (character_uid, trait_id) VALUES (?, ?);""",
         (entity.uid, trait.trait_id),
     )
 
@@ -82,7 +82,7 @@ def remove_trait(entity: Entity, trait_id: str) -> bool:
         db = entity.world.get_resource(SimDB).conn
 
         db.execute(
-            """DELETE FROM character_traits WHERE character_id=? AND trait_id=?;""",
+            """DELETE FROM CharacterTrait WHERE character_uid=? AND trait_id=?;""",
             (entity.uid, trait.trait_id),
         )
 

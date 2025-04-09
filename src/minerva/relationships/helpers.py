@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from minerva.actions.base_types import ProclivityTracker
-from minerva.ecs import Entity
+from minerva.ecs import Entity, System, World
+from minerva.game_action import ActionSystem, GameAction
 from minerva.relationships.base_types import (
     Attraction,
     Opinion,
     Relationship,
     RelationshipManager,
+    RelationshipModifierDatabase,
 )
+from minerva.sim_db import SimDB
 from minerva.stats.base_types import (
     StatModifier,
     add_stat_modifier,
@@ -18,6 +21,7 @@ from minerva.stats.base_types import (
     remove_stat_modifier,
     set_stat_base,
 )
+from minerva.status.data import StatusManager
 from minerva.traits.base_types import Traits
 
 
@@ -91,6 +95,7 @@ def add_relationship(owner: Entity, target: Entity) -> Entity:
 
     relationship.add_component(Relationship(owner=owner, target=target))
     relationship.add_component(Traits())
+    relationship.add_component(StatusManager())
     relationship.add_component(Opinion())
     relationship.add_component(Attraction())
     relationship.add_component(ProclivityTracker())
@@ -199,9 +204,9 @@ def _remove_incoming_relationship(character: Entity, relationship: Entity) -> bo
     return False
 
 
-def get_attraction(entity: Entity) -> int:
+def get_attraction(owner: Entity, target: Entity) -> int:
     """Get the attraction stat for the relationship."""
-    return get_stat_value(entity.get_component(Attraction))
+    return get_stat_value(get_relationship(owner, target).get_component(Opinion))
 
 
 def increment_attraction_base(entity: Entity, value: int) -> None:
@@ -224,9 +229,9 @@ def remove_attraction_modifier(entity: Entity, modifier: StatModifier) -> None:
     remove_stat_modifier(entity, entity.get_component(Attraction), modifier)
 
 
-def get_opinion(entity: Entity) -> int:
+def get_opinion(owner: Entity, target: Entity) -> int:
     """Get the lifespan for the entity."""
-    return get_stat_value(entity.get_component(Opinion))
+    return get_stat_value(get_relationship(owner, target).get_component(Opinion))
 
 
 def increment_opinion_base(entity: Entity, value: int) -> None:
@@ -247,3 +252,209 @@ def add_opinion_modifier(entity: Entity, modifier: StatModifier) -> None:
 def remove_opinion_modifier(entity: Entity, modifier: StatModifier) -> None:
     """Remove a modifier from the opinion stat."""
     remove_stat_modifier(entity, entity.get_component(Opinion), modifier)
+
+
+class IncrementOpinion(GameAction):
+    """Increment the base opinion score from one character to another."""
+
+    __slots__ = ("owner", "target", "amount")
+
+    owner: Entity
+    target: Entity
+    amount: int
+
+    def __init__(self, owner: Entity, target: Entity, amount: int) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.amount = amount
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        increment_opinion_base(relationship, self.amount)
+
+
+class IncrementAttraction(GameAction):
+    """Increment the base attraction score from one character to another."""
+
+    __slots__ = ("owner", "target", "amount")
+
+    owner: Entity
+    target: Entity
+    amount: int
+
+    def __init__(self, owner: Entity, target: Entity, amount: int) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.amount = amount
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        increment_attraction_base(relationship, self.amount)
+
+
+class RecalculateOpinion(GameAction):
+    """Recalculate the opinion from one character to another."""
+
+    __slots__ = ("owner", "target", "value")
+
+    owner: Entity
+    target: Entity
+    value: int
+
+    def __init__(self, owner: Entity, target: Entity) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.value = 0
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        relationship_component = relationship.get_component(Relationship)
+        owner = relationship_component.owner
+        target = relationship_component.target
+        stat_component = relationship.get_component(Opinion)
+
+        final_value: float = stat_component.base_value
+        sum_percent_add: float = 0.0
+
+        # Get modifiers from owners outgoing modifiers
+        target_relationship_mod_iter = owner.get_component(
+            RelationshipManager
+        ).iter_opinion_modifiers("outgoing")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from targets incoming relationship modifiers
+        target_relationship_mod_iter = target.get_component(
+            RelationshipManager
+        ).iter_opinion_modifiers("incoming")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from global modifier database.
+        social_rule_library = relationship.world.get_resource(
+            RelationshipModifierDatabase
+        )
+        for rule in social_rule_library.iter_opinion_modifiers("outgoing"):
+            score = rule(relationship)
+            final_value += score
+
+        final_value = final_value + (final_value * sum_percent_add)
+
+        self.value = int(final_value)
+        stat_component.value = int(final_value)
+
+
+class RecalculateAttraction(GameAction):
+    """Recalculate the attraction from one character to another."""
+
+    __slots__ = ("owner", "target", "value")
+
+    owner: Entity
+    target: Entity
+    value: int
+
+    def __init__(self, owner: Entity, target: Entity) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.value = 0
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        relationship_component = relationship.get_component(Relationship)
+        owner = relationship_component.owner
+        target = relationship_component.target
+        stat_component = relationship.get_component(Attraction)
+
+        final_value: float = stat_component.base_value
+        sum_percent_add: float = 0.0
+
+        # Get modifiers from owners outgoing modifiers
+        target_relationship_mod_iter = owner.get_component(
+            RelationshipManager
+        ).iter_attraction_modifiers("outgoing")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from targets incoming relationship modifiers
+        target_relationship_mod_iter = target.get_component(
+            RelationshipManager
+        ).iter_attraction_modifiers("incoming")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from global modifier database
+        social_rule_library = relationship.world.get_resource(
+            RelationshipModifierDatabase
+        )
+        for rule in social_rule_library.iter_opinion_modifiers("outgoing"):
+            score = rule(relationship)
+            final_value += score
+
+        # Get modifiers from social rules
+        social_rule_library = relationship.world.get_resource(
+            RelationshipModifierDatabase
+        )
+        for rule in social_rule_library.iter_attraction_modifiers("outgoing"):
+            score = rule(relationship)
+            final_value += score
+
+        final_value = final_value + (final_value * sum_percent_add)
+
+        self.value = int(final_value)
+        stat_component.value = int(final_value)
+
+
+class RelationshipSystem(System):
+    """Registers callbacks and action performers for manipulating relationships."""
+
+    def on_start(self, world: World) -> None:
+        action_system = world.get_resource(ActionSystem)
+        action_system.add_listener(
+            RecalculateOpinion, RelationshipSystem.sync_opinion_with_db, "post"
+        )
+        action_system.add_listener(
+            RecalculateAttraction, RelationshipSystem.sync_attraction_with_db, "post"
+        )
+
+    @staticmethod
+    def sync_opinion_with_db(action: RecalculateOpinion) -> None:
+        """Update the opinion score in the database."""
+        relationship = get_relationship(action.owner, action.target)
+
+        db = action.world.get_resource(SimDB).conn
+        cursor = db.cursor()
+
+        cursor.execute(
+            """UPDATE relationships SET opinion=? WHERE uid=?""",
+            (action.value, relationship.uid),
+        )
+
+        db.commit()
+        cursor.close()
+
+    @staticmethod
+    def sync_attraction_with_db(action: RecalculateAttraction) -> None:
+        """Update the attraction score in the database."""
+        relationship = get_relationship(action.owner, action.target)
+
+        db = action.world.get_resource(SimDB).conn
+        cursor = db.cursor()
+
+        cursor.execute(
+            """UPDATE relationships SET attraction=? WHERE uid=?""",
+            (action.value, relationship.uid),
+        )
+
+        db.commit()
+        cursor.close()
+
+    def on_update(self, world: World) -> None:
+        return
