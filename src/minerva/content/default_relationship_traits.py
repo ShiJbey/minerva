@@ -1,10 +1,7 @@
-"""Relationship Traits.
+"""Relationship Traits."""
 
-Permanent tags attached to relationship entities.
-"""
-
-from minerva.status.data import StatusData
-from minerva.traits.base_types import RelationshipTrait
+from minerva.ecs import World
+from minerva.traits.base_types import RelationshipTrait, RelationshipTraitDatabase
 
 RELATIONSHIP_TRAITS: list[RelationshipTrait] = [
     RelationshipTrait(
@@ -54,17 +51,8 @@ RELATIONSHIP_TRAITS: list[RelationshipTrait] = [
 ]
 
 
-RELATIONSHIP_STATUSES: list[StatusData] = [
-    StatusData(
-        status_id="spouse",
-        name="Spouse",
-    ),
-    StatusData(
-        status_id="heir",
-        name="Heir",
-    ),
-    StatusData(
-        status_id="heir_to",
-        name="Heir To",
-    ),
-]
+def load_traits(world: World) -> None:
+    """Load trait data."""
+    trait_db = world.get_resource(RelationshipTraitDatabase)
+    for entry in RELATIONSHIP_TRAITS:
+        trait_db.add_trait(entry)

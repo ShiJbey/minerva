@@ -1,6 +1,6 @@
-"""Traits Adapted from Crusader Kings III.
+"""Character Traits.
 
-Source: https://ck3.paradoxwikis.com/Traits
+Traits Adapted from Crusader Kings III. Source: https://ck3.paradoxwikis.com/Traits
 """
 
 from minerva.actions.base_types import Proclivity

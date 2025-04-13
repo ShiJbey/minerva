@@ -34,6 +34,7 @@ from minerva.characters.components import (
 )
 from minerva.characters.war_data import WarRole
 from minerva.config import Config
+from minerva.content import social_rules
 from minerva.ecs import Entity, World
 from minerva.events import (
     AllianceDisbandedEvent,
@@ -69,13 +70,11 @@ from minerva.events import (
 from minerva.game_action import ActionSystem
 from minerva.game_state import GameState
 from minerva.pcg.text_gen import Tracery
-from minerva.relationships import social_rules
 from minerva.relationships.base_types import (
     RelationshipManager,
     RelationshipModifierDatabase,
 )
 from minerva.relationships.helpers import RelationshipSystem
-from minerva.relationships.trait import RELATIONSHIP_TRAITS
 from minerva.sim_db import SimDB
 from minerva.status.systems import StatusSystem
 from minerva.traits.base_types import CharacterTraitDatabase, RelationshipTraitDatabase
@@ -124,13 +123,6 @@ class Simulation:
         self.initialize_species_types()
         self.initialize_game_action_performers()
         self.configure_events()
-        self.initialize_relationship_traits()
-
-    def initialize_relationship_traits(self) -> None:
-        """Initialize relationship traits."""
-        trait_db = self.world.get_resource(RelationshipTraitDatabase)
-        for entry in RELATIONSHIP_TRAITS:
-            trait_db.add_trait(entry)
 
     def initialize_game_action_performers(self) -> None:
         """Initialize performers for GameActions."""
