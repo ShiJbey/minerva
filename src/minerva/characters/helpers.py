@@ -29,7 +29,6 @@ from minerva.characters.components import (
     Martial,
     Prestige,
     Prowess,
-    RelationType,
     Sex,
     SexualOrientation,
     Stewardship,
@@ -39,7 +38,11 @@ from minerva.config import Config
 from minerva.ecs import Active, Entity
 from minerva.game_action import GameAction
 from minerva.game_state import GameState
-from minerva.relationships.helpers import deactivate_relationships
+from minerva.relationships.helpers import (
+    add_relationship_trait,
+    deactivate_relationships,
+    remove_relationship_trait,
+)
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import (
     StatModifier,
@@ -812,69 +815,31 @@ def set_character_death_year(character: Entity, death_year: int) -> None:
         )
 
 
-def set_relation(
-    character_a: Entity, character_b: Entity, relation_type: RelationType
-) -> None:
-    """Adds a given relation type between two characters."""
-    with character_a.world.get_resource(SimDB) as db:
-
-        # Check that these characters don't already have the given relation.
-        result: int = db.execute(
-            """
-            SELECT
-                EXISTS(
-                    SELECT 1
-                    FROM Relation
-                    WHERE character_uid=? AND target_uid=? AND relation_type=?
-                )
-            ;
-            """,
-            (character_a.uid, character_b.uid, relation_type.name),
-        ).fetchone()[0]
-
-        if result == 1:
-            return
-
-        db.execute(
-            """
-            INSERT INTO Relation (character_uid, target_uid, relation_type)
-            VALUES (?, ?, ?);
-            """,
-            (character_a.uid, character_b.uid, relation_type.name),
-        )
-
-
-def unset_relation(
-    character_a: Entity, character_b: Entity, relation_type: RelationType
-) -> None:
-    """Removes a given relation type between two characters."""
-    with character_a.world.get_resource(SimDB) as db:
-        db.execute(
-            """
-            DELETE FROM Relation
-            WHERE character_uid=? AND target_uid=? AND relation_type=?;
-            """,
-            (character_a.uid, character_b.uid, relation_type.name),
-        )
-
-
-def get_relations(character: Entity, relation_type: RelationType) -> list[Entity]:
+def get_relations(character: Entity, relation_types: list[str]) -> list[Entity]:
     """Get all characters related to the given character by the provided relation."""
     world = character.world
-    db = world.get_resource(SimDB).conn
 
-    cursor = db.cursor()
+    trait_clauses = [
+        f'RelationshipTrait(owner_uid={character.uid}, target_uid=?other, trait_id="{t}")'
+        for t in relation_types
+    ]
 
-    result = cursor.execute(
-        """
-        SELECT target_uid
-        FROM Relation
-        WHERE character_uid=? AND relation_type=?;
+    where_clauses = "\n".join(trait_clauses)
+
+    db = world.get_resource(SimDB)
+    result = db.query_engine.query(
+        f"""
+        FIND
+            ?other
+        WHERE
+            {where_clauses}
         """,
-        (character.uid, relation_type.name),
-    ).fetchall()
+        db.conn,
+    )
 
-    output = [world.get_entity(r) for (r,) in result]
+    rows: list[tuple[int,]] = result.fetch_all()
+
+    output = [world.get_entity(r) for (r,) in rows]
 
     return output
 
@@ -891,7 +856,7 @@ def set_character_mother(character: Entity, mother: Optional[Entity]) -> None:
         character_component.mother = mother
 
     if mother is not None:
-        set_relation(character, mother, RelationType.MOTHER)
+        add_relationship_trait(character, mother, "mother")
 
 
 def set_character_father(character: Entity, father: Optional[Entity]) -> None:
@@ -900,7 +865,7 @@ def set_character_father(character: Entity, father: Optional[Entity]) -> None:
     character.get_component(Character).father = father
 
     if father is not None:
-        set_relation(character, father, RelationType.FATHER)
+        add_relationship_trait(character, father, "father")
 
 
 def set_character_biological_father(
@@ -911,7 +876,7 @@ def set_character_biological_father(
     character.get_component(Character).biological_father = father
 
     if father is not None:
-        set_relation(character, father, RelationType.FATHER)
+        add_relationship_trait(character, father, "biological_father")
 
 
 def start_marriage(character_a: Entity, character_b: Entity) -> None:
@@ -934,8 +899,8 @@ def start_marriage(character_a: Entity, character_b: Entity) -> None:
     character_b_component.spouse = character_a
 
     # Update the spouse IDs in the database
-    set_relation(character_b, character_a, RelationType.SPOUSE)
-    set_relation(character_a, character_b, RelationType.SPOUSE)
+    add_relationship_trait(character_b, character_a, "spouse")
+    add_relationship_trait(character_a, character_b, "spouse")
 
     # Create a new marriage entries into the database
     a_to_b = world.entity(
@@ -980,10 +945,10 @@ def end_marriage(character_a: Entity, character_b: Entity) -> None:
     character_b_component.spouse = None
 
     # Update the spouse IDs in the database
-    unset_relation(character_b, character_a, RelationType.SPOUSE)
-    unset_relation(character_a, character_b, RelationType.SPOUSE)
-    unset_relation(character_b, character_a, RelationType.EX_SPOUSE)
-    unset_relation(character_a, character_b, RelationType.EX_SPOUSE)
+    remove_relationship_trait(character_b, character_a, "spouse")
+    remove_relationship_trait(character_a, character_b, "spouse")
+    add_relationship_trait(character_b, character_a, "ex_spouse")
+    add_relationship_trait(character_a, character_b, "ex_spouse")
 
     # Update marriage entries in the database
     assert character_a_component.marriage
@@ -1021,7 +986,7 @@ def set_relation_sibling(character: Entity, sibling: Entity) -> None:
     if sibling not in character_siblings:
         character_siblings.append(sibling)
 
-        set_relation(character, sibling, RelationType.SIBLING)
+        add_relationship_trait(character, sibling, "sibling")
 
 
 def set_relation_child(character: Entity, child: Entity) -> None:
@@ -1029,7 +994,7 @@ def set_relation_child(character: Entity, child: Entity) -> None:
 
     character.get_component(Character).children.append(child)
 
-    set_relation(character, child, RelationType.CHILD)
+    add_relationship_trait(character, child, "child")
 
 
 def update_grandparent_relations(
@@ -1056,18 +1021,8 @@ def update_grandparent_relations(
         child_character_component.grandparents.add(grandparent)
         grandparent_character_component.grandchildren.add(child)
 
-        set_relation(child, grandparent, RelationType.GRANDPARENT)
-        set_relation(grandparent, child, RelationType.GRANDCHILD)
-
-
-def get_family_of(character: Entity) -> Entity:
-    """Get the family a character belongs to."""
-    character_component = character.get_component(Character)
-
-    if character_component.family is not None:
-        return character_component.family
-
-    raise TypeError(f"{character.name_with_uid} is missing a family.")
+        add_relationship_trait(child, grandparent, "grandparent")
+        add_relationship_trait(grandparent, child, "grandchild")
 
 
 def set_heir(character: Entity, heir: Entity) -> None:
@@ -1081,8 +1036,8 @@ def set_heir(character: Entity, heir: Entity) -> None:
     character_component.heir = heir
     heir_character.heir_to = character
 
-    set_relation(character, heir, RelationType.HEIR)
-    set_relation(heir, character, RelationType.HEIR_TO)
+    add_relationship_trait(character, heir, "heir")
+    add_relationship_trait(heir, character, "heir_to")
 
 
 def remove_heir(character: Entity) -> None:
@@ -1099,5 +1054,5 @@ def remove_heir(character: Entity) -> None:
     character_component.heir = None
     heir_character.heir_to = None
 
-    set_relation(character, heir, RelationType.HEIR)
-    set_relation(heir, character, RelationType.HEIR_TO)
+    remove_relationship_trait(character, heir, "heir")
+    remove_relationship_trait(heir, character, "heir_to")

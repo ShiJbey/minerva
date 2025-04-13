@@ -16,7 +16,7 @@ RELATIONSHIP_TRAITS: list[RelationshipTrait] = [
         name="Father",
     ),
     RelationshipTrait(
-        trait_id="biologicalFather",
+        trait_id="biological_father",
         name="Biological Father",
     ),
     RelationshipTrait(
@@ -34,6 +34,22 @@ RELATIONSHIP_TRAITS: list[RelationshipTrait] = [
     RelationshipTrait(
         trait_id="grandparent",
         name="Grandparent",
+    ),
+    RelationshipTrait(
+        trait_id="spouse",
+        name="Spouse",
+    ),
+    RelationshipTrait(
+        trait_id="ex_spouse",
+        name="Ex-Spouse",
+    ),
+    RelationshipTrait(
+        trait_id="heir",
+        name="Heir",
+    ),
+    RelationshipTrait(
+        trait_id="heir_to",
+        name="Heir To",
     ),
 ]
 

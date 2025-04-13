@@ -22,7 +22,11 @@ from minerva.stats.base_types import (
     set_stat_base,
 )
 from minerva.status.data import StatusManager
-from minerva.traits.base_types import Traits
+from minerva.traits.base_types import (
+    RelationshipTrait,
+    RelationshipTraitDatabase,
+    Traits,
+)
 
 
 def get_relationship(
@@ -458,3 +462,155 @@ class RelationshipSystem(System):
 
     def on_update(self, world: World) -> None:
         return
+
+
+def add_relationship_trait(owner: Entity, target: Entity, trait_id: str) -> bool:
+    """Add a trait to a relationship entity.
+
+    Parameters
+    ----------
+    owner
+        The character that owns the relationship.
+    target
+        The character the relationship is about/directed toward.
+    trait_id
+        The ID of the trait to add.
+
+    Returns
+    -------
+    bool
+        True if the trait was added successfully, False if already present or
+        if the trait conflict with existing traits.
+    """
+    relationship = get_relationship(owner, target)
+
+    library = owner.world.get_resource(RelationshipTraitDatabase)
+    trait = library.get_trait(trait_id)
+
+    traits = relationship.get_component(Traits)
+
+    if trait.uid in traits.traits:
+        return False
+
+    if _has_conflicting_trait(relationship, trait):
+        return False
+
+    traits.traits.add(trait.uid)
+
+    for effect in trait.effects:
+        effect.apply(relationship)
+
+    with relationship.world.get_resource(SimDB) as db:
+        db.execute(
+            """
+            INSERT INTO
+                RelationshipTrait (uid, owner_uid, target_uid, trait_id)
+            VALUES
+                (?, ?, ?, ?);
+            """,
+            (relationship.uid, owner.uid, target.uid, trait_id),
+        )
+
+    return True
+
+
+def remove_relationship_trait(owner: Entity, target: Entity, trait_id: str) -> bool:
+    """Remove a trait from a relationship entity.
+
+    Parameters
+    ----------
+    owner
+        The character that owns the relationship.
+    target
+        The character the relationship is about/directed toward.
+    trait_id
+        The ID of the trait to remove.
+
+    Returns
+    -------
+    bool
+        True if the trait was removed successfully, False otherwise.
+    """
+    relationship = get_relationship(owner, target)
+    trait_db = relationship.world.get_resource(RelationshipTraitDatabase)
+    trait = trait_db.get_trait(trait_id)
+
+    traits = relationship.get_component(Traits)
+
+    if trait.uid in traits.traits:
+        traits.traits.remove(trait.uid)
+
+        for effect in trait.effects:
+            effect.remove(relationship)
+
+        with relationship.world.get_resource(SimDB) as db:
+            db.execute(
+                """
+                DELETE FROM
+                    RelationshipTrait
+                WHERE
+                    uid=? AND trait_id=?;
+                """,
+                (relationship.uid, trait_id),
+            )
+
+        return True
+
+    return False
+
+
+def _has_conflicting_trait(relationship: Entity, trait: RelationshipTrait) -> bool:
+    """Check if a trait conflicts with current traits.
+
+    Parameters
+    ----------
+    entity
+        The object to check.
+    trait
+        The trait to check.
+
+    Returns
+    -------
+    bool
+        True if the trait conflicts with any of the current traits or if any current
+        traits conflict with the given trait. False otherwise.
+    """
+    trait_db = relationship.world.get_resource(RelationshipTraitDatabase)
+    traits = relationship.get_component(Traits)
+
+    for existing_trait_uid in traits.traits:
+        existing_trait = trait_db.get_trait_by_uid(existing_trait_uid)
+
+        if existing_trait.trait_id in trait.conflicting_traits:
+            return True
+
+        if trait.trait_id in existing_trait.conflicting_traits:
+            return True
+
+    return False
+
+
+def has_relationship_trait(owner: Entity, target: Entity, trait_id: str) -> bool:
+    """Check if an entity has a given trait.
+
+    Parameters
+    ----------
+    owner
+        The character that owns the relationship.
+    target
+        The character the relationship is about/directed toward.
+    trait_id
+        The ID of the trait to check for.
+
+    trait_id
+        The trait.
+
+    Returns
+    -------
+    bool
+        True if the trait was removed successfully, False otherwise.
+    """
+    relationship = get_relationship(owner, target)
+    trait_db = relationship.world.get_resource(RelationshipTraitDatabase)
+    trait = trait_db.get_trait_by_name(trait_id)
+    return trait.uid in relationship.get_component(Traits).traits

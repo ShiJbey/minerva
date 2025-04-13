@@ -7,9 +7,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from minerva.actions.base_types import EventHistory, get_next_event_uid
 from minerva.characters.components import Family
-from minerva.ecs import Entity, World
+from minerva.ecs import Component, Entity, World
 from minerva.game_state import GameState
 from minerva.sim_db import SimDB
 
@@ -35,6 +34,26 @@ class GlobalEventHistory:
         return self.events[event_id]
 
 
+class EventHistory(Component):
+    """Tracks events associated with this entity."""
+
+    __slots__ = ("_event_ids",)
+
+    _event_ids: list[int]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._event_ids = []
+
+    def append(self, event_id: int) -> None:
+        """Add an event ID to the history."""
+        self._event_ids.append(event_id)
+
+    def get_events(self) -> list[int]:
+        """Get all events in the history."""
+        return self._event_ids
+
+
 class Event(ABC):
     """An event logged by the simulation.
 
@@ -49,10 +68,19 @@ class Event(ABC):
     logged_to: list[Entity]
 
     def __init__(self, world: World) -> None:
-        self.uid = get_next_event_uid(world)
+        self.uid = Event._get_next_event_uid(world)
         self.world = world
         self.timestamp = world.get_resource(GameState).year
         self.logged_to = []
+
+    @staticmethod
+    def _get_next_event_uid(world: World) -> int:
+        """Get next UID for event."""
+
+        game_state = world.get_resource(GameState)
+        uid = game_state.next_event_uid
+        game_state.next_event_uid += 1
+        return uid
 
     @abstractmethod
     def get_description(self) -> str:
@@ -140,6 +168,7 @@ class SendGiftEvent(Event):
         super().__init__(character.world)
         self.character = character
         self.recipient = recipient
+        self.logged_to = [character]
 
     def get_description(self) -> str:
         return "{} sent a gift to {}".format(
@@ -159,6 +188,7 @@ class SendAidEvent(Event):
         super().__init__(character.world)
         self.character = character
         self.recipient = recipient
+        self.logged_to = [character]
 
     def get_description(self) -> str:
         return "{} sent aid to {}".format(
@@ -176,6 +206,7 @@ class ExtortTerritoryOwnersEvent(Event):
     def __init__(self, character: Entity) -> None:
         super().__init__(character.world)
         self.character = character
+        self.logged_to = [character]
 
     def get_description(self) -> str:
         return "{} extorted the land-controlling families".format(
@@ -696,6 +727,8 @@ class LoseControlOfTerritoryEvent(Event):
         self.family_head = family.get_component(Family).head
         self.territory = territory
         self.family = family
+        if self.family_head is not None:
+            self.logged_to = [self.family_head]
 
     def get_description(self) -> str:
         return "The {} family lost control over the {} territory.".format(
@@ -811,6 +844,8 @@ class LeaveAllianceEvent(Event):
         self.alliance = alliance
         self.family = family
         self.family_head = family_head
+        if family_head is not None:
+            self.logged_to = [family_head]
 
     def get_description(self) -> str:
         if self.family_head is None:
@@ -881,6 +916,7 @@ class JoinAllianceEvent(Event):
         self.family_head = family_head
         self.family = family
         self.alliance = alliance
+        self.logged_to = [family_head]
 
     def get_description(self) -> str:
         return "{} joined the {} alliance.".format(
@@ -938,6 +974,7 @@ class GiveToTerritoriesEvent(Event):
     def __init__(self, subject: Entity) -> None:
         super().__init__(subject.world)
         self.subject = subject
+        self.logged_to = [subject]
 
     def get_description(self) -> str:
         return "{} gave back to their territories.".format(self.subject.name_with_uid)
@@ -1652,6 +1689,7 @@ class CheatOnSpouseEvent(Event):
         self.subject = subject
         self.spouse = spouse
         self.accomplice = accomplice
+        self.logged_to = [subject]
 
     def get_description(self) -> str:
         return "{} cheated on {} with {}.".format(
@@ -1714,8 +1752,58 @@ class SeizeTerritoryEvent(Event):
         self.character = character
         self.family = family
         self.territory = territory
+        self.logged_to = [character]
 
     def get_description(self) -> str:
         return "{} took control of the {} territory.".format(
             self.character.name_with_uid, self.territory.name_with_uid
         )
+
+
+class BecameRulerEvent(Event):
+    """Event dispatched when a character becomes the ruler."""
+
+    __slots__ = ("character",)
+
+    character: Entity
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__(character.world)
+        self.character = character
+        self.logged_to = [character]
+
+    def get_description(self) -> str:
+        return "{} became ruler.".format(self.character.name_with_uid)
+
+    @staticmethod
+    def configure_db_table(world: World) -> None:
+        """Configure a SQLite table to hold events of this type."""
+        with world.get_resource(SimDB) as db:
+            db.executescript(
+                """
+                DROP TABLE IF EXISTS BecameRulerEvent;
+
+                CREATE TABLE BecameRulerEvent (
+                    uid INT NOT NULL PRIMARY KEY,
+                    subject INT NOT NULL,
+                    timestamp INT NOT NULL,
+                    FOREIGN KEY (subject) REFERENCES Character(uid)
+                ) STRICT;
+                """
+            )
+
+    def log_to_db(self) -> None:
+        with self.world.get_resource(SimDB) as db:
+            db.execute(
+                """
+                INSERT INTO
+                    BecameRulerEvent (uid, subject, timestamp)
+                VALUES
+                    (?, ?, ?);
+                """,
+                (
+                    self.uid,
+                    self.character.uid,
+                    self.timestamp,
+                ),
+            )

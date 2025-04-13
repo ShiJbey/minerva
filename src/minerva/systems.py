@@ -985,7 +985,7 @@ class PregnancySystem(System):
                     )
                 )
 
-                PregnancyEvent(spouse.entity, spouse.entity).log_event()
+                PregnancyEvent(character.entity, spouse.entity).log_event()
 
 
 class ChildBirthSystem(System):
@@ -1281,10 +1281,15 @@ class CoupSchemeUpdateSystem(System):
                 destroy_coup_scheme(scheme.entity)
                 continue
 
+            if not scheme.target.has_component(Ruler):
+                destroy_coup_scheme(scheme.entity)
+                continue
+
             current_ruler = get_current_ruler(world)
 
             if current_ruler is None:
                 scheme.is_valid = False
+                destroy_coup_scheme(scheme.entity)
                 continue
 
             elapsed_years = current_year - scheme.start_year
@@ -1302,6 +1307,8 @@ class CoupSchemeUpdateSystem(System):
 
                     DieAction(current_ruler, cause="assassination").execute()
                     end_current_dynasty(world)
+
+                    ClaimThroneAction(scheme.initiator).execute()
 
                     if ruler_family is not None:
                         # Remove the rulers family from being in control of their home
@@ -1322,8 +1329,6 @@ class CoupSchemeUpdateSystem(System):
 
                         if member != scheme.initiator:
                             IncrementOpinion(scheme.initiator, member, 30).execute()
-
-                    ClaimThroneAction(scheme.initiator).execute()
 
                 scheme.is_valid = False
                 destroy_coup_scheme(scheme.entity)

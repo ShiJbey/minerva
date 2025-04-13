@@ -9,7 +9,6 @@ from typing import Optional
 from minerva.actions.base_types import (
     AIBrainDatabase,
     CharacterController,
-    EventHistory,
     ProclivityTracker,
 )
 from minerva.actions.scheme_types import SchemeManager
@@ -53,6 +52,7 @@ from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.war_data import WarTracker
 from minerva.config import Config
 from minerva.ecs import Entity, World
+from minerva.events import EventHistory
 from minerva.game_action import ActionSystem, GameAction
 from minerva.game_state import GameState
 from minerva.pcg.text_gen import Tracery

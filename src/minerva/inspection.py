@@ -11,11 +11,6 @@ import rich.markdown
 import rich.panel
 import rich.table
 
-from minerva.actions.base_types import (
-    EventHistory,
-    get_event_description,
-    get_event_timestamp,
-)
 from minerva.characters.components import (
     FERTILITY_MAX,
     SKILL_MAX,
@@ -26,7 +21,6 @@ from minerva.characters.components import (
     FamilyRoleFlags,
     HeadOfFamily,
     Pregnancy,
-    RelationType,
     Ruler,
 )
 from minerva.characters.helpers import (
@@ -44,6 +38,7 @@ from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import get_current_ruler
 from minerva.characters.war_data import Alliance, War
 from minerva.ecs import Active
+from minerva.events import EventHistory, GlobalEventHistory
 from minerva.simulation import Simulation
 from minerva.traits.base_types import CharacterTraitDatabase, Traits
 from minerva.world_map.components import PopulationHappiness, Territory
@@ -239,7 +234,7 @@ class SimulationInspector:
             else "None"
         )
 
-        sibling_list = get_relations(character, RelationType.SIBLING)
+        sibling_list = get_relations(character, ["sibling"])
         siblings = (
             ", ".join(s.name_with_uid for s in sibling_list) if sibling_list else None
         )
@@ -417,10 +412,12 @@ class SimulationInspector:
         renderable_objs.append(stats_panel)
 
         life_event_table = rich.table.Table("Timestamp", "Description", highlight=True)
+        global_event_history = character.world.get_resource(GlobalEventHistory)
         for event_id in character.get_component(EventHistory).get_events():
+            event = global_event_history.get_event(event_id)
             life_event_table.add_row(
-                str(get_event_timestamp(self.sim.world, event_id)),
-                get_event_description(self.sim.world, event_id),
+                str(event.timestamp),
+                event.get_description(),
             )
 
         life_event_panel = rich.panel.Panel(

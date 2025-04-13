@@ -37,6 +37,7 @@ from minerva.config import Config
 from minerva.ecs import Entity, World
 from minerva.events import (
     AllianceDisbandedEvent,
+    BecameRulerEvent,
     BecomeAdolescentEvent,
     BecomeAdultEvent,
     BecomeChildEvent,
@@ -74,9 +75,10 @@ from minerva.relationships.base_types import (
     RelationshipModifierDatabase,
 )
 from minerva.relationships.helpers import RelationshipSystem
+from minerva.relationships.trait import RELATIONSHIP_TRAITS
 from minerva.sim_db import SimDB
 from minerva.status.systems import StatusSystem
-from minerva.traits.base_types import CharacterTraitDatabase
+from minerva.traits.base_types import CharacterTraitDatabase, RelationshipTraitDatabase
 
 
 class Simulation:
@@ -112,6 +114,7 @@ class Simulation:
         self.world.add_resource(RelationshipModifierDatabase())
         self.world.add_resource(ProclivityDatabase())
         self.world.add_resource(GlobalEventHistory())
+        self.world.add_resource(RelationshipTraitDatabase())
 
         self.initialize_brains()
         self.initialize_systems()
@@ -121,6 +124,13 @@ class Simulation:
         self.initialize_species_types()
         self.initialize_game_action_performers()
         self.configure_events()
+        self.initialize_relationship_traits()
+
+    def initialize_relationship_traits(self) -> None:
+        """Initialize relationship traits."""
+        trait_db = self.world.get_resource(RelationshipTraitDatabase)
+        for entry in RELATIONSHIP_TRAITS:
+            trait_db.add_trait(entry)
 
     def initialize_game_action_performers(self) -> None:
         """Initialize performers for GameActions."""
@@ -304,6 +314,7 @@ class Simulation:
         SentenceToDeathEvent.configure_db_table(self.world)
         UsurpThroneEvent.configure_db_table(self.world)
         CheatOnSpouseEvent.configure_db_table(self.world)
+        BecameRulerEvent.configure_db_table(self.world)
 
     @property
     def config(self) -> Config:

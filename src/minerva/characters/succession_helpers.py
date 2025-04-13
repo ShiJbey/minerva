@@ -31,6 +31,7 @@ from minerva.characters.components import (
 )
 from minerva.characters.metric_data import CharacterMetrics
 from minerva.ecs import Entity, World
+from minerva.events import BecameRulerEvent
 from minerva.game_state import GameState
 from minerva.sim_db import SimDB
 
@@ -182,7 +183,7 @@ def set_current_ruler(world: World, character: Entity) -> None:
 
     character.add_component(Ruler())
 
-    # BecameRulerEvent(character).log_event()
+    BecameRulerEvent(character).log_event()
 
     cur.execute(
         """
@@ -290,7 +291,7 @@ def start_new_dynasty(founding_character: Entity) -> Entity:
     dynasty_component.current_ruler = founding_character
     dynasty_component.previous_dynasty = dynasty_tracker.last_dynasty
     founding_character.add_component(Ruler())
-    # BecameRulerEvent(founding_character).log_event()
+    BecameRulerEvent(founding_character).log_event()
     dynasty_tracker.all_rulers.add(founding_character)
 
     previous_ruler: Optional[Entity] = None

@@ -26,10 +26,8 @@ from typing import (
 )
 
 from minerva.characters.components import Character
-from minerva.ecs import Component, Entity, World
+from minerva.ecs import Component, Entity
 from minerva.game_action import GameAction
-from minerva.game_state import GameState
-from minerva.sim_db import SimDB
 
 P_ALWAYS = 999
 P_USUALLY = 7
@@ -150,15 +148,6 @@ class AIPreconditionGroup(AIPrecondition):
 
     def __call__(self, entity: Entity) -> bool:
         return all(p(entity) for p in self.preconditions)
-
-
-def get_next_event_uid(world: World) -> int:
-    """Get next UID for event."""
-
-    game_state = world.get_resource(GameState)
-    uid = game_state.next_event_uid
-    game_state.next_event_uid += 1
-    return uid
 
 
 class CharacterController(Component):
@@ -534,62 +523,3 @@ class ProclivityScores:
     def __init__(self, actions: list[AIAction], weights: list[float]) -> None:
         self.actions = actions
         self.scores = weights
-
-
-class EventHistory(Component):
-    """Tracks events associated with this entity."""
-
-    __slots__ = ("_event_ids",)
-
-    _event_ids: list[int]
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._event_ids = []
-
-    def append(self, event_id: int) -> None:
-        """Add an event ID to the history."""
-        self._event_ids.append(event_id)
-
-    def get_events(self) -> list[int]:
-        """Get all events in the history."""
-        return self._event_ids
-
-
-def get_event_timestamp(world: World, event_id: int) -> int:
-    """Get the timestamp for the event with the given event ID."""
-
-    db = world.get_resource(SimDB).conn
-    cursor = db.cursor()
-
-    # First get the event information
-    timestamp: int = cursor.execute(
-        """
-        SELECT
-            timestamp
-        FROM events
-        WHERE uid=?;
-        """,
-        (event_id,),
-    ).fetchone()[0]
-
-    return int(timestamp)
-
-
-def get_event_description(world: World, event_id: int) -> str:
-    """Get the description for the life event with the given event ID."""
-
-    db = world.get_resource(SimDB).conn
-    cursor = db.cursor()
-
-    description: str = cursor.execute(
-        """
-        SELECT
-            description
-        FROM events
-        WHERE uid=?;
-        """,
-        (event_id,),
-    ).fetchone()[0]
-
-    return description

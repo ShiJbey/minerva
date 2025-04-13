@@ -109,6 +109,7 @@ class RelationshipTrait:
         "name",
         "description",
         "effects",
+        "conflicting_traits",
         "tags",
     )
 
@@ -122,6 +123,8 @@ class RelationshipTrait:
     """A short description of the tag."""
     effects: list[TraitEffect]
     """Effects to apply when the tag is added."""
+    conflicting_traits: set[str]
+    """traits that this trait conflicts with."""
     tags: set[str]
     """Tags associated with this trait."""
 
@@ -137,6 +140,7 @@ class RelationshipTrait:
         self.name = name
         self.description = description
         self.effects = list(effects) if effects else []
+        self.conflicting_traits = set()
         self.tags = set(tags if tags else [])
 
     def __hash__(self) -> int:
@@ -251,7 +255,7 @@ class RelationshipTraitDatabase:
         trait.uid = self._next_trait_uid
         self._next_trait_uid += 1
         self._uid_to_trait_map[trait.uid] = trait
-        self._name_to_uid_map[trait.name] = trait.uid
+        self._name_to_uid_map[trait.trait_id] = trait.uid
 
     def get_trait(self, trait_id: str) -> RelationshipTrait:
         """Get a trait instance."""

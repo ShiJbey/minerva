@@ -10,8 +10,8 @@ from drolta import QueryEngine
 DB_CONFIG = """
 DROP TABLE IF EXISTS Character;
 DROP TABLE IF EXISTS CharacterTrait;
-DROP TABLE IF EXISTS Relation;
 DROP TABLE IF EXISTS Relationship;
+DROP TABLE IF EXISTS RelationshipTrait;
 DROP TABLE IF EXISTS Territory;
 DROP TABLE IF EXISTS Family;
 DROP TABLE IF EXISTS Ruler;
@@ -37,6 +37,13 @@ CREATE TABLE Character (
     FOREIGN KEY (birth_family_uid) REFERENCES Family(uid)
 ) STRICT;
 
+CREATE TABLE CharacterTrait (
+    character_uid INT NOT NULL,
+    trait_id TEXT NOT NULL,
+    PRIMARY KEY(character_uid, trait_id),
+    FOREIGN KEY (character_uid) REFERENCES Character(uid)
+) STRICT;
+
 CREATE TABLE Relationship (
     uid INT NOT NULL PRIMARY KEY,
     owner_uid INT NOT NULL,
@@ -47,19 +54,15 @@ CREATE TABLE Relationship (
     FOREIGN KEY (target_uid) REFERENCES Character(uid)
 ) STRICT;
 
-CREATE TABLE Relation (
-    character_uid INT NOT NULL,
+CREATE TABLE RelationshipTrait (
+    uid INT NOT NULL,
+    owner_uid INT NOT NULL,
     target_uid INT NOT NULL,
-    relation_type TEXT,
-    FOREIGN KEY (character_uid) REFERENCES Character(uid),
-    FOREIGN KEY (target_uid) REFERENCES Character(uid)
-) STRICT;
-
-CREATE TABLE CharacterTrait (
-    character_uid INT NOT NULL,
     trait_id TEXT NOT NULL,
-    PRIMARY KEY(character_uid, trait_id),
-    FOREIGN KEY (character_uid) REFERENCES Character(uid)
+    PRIMARY KEY(uid, trait_id),
+    FOREIGN KEY (uid) REFERENCES Relationship(uid),
+    FOREIGN KEY (owner_uid) REFERENCES Character(uid),
+    FOREIGN KEY (target_uid) REFERENCES Character(uid)
 ) STRICT;
 
 CREATE TABLE Territory (
