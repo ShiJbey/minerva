@@ -166,7 +166,8 @@ def set_current_ruler(world: World, character: Entity) -> None:
     current_dynasty = dynasty_tracker.current_dynasty
 
     if current_dynasty is None:
-        raise RuntimeError("Cannot set current ruler without an active dynasty.")
+        start_new_dynasty(character)
+        return
 
     dynasty_component = current_dynasty.get_component(Dynasty)
 

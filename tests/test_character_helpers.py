@@ -25,6 +25,7 @@ from minerva.characters.helpers import (
     set_relation_sibling,
     start_marriage,
 )
+from minerva.content import default_relationship_traits
 from minerva.pcg.character import (
     CharacterGenOptions,
     FamilyGenOptions,
@@ -39,6 +40,8 @@ from minerva.simulation import Simulation
 def sim() -> Simulation:
     """Create a test simulation."""
     test_sim = Simulation()
+
+    default_relationship_traits.load_traits(test_sim.world)
 
     return test_sim
 
@@ -64,7 +67,7 @@ def test_set_first_name(sim: Simulation):
     assert character_component.first_name == "Rhaenyra"
 
     cur = db.execute(
-        """SELECT first_name FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT first_name FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -75,7 +78,7 @@ def test_set_first_name(sim: Simulation):
     assert character_component.first_name == "Daenerys"
 
     cur = db.execute(
-        """SELECT first_name FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT first_name FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -102,7 +105,7 @@ def test_set_surname(sim: Simulation):
 
     assert character_component.surname == "Targaryen"
 
-    cur = db.execute("""SELECT surname FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute("""SELECT surname FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert result[0] == "Targaryen"
@@ -111,7 +114,7 @@ def test_set_surname(sim: Simulation):
 
     assert character_component.surname == "Baratheon"
 
-    cur = db.execute("""SELECT surname FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute("""SELECT surname FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert result[0] == "Baratheon"
@@ -138,7 +141,7 @@ def test_set_birth_surname(sim: Simulation):
     assert character_component.birth_surname == "Targaryen"
 
     cur = db.execute(
-        """SELECT birth_surname FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_surname FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -149,7 +152,7 @@ def test_set_birth_surname(sim: Simulation):
     assert character_component.birth_surname == "Baratheon"
 
     cur = db.execute(
-        """SELECT birth_surname FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_surname FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -176,7 +179,7 @@ def test_set_sex(sim: Simulation):
 
     assert character_component.sex == Sex.FEMALE
 
-    cur = db.execute("""SELECT sex FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute("""SELECT sex FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert result[0] == Sex.FEMALE.name
@@ -185,7 +188,7 @@ def test_set_sex(sim: Simulation):
 
     assert character_component.sex == Sex.MALE
 
-    cur = db.execute("""SELECT sex FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute("""SELECT sex FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert result[0] == Sex.MALE.name
@@ -212,7 +215,7 @@ def test_set_sexual_orientation(sim: Simulation):
     assert character_component.sexual_orientation == SexualOrientation.BISEXUAL
 
     cur = db.execute(
-        """SELECT sexual_orientation FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT sexual_orientation FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -223,7 +226,7 @@ def test_set_sexual_orientation(sim: Simulation):
     assert character_component.sexual_orientation == SexualOrientation.HETEROSEXUAL
 
     cur = db.execute(
-        """SELECT sexual_orientation FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT sexual_orientation FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -250,7 +253,7 @@ def test_set_life_stage(sim: Simulation):
 
     assert character_component.life_stage == LifeStage.ADULT
     cur = db.execute(
-        """SELECT life_stage FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT life_stage FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -261,7 +264,7 @@ def test_set_life_stage(sim: Simulation):
     assert character_component.life_stage == LifeStage.ADOLESCENT
 
     cur = db.execute(
-        """SELECT life_stage FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT life_stage FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -288,7 +291,7 @@ def test_set_age(sim: Simulation):
 
     assert character_component.age == 16
 
-    cur = db.execute("""SELECT age FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute("""SELECT age FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert result[0] == 16
@@ -297,7 +300,7 @@ def test_set_age(sim: Simulation):
 
     assert character_component.age == 35
 
-    cur = db.execute("""SELECT age FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute("""SELECT age FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert result[0] == 35
@@ -324,7 +327,7 @@ def test_set_birth_year(sim: Simulation):
     assert character_component.birth_year is None
 
     cur = db.execute(
-        """SELECT birth_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_year FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -335,11 +338,11 @@ def test_set_birth_year(sim: Simulation):
     assert character_component.birth_year == 16
 
     cur = db.execute(
-        """SELECT birth_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_year FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
-    assert result[0] == "0016-01"
+    assert result[0] == 16
 
 
 def test_set_death_year(sim: Simulation):
@@ -363,7 +366,7 @@ def test_set_death_year(sim: Simulation):
     assert character_component.death_year is None
 
     cur = db.execute(
-        """SELECT death_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT death_year FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -374,11 +377,11 @@ def test_set_death_year(sim: Simulation):
     assert character_component.death_year == 78
 
     cur = db.execute(
-        """SELECT death_year FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT death_year FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
-    assert result[0] == "0078-01"
+    assert result[0] == 78
 
 
 def test_set_mother(sim: Simulation):
@@ -415,17 +418,37 @@ def test_set_mother(sim: Simulation):
 
     assert get_relations(rhaenyra, ["mother"]) == []
 
-    cur = db.execute("""SELECT mother FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='mother';
+        """,
+        (rhaenyra.uid,),
+    )
     result = cur.fetchone()
 
-    assert result[0] is None
+    assert result is None
 
     set_character_mother(rhaenyra, aemma)
 
     assert character_component.mother == aemma
     assert get_relations(rhaenyra, ["mother"]) == [aemma]
 
-    cur = db.execute("""SELECT mother FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='mother';
+        """,
+        (rhaenyra.uid,),
+    )
     result = cur.fetchone()
 
     assert result[0] == aemma.uid
@@ -462,16 +485,36 @@ def test_set_father(sim: Simulation):
 
     assert character_component.father is None
 
-    cur = db.execute("""SELECT father FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='father';
+        """,
+        (rhaenyra.uid,),
+    )
     result = cur.fetchone()
 
-    assert result[0] is None
+    assert result is None
 
     set_character_father(rhaenyra, viserys)
 
     assert character_component.father == viserys
 
-    cur = db.execute("""SELECT father FROM characters WHERE uid=?;""", (rhaenyra.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='father';
+        """,
+        (rhaenyra.uid,),
+    )
     result = cur.fetchone()
 
     assert result[0] == viserys.uid
@@ -510,18 +553,34 @@ def test_set_biological_father(sim: Simulation):
     assert character_component.biological_father is None
 
     cur = db.execute(
-        """SELECT biological_father FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='biological_father';
+        """,
+        (rhaenyra.uid,),
     )
     result = cur.fetchone()
 
-    assert result[0] is None
+    assert result is None
 
     set_character_biological_father(rhaenyra, viserys)
 
     assert character_component.biological_father == viserys
 
     cur = db.execute(
-        """SELECT biological_father FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='biological_father';
+        """,
+        (rhaenyra.uid,),
     )
     result = cur.fetchone()
 
@@ -548,9 +607,7 @@ def test_set_alive(sim: Simulation):
 
     assert character_component.is_alive is True
 
-    cur = db.execute(
-        """SELECT is_alive FROM characters WHERE uid=?;""", (rhaenyra.uid,)
-    )
+    cur = db.execute("""SELECT is_alive FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert bool(result[0]) is True
@@ -559,9 +616,7 @@ def test_set_alive(sim: Simulation):
 
     assert character_component.is_alive is False
 
-    cur = db.execute(
-        """SELECT is_alive FROM characters WHERE uid=?;""", (rhaenyra.uid,)
-    )
+    cur = db.execute("""SELECT is_alive FROM Character WHERE uid=?;""", (rhaenyra.uid,))
     result = cur.fetchone()
 
     assert bool(result[0]) is False
@@ -590,7 +645,7 @@ def test_set_character_birth_family(sim: Simulation):
     assert character_component.birth_family is None
 
     cur = db.execute(
-        """SELECT birth_family FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_family_uid FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -601,7 +656,7 @@ def test_set_character_birth_family(sim: Simulation):
     assert character_component.birth_family == targaryen_family
 
     cur = db.execute(
-        """SELECT birth_family FROM characters WHERE uid=?;""", (rhaenyra.uid,)
+        """SELECT birth_family_uid FROM Character WHERE uid=?;""", (rhaenyra.uid,)
     )
     result = cur.fetchone()
 
@@ -641,7 +696,15 @@ def test_set_relation_sibling(sim: Simulation):
     assert daemon not in character_component.siblings
 
     cur = db.execute(
-        """SELECT sibling_id FROM siblings WHERE character_id=?;""", (viserys.uid,)
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='sibling';
+        """,
+        (viserys.uid,),
     )
     result = cur.fetchone()
 
@@ -652,7 +715,15 @@ def test_set_relation_sibling(sim: Simulation):
     assert daemon in character_component.siblings
 
     cur = db.execute(
-        """SELECT sibling_id FROM siblings WHERE character_id=?;""", (viserys.uid,)
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='sibling';
+        """,
+        (viserys.uid,),
     )
     result = cur.fetchone()
 
@@ -692,7 +763,15 @@ def test_set_relation_child(sim: Simulation):
     assert rhaenyra not in character_component.children
 
     cur = db.execute(
-        """SELECT child_id FROM children WHERE character_id=?;""", (viserys.uid,)
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='child';
+        """,
+        (viserys.uid,),
     )
     result = cur.fetchone()
 
@@ -703,7 +782,15 @@ def test_set_relation_child(sim: Simulation):
     assert rhaenyra in character_component.children
 
     cur = db.execute(
-        """SELECT child_id FROM children WHERE character_id=?;""", (viserys.uid,)
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='child';
+        """,
+        (viserys.uid,),
     )
     result = cur.fetchone()
 
@@ -744,24 +831,64 @@ def test_start_marriage(sim: Simulation):
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (viserys.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (viserys.uid,),
+    )
     result = cur.fetchone()
-    assert result[0] is None
+    assert result is None
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (aemma.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (aemma.uid,),
+    )
     result = cur.fetchone()
-    assert result[0] is None
+    assert result is None
 
     start_marriage(viserys, aemma)
 
     assert viserys_character_component.spouse == aemma
     assert aemma_character_component.spouse == viserys
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (viserys.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (viserys.uid,),
+    )
     result = cur.fetchone()
     assert result[0] == aemma.uid
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (aemma.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (aemma.uid,),
+    )
     result = cur.fetchone()
     assert result[0] == viserys.uid
 
@@ -800,24 +927,64 @@ def test_end_marriage(sim: Simulation):
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (viserys.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (viserys.uid,),
+    )
     result = cur.fetchone()
-    assert result[0] is None
+    assert result is None
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (aemma.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (aemma.uid,),
+    )
     result = cur.fetchone()
-    assert result[0] is None
+    assert result is None
 
     start_marriage(viserys, aemma)
 
     assert viserys_character_component.spouse == aemma
     assert aemma_character_component.spouse == viserys
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (viserys.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (viserys.uid,),
+    )
     result = cur.fetchone()
     assert result[0] == aemma.uid
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (aemma.uid,))
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (aemma.uid,),
+    )
     result = cur.fetchone()
     assert result[0] == viserys.uid
 
@@ -826,17 +993,30 @@ def test_end_marriage(sim: Simulation):
     assert viserys_character_component.spouse is None
     assert aemma_character_component.spouse is None
 
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (viserys.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
-    cur = db.execute("""SELECT spouse FROM characters WHERE uid=?;""", (aemma.uid,))
-    result = cur.fetchone()
-    assert result[0] is None
-
     cur = db.execute(
-        """SELECT end_year FROM marriages WHERE character_id=? AND spouse_id=?;""",
-        (viserys.uid, aemma.uid),
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (viserys.uid,),
     )
     result = cur.fetchone()
-    assert result[0] == "0001-01"
+    assert result is None
+
+    cur = db.execute(
+        """
+        SELECT
+            target_uid
+        FROM
+            RelationshipTrait
+        WHERE
+            owner_uid=? AND trait_id='spouse';
+        """,
+        (aemma.uid,),
+    )
+    result = cur.fetchone()
+    assert result is None

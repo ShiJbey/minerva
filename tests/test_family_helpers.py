@@ -5,14 +5,10 @@ import pytest
 
 from minerva.characters.components import (
     Character,
-    Diplomacy,
     Family,
     FamilyRoleFlags,
     HeadOfFamily,
     LifeStage,
-    Martial,
-    Prowess,
-    Stewardship,
 )
 from minerva.characters.helpers import (
     RemoveFamilyFromPlay,
@@ -21,9 +17,13 @@ from minerva.characters.helpers import (
     get_warrior_candidates,
     merge_family_with,
     set_character_family,
+    set_diplomacy_skill_base,
     set_family_head,
     set_family_home_base,
     set_family_name,
+    set_martial_skill_base,
+    set_prowess_skill_base,
+    set_stewardship_skill_base,
     unassign_family_member_from_roles,
 )
 from minerva.pcg.character import (
@@ -68,16 +68,11 @@ def test_set_family_head(test_sim: Simulation):
     assert family_component.head == c0
     assert c0.has_component(HeadOfFamily) is True
 
-    cur = db.execute("""SELECT head FROM families WHERE uid=?;""", (test_family.uid,))
-    result = cur.fetchone()
-    assert result[0] == c0.uid
-
     cur = db.execute(
-        """SELECT start_year, end_year, predecessor FROM family_heads WHERE head=?;""",
-        (c0.uid,),
+        """SELECT family_head_uid FROM Family WHERE uid=?;""", (test_family.uid,)
     )
     result = cur.fetchone()
-    assert result == ("0001-01", None, None)
+    assert result[0] == c0.uid
 
     # Set the family head to c0 again. This should do nothing
     set_family_head(test_family, c0)
@@ -91,21 +86,11 @@ def test_set_family_head(test_sim: Simulation):
     assert c0.has_component(HeadOfFamily) is False
     assert c1.has_component(HeadOfFamily) is True
 
-    cur = db.execute("""SELECT head FROM families WHERE uid=?;""", (test_family.uid,))
+    cur = db.execute(
+        """SELECT family_head_uid FROM Family WHERE uid=?;""", (test_family.uid,)
+    )
     result = cur.fetchone()
     assert result[0] == c1.uid
-
-    cur = db.execute(
-        """SELECT start_year, end_year FROM family_heads WHERE head=?;""", (c0.uid,)
-    )
-    result = cur.fetchone()
-    assert result == ("0001-01", "0001-01")
-
-    cur = db.execute(
-        """SELECT start_year, predecessor FROM family_heads WHERE head=?;""", (c1.uid,)
-    )
-    result = cur.fetchone()
-    assert result == ("0001-01", c0.uid)
 
 
 def test_set_family_name(test_sim: Simulation):
@@ -119,7 +104,7 @@ def test_set_family_name(test_sim: Simulation):
 
     db = test_sim.world.get_resource(SimDB).conn
 
-    cur = db.execute("""SELECT name FROM families WHERE uid=?;""", (test_family.uid,))
+    cur = db.execute("""SELECT name FROM Family WHERE uid=?;""", (test_family.uid,))
     result = cur.fetchone()
 
     assert result[0] == "Test Family"
@@ -130,7 +115,7 @@ def test_set_family_name(test_sim: Simulation):
 
     assert test_family.get_component(Family).name == "Production Family"
 
-    cur = db.execute("""SELECT name FROM families WHERE uid=?;""", (test_family.uid,))
+    cur = db.execute("""SELECT name FROM Family WHERE uid=?;""", (test_family.uid,))
     result = cur.fetchone()
 
     assert result[0] == "Production Family"
@@ -248,36 +233,36 @@ def test_get_warrior_candidates(test_sim: Simulation):
         test_sim.world,
         CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
-    c0.get_component(Martial).base_value = 30
+    set_martial_skill_base(c0, 30)
     set_character_family(c0, test_family)
 
     c1 = spawn_character(
         test_sim.world,
         CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
-    c1.get_component(Prowess).base_value = 50
+    set_prowess_skill_base(c1, 50)
     set_character_family(c1, test_family)
 
     c2 = spawn_character(
         test_sim.world,
         CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
-    c2.get_component(Martial).base_value = 10
+    set_martial_skill_base(c2, 10)
     set_character_family(c2, test_family)
 
     c3 = spawn_character(
         test_sim.world,
         CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
-    c3.get_component(Martial).base_value = 15
-    c3.get_component(Prowess).base_value = 30
+    set_martial_skill_base(c3, 15)
+    set_prowess_skill_base(c3, 30)
     set_character_family(c3, test_family)
 
     c4 = spawn_character(
         test_sim.world,
         CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
     )
-    c4.get_component(Martial).base_value = 20
+    set_martial_skill_base(c4, 20)
     set_character_family(c4, test_family)
 
     candidates = get_warrior_candidates(test_family)
@@ -296,38 +281,48 @@ def test_get_advisor_candidates(test_sim: Simulation):
 
     c0 = spawn_character(
         test_sim.world,
-        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
+        CharacterGenOptions(
+            life_stage=LifeStage.ADULT, randomize_stats=False, first_name="C0"
+        ),
     )
-    c0.get_component(Stewardship).base_value = 30
+    set_stewardship_skill_base(c0, 30)
     set_character_family(c0, test_family)
 
     c1 = spawn_character(
         test_sim.world,
-        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
+        CharacterGenOptions(
+            life_stage=LifeStage.ADULT, randomize_stats=False, first_name="C1"
+        ),
     )
-    c1.get_component(Diplomacy).base_value = 50
+    set_diplomacy_skill_base(c1, 50)
     set_character_family(c1, test_family)
 
     c2 = spawn_character(
         test_sim.world,
-        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
+        CharacterGenOptions(
+            life_stage=LifeStage.ADULT, randomize_stats=False, first_name="C2"
+        ),
     )
-    c2.get_component(Stewardship).base_value = 10
+    set_stewardship_skill_base(c2, 10)
     set_character_family(c2, test_family)
 
     c3 = spawn_character(
         test_sim.world,
-        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
+        CharacterGenOptions(
+            life_stage=LifeStage.ADULT, randomize_stats=False, first_name="C3"
+        ),
     )
-    c3.get_component(Stewardship).base_value = 15
-    c3.get_component(Diplomacy).base_value = 30
+    set_stewardship_skill_base(c3, 15)
+    set_diplomacy_skill_base(c3, 30)
     set_character_family(c3, test_family)
 
     c4 = spawn_character(
         test_sim.world,
-        CharacterGenOptions(life_stage=LifeStage.ADULT, randomize_stats=False),
+        CharacterGenOptions(
+            life_stage=LifeStage.ADULT, randomize_stats=False, first_name="C4"
+        ),
     )
-    c4.get_component(Stewardship).base_value = 20
+    set_stewardship_skill_base(c4, 20)
     set_character_family(c4, test_family)
 
     candidates = get_advisor_candidates(test_family)

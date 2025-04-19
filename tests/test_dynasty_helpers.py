@@ -12,8 +12,10 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import set_character_family
 from minerva.characters.succession_helpers import (
+    end_current_dynasty,
     remove_current_ruler,
     set_current_ruler,
+    start_new_dynasty,
 )
 from minerva.ecs import Entity
 from minerva.pcg.character import (
@@ -83,7 +85,8 @@ def test_set_current_ruler(sim: Simulation):
     dynasty_tracker = sim.world.get_resource(DynastyTracker)
     db = sim.world.get_resource(SimDB).conn
 
-    set_current_ruler(sim.world, viserys)
+    start_new_dynasty(viserys)
+    # set_current_ruler(sim.world, viserys)
 
     assert dynasty_tracker.current_dynasty is not None
     assert dynasty_tracker.last_dynasty is None
@@ -97,72 +100,75 @@ def test_set_current_ruler(sim: Simulation):
 
     # Verify ruler data is in the database
     result = db.execute(
-        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_uid FROM Ruler WHERE character_uid=?;""",
         (viserys.uid,),
     ).fetchone()
-    assert result == ("0001-01", None, None)
+    assert result == (1, None, None)
 
     # Verify that the database entry for the dynasty is up to date
     result = db.execute(
         """
-        SELECT family_id, founder_id, start_year, end_year, previous_dynasty_id
-        FROM dynasties WHERE uid=?;""",
+        SELECT family_uid, founder_uid, start_year, end_year, previous_dynasty_uid
+        FROM Dynasty WHERE uid=?;""",
         (dynasty_tracker.current_dynasty.uid,),
     ).fetchone()
-    assert result == (targaryen_family.uid, viserys.uid, "0001-01", None, None)
+    assert result == (targaryen_family.uid, viserys.uid, 1, None, None)
 
     current_dynasty_component = dynasty_tracker.current_dynasty.get_component(Dynasty)
     assert current_dynasty_component.current_ruler == viserys
 
     # Set the next ruler to come from the same family
+    remove_current_ruler(sim.world)
     set_current_ruler(sim.world, rhaenyra)
 
     # Verify that the dynasty has not changed
     result = db.execute(
         """
-        SELECT family_id, founder_id, start_year, end_year, previous_dynasty_id
-        FROM dynasties WHERE uid=?;""",
+        SELECT family_uid, founder_uid, start_year, end_year, previous_dynasty_uid
+        FROM Dynasty WHERE uid=?;""",
         (dynasty_tracker.current_dynasty.uid,),
     ).fetchone()
     assert result == (
         targaryen_family.uid,
         viserys.uid,
-        "0001-01",
+        1,
         None,
         None,
     )
 
     result = db.execute(
-        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_uid FROM Ruler WHERE character_uid=?;""",
         (rhaenyra.uid,),
     ).fetchone()
-    assert result == ("0001-01", None, viserys.uid)
+    assert result == (1, None, viserys.uid)
 
     result = db.execute(
-        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_uid FROM Ruler WHERE character_uid=?;""",
         (viserys.uid,),
     ).fetchone()
-    assert result == ("0001-01", "0001-01", None)
+    assert result == (1, 1, None)
 
     # Set the next ruler to come from a different family, ending the current dynasty.
-    set_current_ruler(sim.world, corlys)
+    remove_current_ruler(sim.world)
+    end_current_dynasty(sim.world)
+    start_new_dynasty(corlys)
 
     result = db.execute(
-        """SELECT start_year, end_year, predecessor_id FROM rulers WHERE character_id=?;""",
+        """SELECT start_year, end_year, predecessor_uid FROM Ruler WHERE character_uid=?;""",
         (rhaenyra.uid,),
     ).fetchone()
-    assert result == ("0001-01", "0001-01", viserys.uid)
+    assert result == (1, 1, viserys.uid)
 
     result = db.execute(
         """
-        SELECT family_id, founder_id, start_year, end_year, previous_dynasty_id
-        FROM dynasties WHERE uid=?;""",
+        SELECT family_uid, founder_uid, start_year, end_year, previous_dynasty_uid
+        FROM Dynasty WHERE uid=?;""",
         (dynasty_tracker.current_dynasty.uid,),
     ).fetchone()
     assert result == (
         velaryon_family.uid,
         corlys.uid,
-        "0001-01",
+        1,
         None,
         targaryen_dynasty.uid,
     )
@@ -178,6 +184,7 @@ def test_set_current_ruler(sim: Simulation):
 
     # Remove the final rule from power and do not place anyone as a replacement.
     remove_current_ruler(sim.world)
+    end_current_dynasty(sim.world)
 
     assert dynasty_tracker.current_dynasty is None
     assert len(dynasty_tracker.previous_dynasties) == 2

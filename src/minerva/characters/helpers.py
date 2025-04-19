@@ -532,8 +532,8 @@ def get_advisor_candidates(family: Entity) -> list[Entity]:
             continue
 
         # Characters are scored as advisors based on stewardship and diplomacy
-        diplomacy = member.get_component(Diplomacy).value
-        stewardship = member.get_component(Stewardship).value
+        diplomacy = get_diplomacy_skill(member)
+        stewardship = get_stewardship_skill(member)
         total_score = diplomacy + stewardship
 
         candidate_score_tuples.append((member, total_score))

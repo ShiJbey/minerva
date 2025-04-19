@@ -210,7 +210,9 @@ def _remove_incoming_relationship(character: Entity, relationship: Entity) -> bo
 
 def get_attraction(owner: Entity, target: Entity) -> int:
     """Get the attraction stat for the relationship."""
-    return get_stat_value(get_relationship(owner, target).get_component(Opinion))
+    action = RecalculateAttraction(owner, target)
+    action.execute()
+    return get_stat_value(get_relationship(owner, target).get_component(Attraction))
 
 
 def increment_attraction_base(entity: Entity, value: int) -> None:
@@ -235,6 +237,7 @@ def remove_attraction_modifier(entity: Entity, modifier: StatModifier) -> None:
 
 def get_opinion(owner: Entity, target: Entity) -> int:
     """Get the lifespan for the entity."""
+    RecalculateOpinion(owner, target).execute()
     return get_stat_value(get_relationship(owner, target).get_component(Opinion))
 
 
