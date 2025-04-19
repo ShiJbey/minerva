@@ -374,20 +374,21 @@ class LeaveAlliance(AIBehavior):
         )
 
     def get_actions(self, character: Entity) -> list[AIAction]:
-        # The family head has the option to leave the current alliance, causing the
-        # entire alliance to disband
         family_head_component = character.get_component(HeadOfFamily)
-        family_component = family_head_component.family.get_component(Family)
+        family = family_head_component.family
+        family_component = family.get_component(Family)
+        alliance = family_component.alliance
 
-        if family_component.alliance is None:
+        if alliance is None:
             return []
 
-        alliance_component = family_component.alliance.get_component(Alliance)
-        if alliance_component.founder_family == family_component.entity:
+        alliance_component = alliance.get_component(Alliance)
+
+        if alliance_component.founder_family == family:
             return []
 
         else:
-            return [LeaveAllianceAction(character, family_component.alliance)]
+            return [LeaveAllianceAction(character, family, alliance)]
 
 
 class DeclareWarBehavior(AIBehavior):

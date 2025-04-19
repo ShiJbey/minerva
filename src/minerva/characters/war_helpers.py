@@ -7,7 +7,6 @@ from typing import Optional
 
 from minerva.actions.scheme_types import (
     AllianceScheme,
-    AllianceSchemeMember,
     CoupScheme,
     SchemeManager,
     WarScheme,
@@ -99,9 +98,7 @@ class EndCoupScheme(GameAction):
         pass
 
 
-def start_alliance(
-    founder: Entity, founder_family: Entity, members: list[AllianceSchemeMember]
-) -> Entity:
+def start_alliance(founder: Entity, founder_family: Entity) -> Entity:
     """Start a new alliance between the two families."""
 
     world = founder_family.world
@@ -133,15 +130,10 @@ def start_alliance(
             ),
         )
 
-    # Verify that none of the families are currently in an alliance and set
-    # their alliance variables
-    for entry in [AllianceSchemeMember(founder, founder_family), *members]:
-        join_alliance(alliance, entry.family)
-
     return alliance
 
 
-def join_alliance(alliance: Entity, family: Entity) -> None:
+def add_family_to_alliance(alliance: Entity, family: Entity) -> None:
     """Add a family to an alliance."""
     alliance_component = alliance.get_component(Alliance)
     family_component = family.get_component(Family)
@@ -164,6 +156,20 @@ def join_alliance(alliance: Entity, family: Entity) -> None:
         )
 
 
+def remove_family_from_alliance(alliance: Entity, family: Entity) -> None:
+    """Remove a  member family from the alliance."""
+    alliance_component = alliance.get_component(Alliance)
+
+    alliance_component.member_families.remove(family)
+    family.get_component(Family).alliance = None
+
+    with alliance.world.get_resource(SimDB) as db:
+        db.execute(
+            """UPDATE Family SET alliance_uid=NULL WHERE uid=?""",
+            (family.uid,),
+        )
+
+
 def end_alliance(alliance: Entity) -> None:
     """End an existing alliance between families."""
 
@@ -177,6 +183,12 @@ def end_alliance(alliance: Entity) -> None:
     for family in alliance_component.member_families:
         family_component = family.get_component(Family)
         family_component.alliance = None
+
+        with alliance.world.get_resource(SimDB) as db:
+            db.execute(
+                """UPDATE Family SET alliance_uid=NULL WHERE uid=?""",
+                (family.uid,),
+            )
 
     with world.get_resource(SimDB) as db:
         db.execute(

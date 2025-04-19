@@ -45,10 +45,9 @@ from minerva.characters.metric_data import CharacterMetrics
 from minerva.characters.succession_helpers import start_new_dynasty
 from minerva.characters.war_data import Alliance
 from minerva.characters.war_helpers import (
+    add_family_to_alliance,
     create_coup_scheme,
     create_war_scheme,
-    end_alliance,
-    join_alliance,
     start_alliance,
 )
 from minerva.config import Config
@@ -70,6 +69,7 @@ from minerva.events import (
     GiveToTerritoriesEvent,
     JoinAllianceEvent,
     JoinCoupSchemeEvent,
+    LeaveAllianceEvent,
     LoseControlOfTerritoryEvent,
     MarriageEvent,
     QuellRevoltEvent,
@@ -607,7 +607,7 @@ class CreateAllianceAction(AIAction):
         self.members = members
 
     def on_execute(self) -> None:
-        alliance = start_alliance(self.founder, self.founding_family, self.members)
+        alliance = start_alliance(self.founder, self.founding_family)
         StartAllianceEvent(self.founder, alliance).log_event()
         for entry in self.members:
             self.add_reaction(
@@ -639,7 +639,7 @@ class JoinAllianceAction(AIAction):
         if family is None:
             raise RuntimeError(f"{self.initiator.name_with_uid} is missing a family.")
 
-        join_alliance(alliance=self.alliance, family=family)
+        add_family_to_alliance(alliance=self.alliance, family=family)
         JoinAllianceEvent(self.character, family, self.alliance).log_event()
 
 
@@ -696,7 +696,7 @@ class JoinAllianceSchemeAction(AIAction):
 
         self.character.get_component(SchemeManager).alliance_scheme = self.scheme
 
-        # JoinAllianceScheme(
+        # JoinAllianceSchemeEvent(
         #     self.character, self.scheme, alliance_scheme.initiator
         # ).log_event()
 
@@ -716,7 +716,7 @@ class StartAllianceSchemeAction(AIAction):
 
     def on_execute(self) -> None:
 
-        scheme = self.world.entity(name="Alliance Scheme")
+        scheme = self.world.entity(name=f"{self.character}'s Alliance Scheme")
 
         scheme.add_component(
             AllianceScheme(
@@ -730,16 +730,17 @@ class StartAllianceSchemeAction(AIAction):
 
 
 class LeaveAllianceAction(AIAction):
-    """Leave an alliance."""
+    """A family head removes their family from its current alliance."""
 
     __action_cost__ = 200
     __action_cooldown__ = 1
 
-    __slots__ = ("character", "alliance")
+    __slots__ = ("character", "family", "alliance")
 
-    def __init__(self, character: Entity, alliance: Entity) -> None:
+    def __init__(self, character: Entity, family: Entity, alliance: Entity) -> None:
         super().__init__(character)
         self.character = character
+        self.family = family
         self.alliance = alliance
 
     def on_execute(self) -> None:
@@ -759,13 +760,11 @@ class LeaveAllianceAction(AIAction):
                     IncrementOpinion(member_family_component.head, self.initiator, -20)
                 )
 
-        end_alliance(self.alliance)
+        # end_alliance(self.alliance)
 
-        self.initiator.get_component(CharacterMetrics).data.num_alliances_disbanded += 1
-
-        # DisbandedAllianceEvent(
-        #     subject=self.initiator, alliance=self.alliance
-        # ).log_event()
+        LeaveAllianceEvent(
+            alliance=self.alliance, family=self.family, family_head=self.character
+        ).log_event()
 
 
 class SeizeTerritoryAction(AIAction):

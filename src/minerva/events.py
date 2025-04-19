@@ -872,12 +872,8 @@ class LeaveAllianceEvent(Event):
                 (
                     self.uid,
                     self.alliance.uid,
-                    self.family.name_with_uid,
-                    (
-                        self.family_head.name_with_uid
-                        if self.family_head is not None
-                        else None
-                    ),
+                    self.family.uid,
+                    (self.family_head.uid if self.family_head is not None else None),
                     self.timestamp,
                 ),
             )
@@ -919,7 +915,7 @@ class JoinAllianceEvent(Event):
         self.logged_to = [family_head]
 
     def get_description(self) -> str:
-        return "{} joined the {} alliance.".format(
+        return "{} joined the {}.".format(
             self.family_head.name_with_uid,
             self.alliance.name_with_uid,
         )
@@ -938,8 +934,8 @@ class JoinAllianceEvent(Event):
                 (
                     self.uid,
                     self.alliance.uid,
-                    self.family.name_with_uid,
-                    self.family_head.name_with_uid,
+                    self.family.uid,
+                    self.family_head.uid,
                     self.timestamp,
                 ),
             )

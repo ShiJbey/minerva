@@ -102,6 +102,7 @@ from minerva.characters.war_helpers import (
     end_war,
     get_casualty_chance,
     join_war_as,
+    remove_family_from_alliance,
     start_war,
 )
 from minerva.config import Config
@@ -1019,10 +1020,17 @@ class AllianceSystem(System):
 
         # Remove family from their alliance and disband it
         if family_component.alliance:
-            end_alliance(family_component.alliance)
+            remove_family_from_alliance(family_component.alliance, action.family)
 
     def on_update(self, world: World) -> None:
-        return
+        for uid, (alliance_component, _) in world.query_components((Alliance, Active)):
+            alliance = world.get_entity(uid)
+            if alliance_component.founder_family.is_active is False:
+                # Disband the alliance
+                end_alliance(alliance)
+
+            if len(alliance_component.member_families) <= 1:
+                end_alliance(alliance)
 
 
 class SchemeUpdateSystems(SystemGroup):
