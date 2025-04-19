@@ -197,7 +197,7 @@ class Simulation:
         database.add_behavior(behaviors.PlanCoupBehavior())
         database.add_behavior(behaviors.JoinCoupSchemeBehavior())
         database.add_behavior(behaviors.ClaimThroneBehavior())
-        # database.add_behavior(behaviors.CheatOnSpouseBehavior())
+        database.add_behavior(behaviors.CheatOnSpouseBehavior())
 
     def initialize_social_rules(self) -> None:
         """Initialize social rules"""

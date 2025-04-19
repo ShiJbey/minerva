@@ -860,7 +860,13 @@ class TryCheatOnSpouseAction(AIAction):
                     )
                 )
 
-                self.add_reaction(accomplice_cheating_action)
+                self.add_reaction(
+                    CheatOnSpouseAction(
+                        self.accomplice, accomplice_character.spouse, self.initiator
+                    )
+                )
+
+                self.add_reaction(SexAction(self.accomplice, self.initiator))
 
             else:
                 self.add_reaction(
@@ -1101,7 +1107,26 @@ class SexAction(AIAction):
             chance_have_child = (initiator_fertility + partner_fertility) / 2
 
             if rng.randint(0, 100) < chance_have_child:
-                GetPregnant(self.character, self.partner).execute()
+                self.add_reaction(GetPregnant(self.character, self.partner))
+
+        elif (
+            partner_character.sex == Sex.FEMALE and initiating_character.sex == Sex.MALE
+        ):
+            # Calculate the probability of getting pregnant if not already
+
+            if self.partner.has_component(Pregnancy):
+                return
+
+            initiator_fertility = get_fertility(self.character)
+            partner_fertility = get_fertility(self.partner)
+
+            if initiator_fertility <= 0 or partner_fertility <= 0:
+                return
+
+            chance_have_child = (initiator_fertility + partner_fertility) / 2
+
+            if rng.randint(0, 100) < chance_have_child:
+                self.add_reaction(GetPregnant(self.partner, self.character))
 
 
 class ClaimThroneAction(AIAction):
