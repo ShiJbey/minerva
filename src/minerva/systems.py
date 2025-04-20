@@ -1313,8 +1313,10 @@ class CoupSchemeUpdateSystem(System):
 
                     ruler_family = current_ruler.get_component(Character).family
 
-                    DieAction(current_ruler, cause="assassination").execute()
+                    remove_current_ruler(world)
                     end_current_dynasty(world)
+
+                    DieAction(current_ruler, cause="assassination").execute()
 
                     ClaimThroneAction(scheme.initiator).execute()
 
