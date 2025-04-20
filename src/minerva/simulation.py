@@ -7,6 +7,12 @@ import sqlite3
 from typing import Optional
 
 import minerva.systems
+from minerva.acquired_trait_system import (
+    AcquiredTraitSystem,
+    SocialInferenceRuleDatabase,
+    SocialInferenceRuleSystem,
+    TraitRuleDatabase,
+)
 from minerva.actions import behaviors
 from minerva.actions.actions import SeizeTerritoryAction
 from minerva.actions.base_types import (
@@ -114,6 +120,8 @@ class Simulation:
         self.world.add_resource(ProclivityDatabase())
         self.world.add_resource(GlobalEventHistory())
         self.world.add_resource(RelationshipTraitDatabase())
+        self.world.add_resource(TraitRuleDatabase())
+        self.world.add_resource(SocialInferenceRuleDatabase())
 
         self.initialize_brains()
         self.initialize_systems()
@@ -179,6 +187,8 @@ class Simulation:
         self.world.add_system(minerva.systems.GiftGivingSystem())
         self.world.add_system(minerva.systems.AidSendingSystem())
         self.world.add_system(minerva.systems.SeizeTerritoryControlSystem())
+        self.world.add_system(AcquiredTraitSystem())
+        self.world.add_system(SocialInferenceRuleSystem())
 
     def initialize_behaviors(self) -> None:
         """Initialize behaviors."""

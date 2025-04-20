@@ -328,3 +328,17 @@ def load_traits(world: World) -> None:
             ],
         )
     )
+
+    trait_library.add_trait(
+        CharacterTrait(
+            trait_id="warrior_queen",
+            name="Warrior Queen",
+        )
+    )
+
+    trait_library.add_trait(
+        CharacterTrait(
+            trait_id="warrior_king",
+            name="Warrior King",
+        )
+    )
