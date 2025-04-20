@@ -38,6 +38,7 @@ from minerva.characters.components import (
     Species,
     SpeciesLibrary,
 )
+from minerva.characters.family_ranking_system import FamilyRankChange, FamilyRankSystem
 from minerva.characters.war_data import WarRole
 from minerva.config import Config
 from minerva.content import social_rules
@@ -189,6 +190,7 @@ class Simulation:
         self.world.add_system(minerva.systems.SeizeTerritoryControlSystem())
         self.world.add_system(AcquiredTraitSystem())
         self.world.add_system(SocialInferenceRuleSystem())
+        self.world.add_system(FamilyRankSystem())
 
     def initialize_behaviors(self) -> None:
         """Initialize behaviors."""
@@ -317,6 +319,7 @@ class Simulation:
         UsurpThroneEvent.configure_db_table(self.world)
         CheatOnSpouseEvent.configure_db_table(self.world)
         BecameRulerEvent.configure_db_table(self.world)
+        FamilyRankChange.configure_db_table(self.world)
 
     @property
     def config(self) -> Config:

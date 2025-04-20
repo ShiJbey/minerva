@@ -362,6 +362,16 @@ class FamilyRoleFlags(enum.IntFlag):
     """The character is the head of their family."""
 
 
+class FamilyRank(enum.IntEnum):
+    """Family rank levels."""
+
+    RANK_1 = 1
+    RANK_2 = 2
+    RANK_3 = 3
+    RANK_4 = 4
+    RANK_5 = 5
+
+
 class Family(Component):
     """A collection of characters joined by blood or marriage."""
 
@@ -369,6 +379,7 @@ class Family(Component):
         "name",
         "founder",
         "head",
+        "rank",
         "former_heads",
         "active_members",
         "former_members",
@@ -389,6 +400,8 @@ class Family(Component):
     """The character that founded the family."""
     head: Optional[Entity]
     """The character that is currently in charge of the family."""
+    rank: FamilyRank
+    """The rank of this family."""
     former_heads: OrderedSet[Entity]
     """Former heads of this family."""
     former_members: OrderedSet[Entity]
@@ -421,11 +434,13 @@ class Family(Component):
         color_secondary: str,
         color_tertiary: str,
         banner_symbol: str,
+        rank: FamilyRank = FamilyRank.RANK_1,
     ) -> None:
         super().__init__()
         self.name = name
         self.founder = None
         self.head = None
+        self.rank = rank
         self.alliance = None
         self.home_base = None
         self.controlled_territories = OrderedSet([])
@@ -593,3 +608,6 @@ class Luck(Stat):
 
 class Prestige(Stat):
     """Tracks the prestige level of a family."""
+
+    def __init__(self, base_value: int = 0) -> None:
+        super().__init__(base_value, 0, 100)

@@ -534,7 +534,7 @@ def generate_family(action: SpawnFamily) -> None:
     color_tertiary = rng.choice(config.family_colors_tertiary)
     banner_symbol = rng.choice(config.family_banner_symbols)
 
-    family.add_component(
+    family_component = family.add_component(
         Family(
             name=family_name,
             color_primary=color_primary,
@@ -550,10 +550,10 @@ def generate_family(action: SpawnFamily) -> None:
     db.execute(
         """
         INSERT INTO Family
-        (uid, name, founding_year)
-        VALUES (?, ?, ?);
+        (uid, name, rank, founding_year)
+        VALUES (?, ?, ?, ?);
         """,
-        (family.uid, family.name, current_year),
+        (family.uid, family.name, int(family_component.rank), current_year),
     )
 
     db.commit()

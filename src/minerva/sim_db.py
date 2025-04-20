@@ -76,6 +76,7 @@ CREATE TABLE Family (
     uid INT PRIMARY KEY,
     name TEXT,
     family_head_uid INT,
+    rank INT NOT NULL,
     alliance_uid INT,
     founding_year INT,
     home_base_uid INT,

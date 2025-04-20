@@ -574,7 +574,7 @@ class RevoltUpdateSystem(System):
                     # Just remove the family from being in control
                     SetTerritoryControllingFamily(territory.entity, None).execute()
 
-                increment_prestige_base(controlling_family, -20)
+                increment_prestige_base(controlling_family, -10)
 
 
 class TerritoryRandomEventSystem(System):
@@ -1131,7 +1131,7 @@ class AllianceSchemeUpdateSystem(System):
                                 member_b.character, member_a.character, 20
                             ).execute()
 
-                    increment_prestige_base(alliance_scheme.initiator_family, 30)
+                    increment_prestige_base(alliance_scheme.initiator_family, 15)
 
                     alliance_scheme.initiator.get_component(
                         CharacterMetrics
@@ -1545,8 +1545,8 @@ class WarUpdateSystem(System):
                         CharacterMetrics
                     ).data.num_wars_lost += 1
 
-                war.aggressor.get_component(Prestige).base_value += 40
-                war.defender.get_component(Prestige).base_value -= 20
+                increment_prestige_base(war.aggressor, 15)
+                increment_prestige_base(war.defender, -5)
 
                 end_war(war.entity, war.aggressor)
 
@@ -1576,8 +1576,8 @@ class WarUpdateSystem(System):
                         CharacterMetrics
                     ).data.num_wars_won += 1
 
-                war.aggressor.get_component(Prestige).base_value -= 50
-                war.defender.get_component(Prestige).base_value += 35
+                increment_prestige_base(war.aggressor, -15)
+                increment_prestige_base(war.defender, 15)
 
                 end_war(war.entity, war.defender)
 

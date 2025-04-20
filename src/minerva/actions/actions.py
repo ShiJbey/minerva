@@ -17,7 +17,6 @@ from minerva.characters.components import (
     HeadOfFamily,
     LifeStage,
     Pregnancy,
-    Prestige,
     Sex,
 )
 from minerva.characters.helpers import (
@@ -365,7 +364,7 @@ class SendAidAction(AIAction):
         performer_character_comp = self.character.get_component(Character)
 
         if performer_character_comp.family:
-            increment_prestige_base(performer_character_comp.family, 10)
+            increment_prestige_base(performer_character_comp.family, 1)
 
         self.recipient.get_component(Character).influence_points += 50
 
@@ -462,7 +461,7 @@ class QuellRevoltAction(AIAction):
 
         performer_character_comp = self.initiator.get_component(Character)
         if performer_character_comp.family:
-            performer_character_comp.family.get_component(Prestige).base_value += 10
+            increment_prestige_base(performer_character_comp.family, 1)
 
         set_happiness_base(self.territory, config.base_territory_happiness)
 
