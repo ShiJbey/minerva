@@ -14,6 +14,7 @@ from minerva.characters.helpers import (
 )
 from minerva.ecs import Entity
 from minerva.relationships.base_types import Relationship, RelationshipPrecondition
+from minerva.sim_db import SimDB
 from minerva.traits.helpers import has_trait
 
 
@@ -449,3 +450,29 @@ class TargetIsSpouse(RelationshipPrecondition):
         owner_character = relationship_component.owner.get_component(Character)
 
         return relationship_component.target == owner_character.spouse
+
+
+class DbPrecondition(RelationshipPrecondition):
+    """Check if a relationship precondition passes."""
+
+    __slots__ = ("query",)
+
+    query: str
+
+    def __init__(self, query: str) -> None:
+        super().__init__()
+        self.query = query
+
+    def __call__(self, relationship: Entity) -> bool:
+        sim_db = relationship.world.get_resource(SimDB)
+        relationship_component = relationship.get_component(Relationship)
+        result = sim_db.query_engine.query(
+            self.query,
+            sim_db.conn,
+            bindings={
+                "?owner_uid": relationship_component.owner.uid,
+                "?target_uid": relationship_component.target.uid,
+            },
+        ).fetch_all()
+
+        return len(result) > 0
