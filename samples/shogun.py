@@ -26,6 +26,8 @@ from minerva.content import (
     default_character_traits,
     default_relationship_traits,
     japanese_name_pack,
+    social_inference_rules,
+    trait_rules,
 )
 from minerva.inspection import SimulationInspector
 from minerva.simulation import Simulation
@@ -157,6 +159,8 @@ if __name__ == "__main__":
     # Load custom trait definitions
     default_character_traits.load_traits(sim.world)
     default_relationship_traits.load_traits(sim.world)
+    trait_rules.load_rules(sim.world)
+    social_inference_rules.load_rules(sim.world)
 
     print(f"Minerva version: {minerva.__version__}")
     print(f"World Seed: {sim.config.seed}")

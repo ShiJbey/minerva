@@ -11,7 +11,7 @@ _RULES = [
         query="""
         FIND ?character_uid
         WHERE
-            Character(uid=?character_uid, sex="FEMALE", is_alive=True)
+            Character(uid=?character_uid, sex="FEMALE", is_alive=TRUE)
             Ruler(character_uid=?character_uid, end_year=NULL)
         """,
     ),
@@ -22,7 +22,7 @@ _RULES = [
         query="""
         FIND ?character_uid
         WHERE
-            Character(uid=?character_uid, sex="MALE", is_alive=True)
+            Character(uid=?character_uid, sex="MALE", is_alive=TRUE)
             Ruler(character_uid=?character_uid, end_year=NULL)
         """,
     ),

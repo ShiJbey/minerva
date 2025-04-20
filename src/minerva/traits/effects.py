@@ -25,6 +25,10 @@ from minerva.characters.helpers import (
 )
 from minerva.ecs import Entity
 from minerva.relationships.base_types import RelationshipManager, RelationshipModifier
+from minerva.relationships.helpers import (
+    increment_attraction_base,
+    increment_opinion_base,
+)
 from minerva.stats.base_types import StatModifier
 from minerva.traits.base_types import TraitEffect
 
@@ -195,6 +199,42 @@ class AddProclivity(TraitEffect):
     def remove(self, target: Entity) -> None:
         entity_proclivities = target.get_component(ProclivityTracker)
         entity_proclivities.add_proclivity(self.action_type, self.proclivity)
+
+
+class IncrementOpinionEffect(TraitEffect):
+    """Increment the opinion score on a relationship."""
+
+    __slots__ = ("amount",)
+
+    amount: int
+
+    def __init__(self, amount: int) -> None:
+        super().__init__()
+        self.amount = amount
+
+    def apply(self, target: Entity) -> None:
+        increment_opinion_base(target, self.amount)
+
+    def remove(self, target: Entity) -> None:
+        increment_opinion_base(target, -self.amount)
+
+
+class IncrementAttractionEffect(TraitEffect):
+    """Increment the attraction score on a relationship."""
+
+    __slots__ = ("amount",)
+
+    amount: int
+
+    def __init__(self, amount: int) -> None:
+        super().__init__()
+        self.amount = amount
+
+    def apply(self, target: Entity) -> None:
+        increment_attraction_base(target, self.amount)
+
+    def remove(self, target: Entity) -> None:
+        increment_attraction_base(target, -self.amount)
 
 
 class AddOpinionModifier(TraitEffect):

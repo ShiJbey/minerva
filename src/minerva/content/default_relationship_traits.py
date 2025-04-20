@@ -2,6 +2,7 @@
 
 from minerva.ecs import World
 from minerva.traits.base_types import RelationshipTrait, RelationshipTraitDatabase
+from minerva.traits.effects import IncrementOpinionEffect
 
 RELATIONSHIP_TRAITS: list[RelationshipTrait] = [
     RelationshipTrait(
@@ -47,6 +48,11 @@ RELATIONSHIP_TRAITS: list[RelationshipTrait] = [
     RelationshipTrait(
         trait_id="heir_to",
         name="Heir To",
+    ),
+    RelationshipTrait(
+        trait_id="vendetta",
+        name="Vendetta",
+        effects=[IncrementOpinionEffect(-20)],
     ),
 ]
 

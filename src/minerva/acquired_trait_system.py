@@ -11,11 +11,10 @@ from typing import Iterable, Iterator
 from minerva.ecs import System, World
 from minerva.relationships.helpers import (
     add_relationship_trait,
-    has_relationship_trait,
     remove_relationship_trait,
 )
 from minerva.sim_db import SimDB
-from minerva.traits.helpers import add_trait, has_trait, remove_trait
+from minerva.traits.helpers import add_trait, remove_trait
 
 
 class TraitRule:
@@ -97,12 +96,10 @@ class AcquiredTraitSystem(System):
                 character_entity = world.get_entity(entry[0])
 
                 for trait_id in rule.traits_to_remove:
-                    if has_trait(character_entity, trait_id):
-                        remove_trait(character_entity, trait_id)
+                    remove_trait(character_entity, trait_id)
 
                 for trait_id in rule.traits_to_add:
-                    if not has_trait(character_entity, trait_id):
-                        add_trait(character_entity, trait_id)
+                    add_trait(character_entity, trait_id)
 
 
 class SocialInferenceRule:
@@ -166,10 +163,10 @@ class SocialInferenceRuleSystem(System):
     __update_order__ = ("last",)
 
     def on_update(self, world: World) -> None:
-        trait_rule_db = world.get_resource(TraitRuleDatabase)
+        social_inference_rule_db = world.get_resource(SocialInferenceRuleDatabase)
         sim_db = world.get_resource(SimDB)
 
-        for rule in trait_rule_db.iter_rules():
+        for rule in social_inference_rule_db.iter_rules():
             if rule.query == "":
                 raise ValueError(
                     f"SocialInferenceRule '{rule.name}' is missing a query."
@@ -187,17 +184,11 @@ class SocialInferenceRuleSystem(System):
                 relationship_target = world.get_entity(entry[1])
 
                 for trait_id in rule.traits_to_remove:
-                    if has_relationship_trait(
+                    remove_relationship_trait(
                         relationship_owner, relationship_target, trait_id
-                    ):
-                        remove_relationship_trait(
-                            relationship_owner, relationship_target, trait_id
-                        )
+                    )
 
                 for trait_id in rule.traits_to_add:
-                    if has_relationship_trait(
+                    add_relationship_trait(
                         relationship_owner, relationship_target, trait_id
-                    ):
-                        add_relationship_trait(
-                            relationship_owner, relationship_target, trait_id
-                        )
+                    )
