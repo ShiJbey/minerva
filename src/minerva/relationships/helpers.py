@@ -440,7 +440,7 @@ class RelationshipSystem(System):
         cursor = db.cursor()
 
         cursor.execute(
-            """UPDATE relationships SET opinion=? WHERE uid=?""",
+            """UPDATE Relationship SET opinion=? WHERE uid=?""",
             (action.value, relationship.uid),
         )
 
@@ -456,7 +456,7 @@ class RelationshipSystem(System):
         cursor = db.cursor()
 
         cursor.execute(
-            """UPDATE relationships SET attraction=? WHERE uid=?""",
+            """UPDATE Relationship SET attraction=? WHERE uid=?""",
             (action.value, relationship.uid),
         )
 
