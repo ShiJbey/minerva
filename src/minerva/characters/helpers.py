@@ -607,6 +607,11 @@ def assign_family_member_to_roles(
 
         family_component.warriors.add(character)
         character_component.family_roles |= FamilyRoleFlags.WARRIOR
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                "INSERT INTO FamilyRole (family_uid, character_uid, role) VALUES (?, ?, 'WARRIOR')",
+                (family.uid, character.uid),
+            )
 
         _logger.debug(
             "%s has been assigned the role of family warrior", character.name_with_uid
@@ -624,6 +629,11 @@ def assign_family_member_to_roles(
 
         family_component.advisors.add(character)
         character_component.family_roles |= FamilyRoleFlags.ADVISOR
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                "INSERT INTO FamilyRole (family_uid, character_uid, role) VALUES (?, ?, 'ADVISOR')",
+                (family.uid, character.uid),
+            )
 
         _logger.debug(
             "%s has been assigned the role of family advisor", character.name_with_uid
@@ -650,6 +660,11 @@ def unassign_family_member_from_roles(
     ):
         family_component.warriors.remove(character)
         character_component.family_roles ^= FamilyRoleFlags.WARRIOR
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                "DELETE FROM FamilyRole WHERE character_uid=? AND role='WARRIOR'",
+                (character.uid,),
+            )
 
         _logger.debug(
             "%s has been removed from their role as a family warrior",
@@ -662,6 +677,11 @@ def unassign_family_member_from_roles(
     ):
         family_component.advisors.remove(character)
         character_component.family_roles ^= FamilyRoleFlags.ADVISOR
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                "DELETE FROM FamilyRole WHERE character_uid=? AND role='ADVISOR'",
+                (character.uid,),
+            )
 
         _logger.debug(
             "%s has been removed from their role as a family advisor",
@@ -685,10 +705,20 @@ def unassign_family_member_from_all_roles(family: Entity, character: Entity) -> 
     if FamilyRoleFlags.WARRIOR in character_component.family_roles:
         family_component.warriors.remove(character)
         character_component.family_roles ^= FamilyRoleFlags.WARRIOR
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                "DELETE FROM FamilyRole WHERE character_uid=? AND role='WARRIOR'",
+                (character.uid,),
+            )
 
     if FamilyRoleFlags.ADVISOR in character_component.family_roles:
         family_component.advisors.remove(character)
         character_component.family_roles ^= FamilyRoleFlags.ADVISOR
+        with family.world.get_resource(SimDB) as db:
+            db.execute(
+                "DELETE FROM FamilyRole WHERE character_uid=? AND role='ADVISOR'",
+                (character.uid,),
+            )
 
     _logger.debug("%s has been removed from all family roles", character.name_with_uid)
 

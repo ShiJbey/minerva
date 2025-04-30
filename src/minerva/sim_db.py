@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS Relationship;
 DROP TABLE IF EXISTS RelationshipTrait;
 DROP TABLE IF EXISTS Territory;
 DROP TABLE IF EXISTS Family;
+DROP TABLE IF EXISTS FamilyRole;
 DROP TABLE IF EXISTS Ruler;
 DROP TABLE IF EXISTS Dynasty;
 DROP TABLE IF EXISTS Alliance;
@@ -84,6 +85,14 @@ CREATE TABLE Family (
     FOREIGN KEY (family_head_uid) REFERENCES Character(uid),
     FOREIGN KEY (alliance_uid) REFERENCES Alliance(uid),
     FOREIGN KEY (home_base_uid) REFERENCES Territory(uid)
+) STRICT;
+
+CREATE TABLE FamilyRole (
+    family_uid INT NOT NULL,
+    character_uid INT NOT NULL,
+    role TEXT NOT NULL,
+    FOREIGN KEY (family_uid) REFERENCES Family(uid),
+    FOREIGN KEY (character_uid) REFERENCES Character(uid)
 ) STRICT;
 
 CREATE TABLE Ruler (

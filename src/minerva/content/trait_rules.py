@@ -13,6 +13,7 @@ _RULES = [
         WHERE
             Character(uid=?character_uid, sex="FEMALE", is_alive=TRUE)
             Ruler(character_uid=?character_uid, end_year=NULL)
+            FamilyRole(character_uid=?character_uid, role="WARRIOR")
         """,
     ),
     TraitRule(
@@ -24,6 +25,7 @@ _RULES = [
         WHERE
             Character(uid=?character_uid, sex="MALE", is_alive=TRUE)
             Ruler(character_uid=?character_uid, end_year=NULL)
+            FamilyRole(character_uid=?character_uid, role="WARRIOR")
         """,
     ),
 ]
