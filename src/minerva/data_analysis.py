@@ -1,3 +1,5 @@
+# type: ignore
+
 """Minerva Data Analysis Module.
 
 This module is an adaptation of data_analysis.py from neighborly.

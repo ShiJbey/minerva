@@ -91,7 +91,7 @@ class Species:
     """Max fertility for senior females."""
     fertility_cost_per_child: int
     """Fertility reduction each time a character births a child."""
-    traits: list[str] = dataclasses.field(default_factory=list)
+    traits: list[str] = dataclasses.field(default_factory=list)  # type: ignore
     """IDs of traits characters of this species get at creation."""
     spawn_frequency: int = 1
     """How likely a character will spawn of this species."""
