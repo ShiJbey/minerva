@@ -6,6 +6,10 @@ from minerva.traits.effects import IncrementOpinionEffect
 
 RELATIONSHIP_TRAITS: list[RelationshipTrait] = [
     RelationshipTrait(
+        trait_id="parent",
+        name="Parent",
+    ),
+    RelationshipTrait(
         trait_id="mother",
         name="Mother",
     ),

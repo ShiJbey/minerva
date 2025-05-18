@@ -107,7 +107,12 @@ from minerva.characters.war_helpers import (
 )
 from minerva.config import Config
 from minerva.ecs import Active, Entity, System, SystemGroup, World
-from minerva.events import PregnancyEvent
+from minerva.events import (
+    AllianceDisbandedEvent,
+    PregnancyEvent,
+    WarLostEvent,
+    WarWonEvent,
+)
 from minerva.game_action import ActionSystem
 from minerva.game_state import GameState
 from minerva.pcg.character import FamilyGenOptions, spawn_family
@@ -1027,9 +1032,11 @@ class AllianceSystem(System):
             alliance = world.get_entity(uid)
             if alliance_component.founder_family.is_active is False:
                 # Disband the alliance
+                AllianceDisbandedEvent(alliance).log_event()
                 end_alliance(alliance)
 
             if len(alliance_component.member_families) <= 1:
+                AllianceDisbandedEvent(alliance).log_event()
                 end_alliance(alliance)
 
 
@@ -1431,6 +1438,23 @@ class WarUpdateSystem(System):
                 winner_allies = war.defender_allies
                 loser = war.aggressor
                 loser_allies = war.aggressor_allies
+
+            winner_family_head = winner.get_component(Family).head
+            loser_family_head = loser.get_component(Family).head
+            assert winner_family_head
+            assert loser_family_head
+
+            WarWonEvent(
+                subject=winner_family_head,
+                opponent=loser_family_head,
+                territory=war.contested_territory,
+            ).log_event()
+
+            WarLostEvent(
+                subject=loser_family_head,
+                opponent=winner_family_head,
+                territory=war.contested_territory,
+            ).log_event()
 
             # Determine casualties
             casualties: list[Entity] = []

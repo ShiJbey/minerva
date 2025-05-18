@@ -887,6 +887,7 @@ def set_character_mother(character: Entity, mother: Optional[Entity]) -> None:
 
     if mother is not None:
         add_relationship_trait(character, mother, "mother")
+        add_relationship_trait(character, mother, "parent")
 
 
 def set_character_father(character: Entity, father: Optional[Entity]) -> None:
@@ -896,6 +897,7 @@ def set_character_father(character: Entity, father: Optional[Entity]) -> None:
 
     if father is not None:
         add_relationship_trait(character, father, "father")
+        add_relationship_trait(character, father, "parent")
 
 
 def set_character_biological_father(

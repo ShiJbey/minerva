@@ -12,7 +12,7 @@ import numpy as np
 import tqdm
 import matplotlib.pyplot as plt
 
-from minerva.characters.components import Character
+from minerva.characters.components import Character, HeadOfFamily
 from minerva.ecs import Active
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
@@ -152,7 +152,7 @@ class BatchSiftingResult:
 
 def _get_sim_population(sim: Simulation) -> int:
     """Get the population of living characters in the simulation."""
-    return len(list(sim.world.query_components((Character, Active))))
+    return len(list(sim.world.query_components((Character, HeadOfFamily, Active))))
 
 
 def batch_sift_simulations(
@@ -181,9 +181,9 @@ def batch_sift_simulations(
     """
     result = BatchSiftingResult()
 
-    for _ in range(n_instances):
+    for i in range(n_instances):
         sim = factory()
-
+        print(f"Instance: {i}, World Seed: {sim.config.seed}")
         for _ in tqdm.tqdm(range(years)):
             sim.step()
 

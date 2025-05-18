@@ -6,6 +6,7 @@ from typing import Optional
 
 from minerva.characters.components import Family
 from minerva.ecs import Entity
+from minerva.events import LoseControlOfTerritoryEvent, TakeControlOfTerritoryEvent
 from minerva.game_action import GameAction
 from minerva.sim_db import SimDB
 from minerva.stats.base_types import (
@@ -102,12 +103,27 @@ class SetTerritoryControllingFamily(GameAction):
             former_sovereign = territory_component.controlling_family
             family_component = former_sovereign.get_component(Family)
             family_component.controlled_territories.remove(territory)
+
+            family_head = territory_component.controlling_family.get_component(
+                Family
+            ).head
+            if family_head is not None:
+                LoseControlOfTerritoryEvent(
+                    family=territory_component.controlling_family,
+                    territory=territory,
+                ).log_event()
+
             territory_component.controlling_family = None
 
         if family is not None:
             family_component = family.get_component(Family)
             family_component.controlled_territories.add(territory)
             territory_component.controlling_family = family
+            family_head = family.get_component(Family).head
+            if family_head is not None:
+                TakeControlOfTerritoryEvent(
+                    territory=self.territory, family=family, family_head=family_head
+                ).log_event()
 
         with territory.world.get_resource(SimDB) as db:
             db.execute(

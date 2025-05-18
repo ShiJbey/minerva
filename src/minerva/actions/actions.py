@@ -47,6 +47,7 @@ from minerva.characters.war_helpers import (
     add_family_to_alliance,
     create_coup_scheme,
     create_war_scheme,
+    remove_family_from_alliance,
     start_alliance,
 )
 from minerva.config import Config
@@ -759,7 +760,7 @@ class LeaveAllianceAction(AIAction):
                     IncrementOpinion(member_family_component.head, self.initiator, -20)
                 )
 
-        # end_alliance(self.alliance)
+        remove_family_from_alliance(alliance=self.alliance, family=self.family)
 
         LeaveAllianceEvent(
             alliance=self.alliance, family=self.family, family_head=self.character

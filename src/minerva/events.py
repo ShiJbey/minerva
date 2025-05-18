@@ -680,7 +680,7 @@ class TakeControlOfTerritoryEvent(Event):
                         uid, family_head, family, territory, timestamp
                     )
                 VALUES
-                    (?, ?, ?)
+                    (?, ?, ?, ?, ?)
                 """,
                 (
                     self.uid,
@@ -801,7 +801,7 @@ class AllianceDisbandedEvent(Event):
                         uid, alliance, timestamp
                     )
                 VALUES
-                    (?, ?, ?, ?, ?)
+                    (?, ?, ?)
                 """,
                 (
                     self.uid,
@@ -1582,9 +1582,9 @@ class SentenceToDeathEvent(Event):
         with world.get_resource(SimDB) as db:
             db.executescript(
                 """
-                DROP TABLE IF EXISTS SentencedToDeathEvent;
+                DROP TABLE IF EXISTS SentenceToDeathEvent;
 
-                CREATE TABLE SentencedToDeathEvent (
+                CREATE TABLE SentenceToDeathEvent (
                     uid INT NOT NULL PRIMARY KEY,
                     subject INT NOT NULL,
                     target INT NOT NULL,
@@ -1601,7 +1601,7 @@ class SentenceToDeathEvent(Event):
             db.execute(
                 """
                 INSERT INTO
-                    SentencedToDeathEvent (uid, subject, target, reason, timestamp)
+                    SentenceToDeathEvent (uid, subject, target, reason, timestamp)
                 VALUES
                     (?, ?, ?, ?, ?);
                 """,
