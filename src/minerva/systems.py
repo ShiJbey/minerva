@@ -25,6 +25,7 @@ from minerva.actions.actions import (
     LoseControlOfTerritory,
     OverthrowRulerAction,
     SentenceToDeath,
+    TryGetMarriedAction,
 )
 from minerva.actions.base_types import (
     AIAction,
@@ -747,7 +748,7 @@ class MarriageSystem(System):
 
     def on_update(self, world: World) -> None:
         rng = world.get_resource(random.Random)
-        chance_get_married = 1.0 / 12.0
+
         for _, (character, _) in world.query_components((Character, Active)):
             if character.spouse:
                 continue
@@ -758,7 +759,9 @@ class MarriageSystem(System):
             ):
                 continue
 
-            if not rng.random() < chance_get_married:
+            if not rng.random() < get_proclivity_score(
+                TryGetMarriedAction(character.entity)
+            ):
                 continue
 
             eligible_singles: list[Character] = []
@@ -951,7 +954,22 @@ class MarriageSystem(System):
 
             new_spouse = rng.choice(eligible_singles)
 
-            GetMarriedAction(character.entity, new_spouse.entity).execute()
+            initiator_to_new_spouse_action = GetMarriedAction(
+                character.entity, new_spouse.entity
+            )
+
+            new_spouse_to_initiator_action = GetMarriedAction(
+                character.entity, new_spouse.entity
+            )
+
+            initiator_proclivity = get_proclivity_score(initiator_to_new_spouse_action)
+            new_spouse_proclivity = get_proclivity_score(new_spouse_to_initiator_action)
+
+            if (
+                rng.random() < initiator_proclivity
+                and rng.random() < new_spouse_proclivity
+            ):
+                initiator_to_new_spouse_action.execute()
 
 
 class PregnancySystem(System):

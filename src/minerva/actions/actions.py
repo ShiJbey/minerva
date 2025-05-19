@@ -141,14 +141,40 @@ class GiveToTerritoriesAction(AIAction):
         GiveToTerritoriesEvent(self.character).log_event()
 
 
+class TryGetMarriedAction(AIAction):
+    """A character decides if they generally want to get married."""
+
+    __slots__ = ("character",)
+
+    character: Entity
+
+    def __init__(self, character: Entity) -> None:
+        super().__init__(character)
+        self.character = character
+        self.context["character"] = character.name_with_uid
+
+    def on_execute(self) -> None:
+        # This action intentionally does nothing. It is a placeholder for
+        # organizing proclivities. This execute method will never be called.
+        return
+
+
 class GetMarriedAction(AIAction):
-    """An instance of a get married self."""
+    """Two characters get married.
+
+    The spouse always marries into the initiator's family.
+    """
 
     __action_cost__ = 0
     __action_cooldown__ = 0
     __action_tags__ = ["romance", "marriage"]
 
     __slots__ = ("character", "spouse")
+
+    character: Entity
+    """The character that initiated the action."""
+    spouse: Entity
+    """Character being married to the initiator."""
 
     def __init__(self, character: Entity, spouse: Entity) -> None:
         super().__init__(character)

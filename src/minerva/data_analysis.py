@@ -154,7 +154,7 @@ class BatchSiftingResult:
 
 def _get_sim_population(sim: Simulation) -> int:
     """Get the population of living characters in the simulation."""
-    return len(list(sim.world.query_components((Character, HeadOfFamily, Active))))
+    return len(list(sim.world.query_components((Character, Active))))
 
 
 def batch_sift_simulations(
@@ -257,23 +257,23 @@ def display_bar_chart(
         values.append(mean)
         errors.append(std)
 
-    fig, ax = plt.subplots()  # type: ignore
-    bars = ax.bar(  # type: ignore
+    fig, ax = plt.subplots(1, 1, figsize=(16, 10))  # type: ignore
+    bars = ax.barh(  # type: ignore
         categories,
         values,
         yerr=errors,
         color="skyblue",
         edgecolor="black",
     )
-    ax.set_xlabel("Patterns")  # type: ignore
-    plt.xticks(rotation=45, ha="right")
+    ax.set_ylabel("Patterns")  # type: ignore
+    # plt.xticks(rotation=45, ha="right")
     if operation == "raw":
-        ax.set_ylabel("Raw Count Mean")  # type: ignore
+        ax.set_xlabel("Raw Count Mean")  # type: ignore
         ax.set_title("Sifting Pattern Raw Mean Counts")  # type: ignore
     else:
-        ax.set_ylabel("Per-Capita Count Mean")  # type: ignore
+        ax.set_xlabel("Per-Capita Count Mean")  # type: ignore
         ax.set_title("Sifting Pattern Mean Per-Capita Counts")  # type: ignore
-
+    plt.tight_layout()
     plt.show()  # type: ignore
 
 
