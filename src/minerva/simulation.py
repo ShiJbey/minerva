@@ -16,12 +16,12 @@ from minerva.acquired_trait_system import (
 from minerva.actions import behaviors
 from minerva.actions.actions import SeizeTerritoryAction
 from minerva.actions.base_types import (
-    P_ALWAYS,
     AIBehaviorLibrary,
     AIBrain,
     AIBrainDatabase,
     Proclivity,
     ProclivityDatabase,
+    ProclivityLevel,
 )
 from minerva.actions.selection_strategies import WeightedActionSelectStrategy
 from minerva.actions.sensors import (
@@ -136,7 +136,7 @@ class Simulation:
     def initialize_game_action_performers(self) -> None:
         """Initialize performers for GameActions."""
         self.world.get_resource(ProclivityDatabase).add_proclivity(
-            SeizeTerritoryAction, Proclivity(P_ALWAYS)
+            SeizeTerritoryAction, Proclivity(ProclivityLevel.ALWAYS)
         )
 
     def initialize_brains(self) -> None:

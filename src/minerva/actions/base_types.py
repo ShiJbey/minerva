@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+import enum
 from typing import (
     Any,
     Callable,
@@ -29,14 +30,18 @@ from minerva.characters.components import Character
 from minerva.ecs import Component, Entity
 from minerva.game_action import GameAction
 
-P_ALWAYS = 999
-P_USUALLY = 7
-P_FREQUENTLY = 3
-P_LIKELY = 1
-P_UNLIKELY = -1
-P_INFREQUENTLY = -3
-P_RARELY = -7
-P_NEVER = -999
+
+class ProclivityLevel(enum.IntEnum):
+    """Preset proclivity scores for easier adjustment."""
+
+    ALWAYS = 999
+    USUALLY = 7
+    FREQUENTLY = 3
+    LIKELY = 1
+    UNLIKELY = -1
+    INFREQUENTLY = -3
+    RARELY = -7
+    NEVER = -999
 
 
 class ActionSelectionStrategy(ABC):
@@ -369,7 +374,7 @@ def get_proclivity_score(action: AIAction) -> float:
     for proclivity in action_proclivities:
         score = proclivity(action)
 
-        if score <= P_NEVER:
+        if score <= ProclivityLevel.NEVER:
             return 0.0
 
         if score > 0:
@@ -382,7 +387,7 @@ def get_proclivity_score(action: AIAction) -> float:
     for proclivity in action_proclivities:
         score = proclivity(action)
 
-        if score <= P_NEVER:
+        if score <= ProclivityLevel.NEVER:
             return 0.0
 
         if score > 0:

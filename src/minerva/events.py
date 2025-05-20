@@ -501,16 +501,40 @@ class MarriageEvent(Event):
     __slots__ = (
         "subject",
         "spouse",
+        "initiator",
+        "subject_family_rank",
+        "spouse_family_rank",
+        "is_subject_family_head",
+        "is_spouse_family_head",
     )
 
     subject: Entity
     spouse: Entity
+    initiator: Entity
+    subject_family_rank: int
+    spouse_family_rank: int
+    is_subject_family_head: bool
+    is_spouse_family_head: bool
 
-    def __init__(self, subject: Entity, spouse: Entity) -> None:
+    def __init__(
+        self,
+        subject: Entity,
+        spouse: Entity,
+        initiator: Entity,
+        subject_family_rank: int,
+        spouse_family_rank: int,
+        is_subject_family_head: bool,
+        is_spouse_family_head: bool,
+    ) -> None:
         super().__init__(subject.world)
         self.subject = subject
         self.spouse = spouse
-        self.logged_to = [subject]
+        self.initiator = initiator
+        self.logged_to = [subject, spouse]
+        self.subject_family_rank = subject_family_rank
+        self.spouse_family_rank = spouse_family_rank
+        self.is_subject_family_head = is_subject_family_head
+        self.is_spouse_family_head = is_spouse_family_head
 
     def get_description(self) -> str:
         return "{} married {}.".format(
@@ -529,6 +553,11 @@ class MarriageEvent(Event):
                     uid INT NOT NULL PRIMARY KEY,
                     subject INT NOT NULL,
                     spouse INT NOT NULL,
+                    initiator INT NOT NULL,
+                    subject_family_rank INT NOT NULL,
+                    spouse_family_rank INT NOT NULL,
+                    is_subject_family_head INT NOT NULL,
+                    is_spouse_family_head INT NOT NULL,
                     timestamp INT NOT NULL,
                     FOREIGN KEY (subject) REFERENCES Character(uid),
                     FOREIGN KEY (spouse) REFERENCES Character(uid)
@@ -541,11 +570,31 @@ class MarriageEvent(Event):
             db.execute(
                 """
                 INSERT INTO
-                    MarriageEvent (uid, subject, spouse, timestamp)
+                    MarriageEvent (
+                        uid,
+                        subject,
+                        spouse,
+                        initiator,
+                        subject_family_rank,
+                        spouse_family_rank,
+                        is_subject_family_head,
+                        is_spouse_family_head,
+                        timestamp
+                    )
                 VALUES
-                    (?, ?, ?, ?);
+                    (?, ?, ?, ?, ?, ?, ?, ?, ? );
                 """,
-                (self.uid, self.subject.uid, self.spouse.uid, self.timestamp),
+                (
+                    self.uid,
+                    self.subject.uid,
+                    self.spouse.uid,
+                    self.initiator.uid,
+                    self.subject_family_rank,
+                    self.spouse_family_rank,
+                    self.is_subject_family_head,
+                    self.is_spouse_family_head,
+                    self.timestamp,
+                ),
             )
 
 

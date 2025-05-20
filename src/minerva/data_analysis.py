@@ -1,5 +1,3 @@
-# type: ignore
-
 """Minerva Data Analysis Module.
 
 This module is an adaptation of data_analysis.py from neighborly.
@@ -7,14 +5,17 @@ I adjusted the classes to work exclusively with drolta and sifting
 patterns for one of the final studies of my dissertation.
 """
 
+import shutil
+import pathlib
 import math
 from typing import Callable, Literal, Optional
 
 import numpy as np
+import rich.console
 import tqdm
 import matplotlib.pyplot as plt
 
-from minerva.characters.components import Character, HeadOfFamily
+from minerva.characters.components import Character
 from minerva.ecs import Active
 from minerva.sim_db import SimDB
 from minerva.simulation import Simulation
@@ -70,6 +71,9 @@ class BatchSiftingResult:
 
     def __init__(self) -> None:
         self.samples = []
+
+    def __len__(self) -> int:
+        return len(self.samples)
 
     def get_raw_count_median(self) -> dict[str, float]:
         """Calculate the median of the raw counts for each sifting pattern."""
@@ -157,11 +161,19 @@ def _get_sim_population(sim: Simulation) -> int:
     return len(list(sim.world.query_components((Character, Active))))
 
 
+def _delete_cache_directory(directory_path: str) -> None:
+    """Delete the cache directory at the given path and all its contents."""
+    path = pathlib.Path(directory_path)
+    if path.exists() and path.is_dir():
+        shutil.rmtree(path)
+
+
 def batch_sift_simulations(
     factory: Callable[[], Simulation],
     n_instances: int,
     years: int,
     sifting_patterns: list[SiftingPattern],
+    db_cache_dir: str = "",
 ) -> BatchSiftingResult:
     """Run multiple simulations and collect/aggregate data from each.
 
@@ -183,6 +195,11 @@ def batch_sift_simulations(
     """
     result = BatchSiftingResult()
 
+    if db_cache_dir:
+        cache_dir_path = pathlib.Path(db_cache_dir)
+        if cache_dir_path.exists():
+            _delete_cache_directory(str(cache_dir_path))
+
     for i in range(n_instances):
         sim = factory()
         print(f"Instance: {i}, World Seed: {sim.config.seed}")
@@ -203,12 +220,18 @@ def batch_sift_simulations(
 
         result.samples.append(result_entry)
 
+        if db_cache_dir:
+            cache_dir_path = pathlib.Path(db_cache_dir)
+            if not cache_dir_path.exists():
+                cache_dir_path.mkdir(parents=True, exist_ok=True)
+            sim.export_db(str(cache_dir_path / f"{i}_{sim.config.seed}.db"))
+
     return result
 
 
 def display_bar_chart(
     batch_result: BatchSiftingResult,
-    operation: Literal["raw", "per_capita"] = "raw",
+    operation: Literal["raw", "per_capita"] = "per_capita",
     include: Optional[list[str]] = None,
     exclude: Optional[list[str]] = None,
 ) -> None:
@@ -257,7 +280,7 @@ def display_bar_chart(
         values.append(mean)
         errors.append(std)
 
-    fig, ax = plt.subplots(1, 1, figsize=(16, 10))  # type: ignore
+    _, ax = plt.subplots(1, 1, figsize=(16, 8))  # type: ignore
     bars = ax.barh(  # type: ignore
         categories,
         values,
@@ -265,25 +288,33 @@ def display_bar_chart(
         color="skyblue",
         edgecolor="black",
     )
-    ax.set_ylabel("Patterns")  # type: ignore
-    # plt.xticks(rotation=45, ha="right")
+
+    ax.set_ylabel("Sifting Patterns")  # type: ignore
+
     if operation == "raw":
-        ax.set_xlabel("Raw Count Mean")  # type: ignore
-        ax.set_title("Sifting Pattern Raw Mean Counts")  # type: ignore
+        ax.bar_label(bars, padding=6)  # type: ignore
+        ax.set_title(  # type: ignore
+            f"Mean Counts of Sifting Patterns (N = {len(batch_result)})"
+        )
+        ax.set_xlabel("Mean Count")  # type: ignore
     else:
-        ax.set_xlabel("Per-Capita Count Mean")  # type: ignore
-        ax.set_title("Sifting Pattern Mean Per-Capita Counts")  # type: ignore
+        ax.bar_label(bars, padding=6, fmt=lambda v: f"{v:.4f}")  # type: ignore
+        ax.set_title(  # type: ignore
+            f"Mean Per-Capita Counts of Sifting Patterns (N = {len(batch_result)})"
+        )
+        ax.set_xlabel("Mean Per-Capita Count")  # type: ignore
+
     plt.tight_layout()
     plt.show()  # type: ignore
 
 
 def validate_between(
     batch_result: BatchSiftingResult,
-    patterns: list[str],
+    pattern: str,
     upper_bound: float,
     lower_bound: float,
-    operation: Literal["raw", "per_capita"] = "raw",
-    display_result: bool = True,
+    operation: Literal["raw", "per_capita"] = "per_capita",
+    display_result: bool = False,
 ) -> bool:
     """Validate that the values for the results are between the bounds.
 
@@ -291,8 +322,8 @@ def validate_between(
     ----------
     batch_result
         The result from sifting multiple simulations
-    patterns
-        The names of patterns to validate
+    pattern
+        The name of pattern to validate
     upper_bound
         The maximum count/value for a bar
     lower_bound
@@ -307,10 +338,6 @@ def validate_between(
     bool
         True if the patterns passed the validation, False otherwise.
     """
-    if len(patterns) == 0:
-        raise ValueError("No patterns provided to validation check.")
-
-    include_set: set[str] = set(patterns)
 
     data: dict[str, tuple[float, float]]
     if operation == "raw":
@@ -318,14 +345,18 @@ def validate_between(
     else:
         data = batch_result.get_per_capita_distribution()
 
-    data = {key: value for key, value in data.items() if key in include_set}
+    mean, _ = data[pattern]
 
-    validation_passed = True
+    validation_passed = lower_bound <= mean <= upper_bound
 
-    for _, (mean, _) in data.items():
-        if mean > upper_bound or mean < lower_bound:
-            validation_passed = False
-            break
+    console = rich.console.Console()
+    if validation_passed:
+        console.print(f"[green](✅ Pass) '{pattern}' [/green]")
+    else:
+        console.print(f"[red](❌ Fail) '{pattern}' [/red]")
+        console.print(
+            f"[red]↳ Expected value between {lower_bound} and {upper_bound} but was {mean}.[/red]"
+        )
 
     if display_result:
         categories: list[str] = []
@@ -338,9 +369,9 @@ def validate_between(
             values.append(mean)
             errors.append(std)
 
-        fig, ax = plt.subplots()  # type: ignore
+        _, ax = plt.subplots()  # type: ignore
 
-        bars = ax.bar(  # type: ignore
+        ax.bar(  # type: ignore
             categories,
             values,
             yerr=errors,
@@ -349,7 +380,7 @@ def validate_between(
         )
         ax.set_xlabel("Patterns")  # type: ignore
 
-        plt.xticks(rotation=45, ha="right")
+        plt.xticks(rotation=45, ha="right")  # type: ignore
 
         if operation == "raw":
             ax.set_ylabel("Raw Count Mean")  # type: ignore
@@ -359,7 +390,7 @@ def validate_between(
             ax.set_title("Validate Between: Mean Per-Capita Counts")  # type: ignore
 
         if validation_passed:
-            ax.text(
+            ax.text(  # type: ignore
                 0.95,
                 0.95,
                 "Pass",
@@ -369,10 +400,10 @@ def validate_between(
                 horizontalalignment="right",
                 bbox=dict(boxstyle="round", facecolor="green", alpha=0.5),
             )
-            ax.axhspan(lower_bound, upper_bound, color="green", alpha=0.3)
+            ax.axhspan(lower_bound, upper_bound, color="green", alpha=0.3)  # type: ignore
 
         else:
-            ax.text(
+            ax.text(  # type: ignore
                 0.95,
                 0.95,
                 "Fail",
@@ -382,19 +413,19 @@ def validate_between(
                 horizontalalignment="right",
                 bbox=dict(boxstyle="round", facecolor="red", alpha=0.5),
             )
-            ax.axhspan(lower_bound, upper_bound, color="red", alpha=0.3)
+            ax.axhspan(lower_bound, upper_bound, color="red", alpha=0.3)  # type: ignore
 
-        plt.show()
+        plt.show()  # type: ignore
 
     return validation_passed
 
 
 def validate_above(
     batch_result: BatchSiftingResult,
-    patterns: list[str],
+    pattern: str,
     lower_bound: float,
-    operation: Literal["raw", "per_capita"] = "raw",
-    display_result: bool = True,
+    operation: Literal["raw", "per_capita"] = "per_capita",
+    display_result: bool = False,
 ) -> bool:
     """Validate that the values for the results are above a lower-bound.
 
@@ -402,8 +433,8 @@ def validate_above(
     ----------
     batch_result
         The result from sifting multiple simulations
-    patterns
-        The names of patterns to validate
+    pattern
+        The name of pattern to validate
     lower_bound
         The minimum count/value for a bar
     operation
@@ -416,25 +447,24 @@ def validate_above(
     bool
         True if the patterns passed the validation, False otherwise.
     """
-    if len(patterns) == 0:
-        raise ValueError("No patterns provided to validation check.")
-
-    include_set: set[str] = set(patterns)
-
     data: dict[str, tuple[float, float]]
     if operation == "raw":
         data = batch_result.get_raw_count_distribution()
     else:
         data = batch_result.get_per_capita_distribution()
 
-    data = {key: value for key, value in data.items() if key in include_set}
+    mean, _ = data[pattern]
 
-    validation_passed = True
+    validation_passed = lower_bound <= mean
 
-    for _, (mean, _) in data.items():
-        if mean < lower_bound:
-            validation_passed = False
-            break
+    console = rich.console.Console()
+    if validation_passed:
+        console.print(f"[green](✅ Pass) '{pattern}' [/green]")
+    else:
+        console.print(f"[red](❌ Fail) '{pattern}' [/red]")
+        console.print(
+            f"[red]↳ Expected value above {lower_bound} but was {mean}.[/red]"
+        )
 
     if display_result:
         categories: list[str] = []
@@ -447,20 +477,20 @@ def validate_above(
             values.append(mean)
             errors.append(std)
 
-        fig, ax = plt.subplots()  # type: ignore
+        _, ax = plt.subplots()  # type: ignore
 
-        ax.axhline(y=lower_bound, color="r", linestyle="-")
+        ax.axhline(y=lower_bound, color="r", linestyle="-")  # type: ignore
 
-        bars = ax.bar(  # type: ignore
+        ax.bar(  # type: ignore
             categories,
             values,
             yerr=errors,
             color="skyblue",
             edgecolor="black",
         )
-        ax.set_xlabel("Patterns")  # type: ignore
+        ax.set_xlabel("Pattern")  # type: ignore
 
-        plt.xticks(rotation=45, ha="right")
+        plt.xticks(ha="right")  # type: ignore
 
         if operation == "raw":
             ax.set_ylabel("Raw Count Mean")  # type: ignore
@@ -470,7 +500,7 @@ def validate_above(
             ax.set_title("Validate Above: Mean Per-Capita Counts")  # type: ignore
 
         if validation_passed:
-            ax.text(
+            ax.text(  # type: ignore
                 0.95,
                 0.95,
                 "Pass",
@@ -482,7 +512,7 @@ def validate_above(
             )
 
         else:
-            ax.text(
+            ax.text(  # type: ignore
                 0.95,
                 0.95,
                 "Fail",
@@ -493,17 +523,17 @@ def validate_above(
                 bbox=dict(boxstyle="round", facecolor="red", alpha=0.5),
             )
 
-        plt.show()
+        plt.show()  # type: ignore
 
     return validation_passed
 
 
 def validate_below(
     batch_result: BatchSiftingResult,
-    patterns: list[str],
+    pattern: str,
     upper_bound: float,
-    operation: Literal["raw", "per_capita"] = "raw",
-    display_result: bool = True,
+    operation: Literal["raw", "per_capita"] = "per_capita",
+    display_result: bool = False,
 ) -> bool:
     """Validate that the values for the results are between the bounds.
 
@@ -511,8 +541,8 @@ def validate_below(
     ----------
     batch_result
         The result from sifting multiple simulations
-    patterns
-        The names of patterns to validate
+    pattern
+        The name of pattern to validate
     upper_bound
         The maximum count/value for a bar
     operation
@@ -525,25 +555,24 @@ def validate_below(
     bool
         True if the patterns passed the validation, False otherwise.
     """
-    if len(patterns) == 0:
-        raise ValueError("No patterns provided to validation check.")
-
-    include_set: set[str] = set(patterns)
-
     data: dict[str, tuple[float, float]]
     if operation == "raw":
         data = batch_result.get_raw_count_distribution()
     else:
         data = batch_result.get_per_capita_distribution()
 
-    data = {key: value for key, value in data.items() if key in include_set}
+    mean, _ = data[pattern]
 
-    validation_passed = True
+    validation_passed = mean <= upper_bound
 
-    for _, (mean, _) in data.items():
-        if mean > upper_bound:
-            validation_passed = False
-            break
+    console = rich.console.Console()
+    if validation_passed:
+        console.print(f"[green](✅ Pass) '{pattern}' [/green]")
+    else:
+        console.print(f"[red](❌ Fail) '{pattern}' [/red]")
+        console.print(
+            f"[red]↳ Expected value below {upper_bound} but was {mean}.[/red]"
+        )
 
     if display_result:
         categories: list[str] = []
@@ -556,20 +585,20 @@ def validate_below(
             values.append(mean)
             errors.append(std)
 
-        fig, ax = plt.subplots()  # type: ignore
+        _, ax = plt.subplots()  # type: ignore
 
-        ax.axhline(y=upper_bound, color="r", linestyle="-")
+        ax.axhline(y=upper_bound, color="r", linestyle="-")  # type: ignore
 
-        bars = ax.bar(  # type: ignore
+        ax.bar(  # type: ignore
             categories,
             values,
             yerr=errors,
             color="skyblue",
             edgecolor="black",
         )
-        ax.set_xlabel("Patterns")  # type: ignore
+        ax.set_xlabel("Pattern")  # type: ignore
 
-        plt.xticks(rotation=45, ha="right")
+        plt.xticks(ha="right")  # type: ignore
 
         if operation == "raw":
             ax.set_ylabel("Raw Count Mean")  # type: ignore
@@ -579,7 +608,7 @@ def validate_below(
             ax.set_title("Validate Below: Mean Per-Capita Counts")  # type: ignore
 
         if validation_passed:
-            ax.text(
+            ax.text(  # type: ignore
                 0.95,
                 0.95,
                 "Pass",
@@ -591,7 +620,7 @@ def validate_below(
             )
 
         else:
-            ax.text(
+            ax.text(  # type: ignore
                 0.95,
                 0.95,
                 "Fail",
@@ -602,6 +631,6 @@ def validate_below(
                 bbox=dict(boxstyle="round", facecolor="red", alpha=0.5),
             )
 
-        plt.show()
+        plt.show()  # type: ignore
 
     return validation_passed

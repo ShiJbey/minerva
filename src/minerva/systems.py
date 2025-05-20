@@ -954,22 +954,12 @@ class MarriageSystem(System):
 
             new_spouse = rng.choice(eligible_singles)
 
-            initiator_to_new_spouse_action = GetMarriedAction(
-                character.entity, new_spouse.entity
-            )
+            marriage_action = GetMarriedAction(character.entity, new_spouse.entity)
 
-            new_spouse_to_initiator_action = GetMarriedAction(
-                character.entity, new_spouse.entity
-            )
+            action_proclivity = get_proclivity_score(marriage_action)
 
-            initiator_proclivity = get_proclivity_score(initiator_to_new_spouse_action)
-            new_spouse_proclivity = get_proclivity_score(new_spouse_to_initiator_action)
-
-            if (
-                rng.random() < initiator_proclivity
-                and rng.random() < new_spouse_proclivity
-            ):
-                initiator_to_new_spouse_action.execute()
+            if rng.random() < action_proclivity:
+                marriage_action.execute()
 
 
 class PregnancySystem(System):

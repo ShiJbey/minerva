@@ -21,6 +21,7 @@ from minerva.characters.components import (
 )
 from minerva.characters.helpers import (
     RemoveCharacterFromPlay,
+    RemoveFamilyFromPlay,
     get_fertility,
     increment_fertility_base,
     increment_prestige_base,
@@ -186,6 +187,16 @@ class GetMarriedAction(AIAction):
         character = self.character.get_component(Character)
         new_spouse = self.spouse.get_component(Character)
 
+        family_a = character.family
+        family_b = new_spouse.family
+        assert family_a is not None
+        assert family_b is not None
+
+        character_family_component = family_a.get_component(Family)
+        spouse_family_component = family_b.get_component(Family)
+        is_character_family_head = self.character.has_component(HeadOfFamily)
+        is_spouse_family_head = self.spouse.has_component(HeadOfFamily)
+
         start_marriage(character_a=self.character, character_b=self.spouse)
 
         # Now handle any family logistics
@@ -206,6 +217,8 @@ class GetMarriedAction(AIAction):
             # new spouse loses all their heirs
             if new_spouse.heir is not None:
                 remove_heir(new_spouse.entity)
+
+            RemoveFamilyFromPlay(family_b)
 
         # Case 2: The character is head of their family and their spouse is not
         if character.entity.has_component(
@@ -246,8 +259,25 @@ class GetMarriedAction(AIAction):
             if new_spouse.heir_to is not None:
                 remove_heir(new_spouse.heir_to)
 
-        MarriageEvent(self.character, self.spouse).log_event()
-        MarriageEvent(self.spouse, self.character).log_event()
+        MarriageEvent(
+            subject=self.character,
+            spouse=self.spouse,
+            initiator=self.character,
+            subject_family_rank=character_family_component.rank,
+            spouse_family_rank=spouse_family_component.rank,
+            is_subject_family_head=is_character_family_head,
+            is_spouse_family_head=is_spouse_family_head,
+        ).log_event()
+
+        # MarriageEvent(
+        #     subject=self.spouse,
+        #     spouse=self.character,
+        #     initiator=self.character,
+        #     subject_family_rank=spouse_family_component.rank,
+        #     spouse_family_rank=character_family_component.rank,
+        #     is_subject_family_head=is_spouse_family_head,
+        #     is_spouse_family_head=is_character_family_head,
+        # ).log_event()
 
 
 class BecomeSeniorAction(AIAction):
