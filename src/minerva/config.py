@@ -18,17 +18,6 @@ class Config(pydantic.BaseModel):
     db_path: str = ":memory:"
     """Path to the sqlite database instance."""
 
-    # === LOGGING ===
-
-    logging_enabled: bool = True
-    """Toggles if logging messages are sent anywhere."""
-    log_level: str = "INFO"
-    """The logging level to use."""
-    log_filepath: str = ""
-    """Toggles if logging output should be save to this file name in log_directory."""
-    log_to_terminal: bool = True
-    """Toggles if logs should be printed to the terminal or saved to a file."""
-
     # === INITIAL GENERATION ===
 
     world_size: tuple[int, int] = (20, 20)
@@ -71,8 +60,6 @@ class Config(pydantic.BaseModel):
     """The max number of influence points that a character can have."""
     influence_points_base: int = 100
     """The starting number of influence points given to each character."""
-    behavior_utility_threshold: float = 0.01
-    """The required utility score for a behavior to be considered."""
 
     # === Family Settings ===
 
@@ -131,13 +118,11 @@ class Config(pydantic.BaseModel):
 
     # === Territory Settings ===
 
-    max_political_influence: int = 100
-    """Max political influence a family can have in a territory."""
-    base_territory_happiness: float = 50
+    base_territory_happiness: int = 50
     """The starting population happiness score for territories."""
-    max_territory_happiness: float = 100
+    max_territory_happiness: int = 100
     """The max possible score for population happiness in a territory."""
-    happiness_revolt_threshold: float = 10
+    happiness_revolt_threshold: int = 10
     """The value below which a territory will revolt against its controlling family."""
-    months_to_quell_revolt: int = 3
-    """The number of months a family has to stop a rebellion in a territory."""
+    turns_to_quell_revolt: int = 3
+    """The number of turns a family has before being removed from power via revolt."""

@@ -9,9 +9,8 @@ from typing import Any, Callable, Generic, Iterator, Optional, TypeVar
 
 from ordered_set import OrderedSet
 
-from minerva.datetime import SimDate
 from minerva.ecs import Component, Entity
-from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
+from minerva.stats.base_types import Stat
 
 _GT = TypeVar("_GT")  # Generic Grid Type variable
 
@@ -280,10 +279,8 @@ class Territory(Component):
     __slots__ = (
         "name",
         "controlling_family",
-        "territory_id",
         "neighbors",
         "castle_position",
-        "political_influence",
         "families",
     )
 
@@ -295,8 +292,6 @@ class Territory(Component):
     """Neighboring territories."""
     castle_position: tuple[int, int]
     """The position of the castle on the screen."""
-    political_influence: dict[Entity, int]
-    """The Political influence held by all families in the territory."""
     families: OrderedSet[Entity]
     """The families that reside at this territory."""
 
@@ -310,42 +305,20 @@ class Territory(Component):
         self.controlling_family = controlling_family
         self.neighbors = OrderedSet([])
         self.castle_position: tuple[int, int] = (0, 0)
-        self.political_influence = {}
         self.families = OrderedSet([])
 
 
-class PopulationHappiness(StatComponent):
+class PopulationHappiness(Stat):
     """Tracks the happiness of general population (small folk) of a territory."""
-
-    def __init__(
-        self,
-        base_value: float,
-        max_value: float,
-        calculation_strategy: IStatCalculationStrategy,
-    ) -> None:
-        super().__init__(
-            calculation_strategy,
-            base_value=base_value,
-            bounds=(0, max_value),
-            is_discrete=True,
-        )
 
 
 class InRevolt(Component):
     """Tags a territory as being in revolt."""
 
-    __slots__ = ("_start_date",)
+    __slots__ = ("start_year",)
 
-    def __init__(self, start_date: SimDate) -> None:
+    start_year: int
+
+    def __init__(self, start_year: int) -> None:
         super().__init__()
-        self.start_date = start_date
-
-    @property
-    def start_date(self) -> SimDate:
-        """The date the revolt start."""
-        return self._start_date
-
-    @start_date.setter
-    def start_date(self, value: SimDate) -> None:
-        """Set the date the revolt started."""
-        self._start_date = value.copy()
+        self.start_year = start_year

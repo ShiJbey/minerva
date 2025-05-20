@@ -1,16 +1,10 @@
-"""Minerva Territory Simulation.
+"""Minerva Dynasty Simulation.
 
 Minerva is an agent-based simulation for emergent narrative research.
 
 """
 
-MAJOR_VERSION = 0
-MINOR_VERSION = 1
-PATCH_VERSION = 0
-VERSION_SUFFIX = ""
-VERSION = f"{MAJOR_VERSION}.{MINOR_VERSION}.{PATCH_VERSION}{VERSION_SUFFIX}"
-__version__ = VERSION
+__version__ = "0.3.0"
 
-__all__ = [
-    "__version__",
-]
+
+__all__ = []

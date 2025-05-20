@@ -3,43 +3,19 @@
 from __future__ import annotations
 
 import enum
-from typing import Callable, Type
 
-from minerva.characters.components import Character, LifeStage, Sex
+from minerva.characters.components import Character, CharacterStat, LifeStage, Sex
+from minerva.characters.helpers import (
+    get_diplomacy_skill,
+    get_intrigue_skill,
+    get_luck_skill,
+    get_martial_skill,
+    get_prowess_skill,
+)
 from minerva.ecs import Entity
 from minerva.relationships.base_types import Relationship, RelationshipPrecondition
-from minerva.stats.base_types import StatComponent
+from minerva.sim_db import SimDB
 from minerva.traits.helpers import has_trait
-
-
-class LambdaRelationshipPrecondition(RelationshipPrecondition):
-    """A RelationshipPrecondition defined using a lambda."""
-
-    __slots__ = ("_func",)
-
-    _func: Callable[[Entity], bool]
-
-    def __init__(self, func: Callable[[Entity], bool]) -> None:
-        super().__init__()
-        self._func = func
-
-    def evaluate(self, relationship: Entity) -> bool:
-        return self._func(relationship)
-
-
-class ConstantPrecondition(RelationshipPrecondition):
-    """Returns a constant boolean value."""
-
-    __slots__ = ("value",)
-
-    value: bool
-
-    def __init__(self, value: bool) -> None:
-        super().__init__()
-        self.value = value
-
-    def evaluate(self, relationship: Entity) -> bool:
-        return self.value
 
 
 class RelationshipHasTrait(RelationshipPrecondition):
@@ -57,7 +33,7 @@ class RelationshipHasTrait(RelationshipPrecondition):
         super().__init__()
         self.trait = trait
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         return has_trait(relationship, self.trait)
 
 
@@ -76,7 +52,7 @@ class OwnerHasTrait(RelationshipPrecondition):
         super().__init__()
         self.trait = trait
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         return has_trait(relationship.get_component(Relationship).owner, self.trait)
 
 
@@ -95,14 +71,14 @@ class TargetHasTrait(RelationshipPrecondition):
         super().__init__()
         self.trait = trait
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         return has_trait(relationship.get_component(Relationship).target, self.trait)
 
 
 class AreSameSex(RelationshipPrecondition):
     """Checks if the owner and target of a relationship belong to the dame sex."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
 
         owner_sex = relationship_component.owner.get_component(Character).sex
@@ -114,7 +90,7 @@ class AreSameSex(RelationshipPrecondition):
 class AreOppositeSex(RelationshipPrecondition):
     """Checks if the owner and target of a relationship belong to the dame sex."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
 
         owner_sex = relationship_component.owner.get_component(Character).sex
@@ -167,7 +143,7 @@ class OwnerStatRequirement(RelationshipPrecondition):
 
     __slots__ = ("stat", "required_value", "comparator")
 
-    stat: Type[StatComponent]
+    stat: CharacterStat
     """The name of the stat to check."""
     required_value: float
     """The skill level to check for."""
@@ -176,7 +152,7 @@ class OwnerStatRequirement(RelationshipPrecondition):
 
     def __init__(
         self,
-        stat: Type[StatComponent],
+        stat: CharacterStat,
         required_value: float,
         comparator: ComparatorOp,
     ) -> None:
@@ -185,28 +161,39 @@ class OwnerStatRequirement(RelationshipPrecondition):
         self.required_value = required_value
         self.comparator = comparator
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).owner
 
-        stat = character.get_component(self.stat)
+        if self.stat == CharacterStat.MARTIAL:
+            stat_value = get_martial_skill(character)
+        elif self.stat == CharacterStat.INTRIGUE:
+            stat_value = get_intrigue_skill(character)
+        elif self.stat == CharacterStat.PROWESS:
+            stat_value = get_prowess_skill(character)
+        elif self.stat == CharacterStat.DIPLOMACY:
+            stat_value = get_diplomacy_skill(character)
+        elif self.stat == CharacterStat.LUCK:
+            stat_value = get_luck_skill(character)
+        else:
+            raise ValueError(f"Unsupported stat for op: {self.stat}.")
 
         if self.comparator == ComparatorOp.EQ:
-            return stat.value == self.required_value
+            return stat_value == self.required_value
 
         elif self.comparator == ComparatorOp.NEQ:
-            return stat.value != self.required_value
+            return stat_value != self.required_value
 
         elif self.comparator == ComparatorOp.LT:
-            return stat.value < self.required_value
+            return stat_value < self.required_value
 
         elif self.comparator == ComparatorOp.GT:
-            return stat.value > self.required_value
+            return stat_value > self.required_value
 
         elif self.comparator == ComparatorOp.LTE:
-            return stat.value <= self.required_value
+            return stat_value <= self.required_value
 
         elif self.comparator == ComparatorOp.GTE:
-            return stat.value >= self.required_value
+            return stat_value >= self.required_value
 
         return False
 
@@ -216,7 +203,7 @@ class TargetStatRequirement(RelationshipPrecondition):
 
     __slots__ = ("stat", "required_value", "comparator")
 
-    stat: Type[StatComponent]
+    stat: CharacterStat
     """The name of the stat to check."""
     required_value: float
     """The skill level to check for."""
@@ -225,7 +212,7 @@ class TargetStatRequirement(RelationshipPrecondition):
 
     def __init__(
         self,
-        stat: Type[StatComponent],
+        stat: CharacterStat,
         required_value: float,
         comparator: ComparatorOp,
     ) -> None:
@@ -234,28 +221,39 @@ class TargetStatRequirement(RelationshipPrecondition):
         self.required_value = required_value
         self.comparator = comparator
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).target
 
-        stat = character.get_component(self.stat)
+        if self.stat == CharacterStat.MARTIAL:
+            stat_value = get_martial_skill(character)
+        elif self.stat == CharacterStat.INTRIGUE:
+            stat_value = get_intrigue_skill(character)
+        elif self.stat == CharacterStat.PROWESS:
+            stat_value = get_prowess_skill(character)
+        elif self.stat == CharacterStat.DIPLOMACY:
+            stat_value = get_diplomacy_skill(character)
+        elif self.stat == CharacterStat.LUCK:
+            stat_value = get_luck_skill(character)
+        else:
+            raise ValueError(f"Unsupported stat for op: {self.stat}.")
 
         if self.comparator == ComparatorOp.EQ:
-            return stat.value == self.required_value
+            return stat_value == self.required_value
 
         elif self.comparator == ComparatorOp.NEQ:
-            return stat.value != self.required_value
+            return stat_value != self.required_value
 
         elif self.comparator == ComparatorOp.LT:
-            return stat.value < self.required_value
+            return stat_value < self.required_value
 
         elif self.comparator == ComparatorOp.GT:
-            return stat.value > self.required_value
+            return stat_value > self.required_value
 
         elif self.comparator == ComparatorOp.LTE:
-            return stat.value <= self.required_value
+            return stat_value <= self.required_value
 
         elif self.comparator == ComparatorOp.GTE:
-            return stat.value >= self.required_value
+            return stat_value >= self.required_value
 
         return False
 
@@ -275,7 +273,7 @@ class OwnerLifeStageRequirement(RelationshipPrecondition):
         self.life_stage = life_stage
         self.comparator = comparator
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).owner.get_component(
             Character
         )
@@ -317,7 +315,7 @@ class TargetLifeStageRequirement(RelationshipPrecondition):
         self.life_stage = life_stage
         self.comparator = comparator
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         character = relationship.get_component(Relationship).target.get_component(
             Character
         )
@@ -355,7 +353,7 @@ class OwnerIsSex(RelationshipPrecondition):
         super().__init__()
         self.sex = sex
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         return (
             relationship.get_component(Relationship).owner.get_component(Character).sex
             == self.sex
@@ -373,7 +371,7 @@ class TargetIsSex(RelationshipPrecondition):
         super().__init__()
         self.sex = sex
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         return (
             relationship.get_component(Relationship).target.get_component(Character).sex
             == self.sex
@@ -383,7 +381,7 @@ class TargetIsSex(RelationshipPrecondition):
 class BelongToSameFamily(RelationshipPrecondition):
     """Checks if the owner and target belong to the same family."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
         target_character = relationship_component.target.get_component(Character)
@@ -397,7 +395,7 @@ class BelongToSameFamily(RelationshipPrecondition):
 class BelongToSameBirthFamily(RelationshipPrecondition):
     """Checks if the owner and target belong to the same birth family."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
         target_character = relationship_component.target.get_component(Character)
@@ -414,7 +412,7 @@ class BelongToSameBirthFamily(RelationshipPrecondition):
 class TargetIsParent(RelationshipPrecondition):
     """Checks if the target is the owner's parent."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 
@@ -427,7 +425,7 @@ class TargetIsParent(RelationshipPrecondition):
 class TargetIsChild(RelationshipPrecondition):
     """Checks if the target is a child of the owner."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 
@@ -437,7 +435,7 @@ class TargetIsChild(RelationshipPrecondition):
 class TargetIsSibling(RelationshipPrecondition):
     """Checks if the owner and target are siblings."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 
@@ -447,8 +445,34 @@ class TargetIsSibling(RelationshipPrecondition):
 class TargetIsSpouse(RelationshipPrecondition):
     """Check if the target is the owner's spouse."""
 
-    def evaluate(self, relationship: Entity) -> bool:
+    def __call__(self, relationship: Entity) -> bool:
         relationship_component = relationship.get_component(Relationship)
         owner_character = relationship_component.owner.get_component(Character)
 
         return relationship_component.target == owner_character.spouse
+
+
+class DbPrecondition(RelationshipPrecondition):
+    """Check if a relationship precondition passes."""
+
+    __slots__ = ("query",)
+
+    query: str
+
+    def __init__(self, query: str) -> None:
+        super().__init__()
+        self.query = query
+
+    def __call__(self, relationship: Entity) -> bool:
+        sim_db = relationship.world.get_resource(SimDB)
+        relationship_component = relationship.get_component(Relationship)
+        result = sim_db.query_engine.query(
+            self.query,
+            sim_db.conn,
+            bindings={
+                "?owner_uid": relationship_component.owner.uid,
+                "?target_uid": relationship_component.target.uid,
+            },
+        ).fetch_all()
+
+        return len(result) > 0

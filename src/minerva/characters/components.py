@@ -9,9 +9,20 @@ from typing import Optional
 
 from ordered_set import OrderedSet
 
-from minerva.datetime import SimDate
 from minerva.ecs import Component, Entity, TagComponent
-from minerva.stats.base_types import IStatCalculationStrategy, StatComponent
+from minerva.stats.base_types import Stat
+
+FERTILITY_MIN = 0
+FERTILITY_MAX = 100
+SKILL_MIN = 0
+SKILL_MAX = 100
+LIFESPAN_MIN = 0
+
+SKILL_EXCELLENT = 85
+SKILL_GOOD = 60
+SKILL_NEUTRAL = 20
+SKILL_BAD = 15
+SKILL_TERRIBLE = 0
 
 
 class LifeStage(enum.IntEnum):
@@ -80,7 +91,7 @@ class Species:
     """Max fertility for senior females."""
     fertility_cost_per_child: int
     """Fertility reduction each time a character births a child."""
-    traits: list[str] = dataclasses.field(default_factory=list)
+    traits: list[str] = dataclasses.field(default_factory=list)  # type: ignore
     """IDs of traits characters of this species get at creation."""
     spawn_frequency: int = 1
     """How likely a character will spawn of this species."""
@@ -161,24 +172,6 @@ class SpeciesLibrary:
         return self.species[definition_id]
 
 
-class RelationType(enum.Enum):
-    """Describes how two characters are related."""
-
-    MOTHER = enum.auto()
-    FATHER = enum.auto()
-    BIOLOGICAL_FATHER = enum.auto()
-    SIBLING = enum.auto()
-    CHILD = enum.auto()
-    GRANDPARENT = enum.auto()
-    GRANDCHILD = enum.auto()
-    SPOUSE = enum.auto()
-    EX_SPOUSE = enum.auto()
-    BETROTHED = enum.auto()
-    LOVER = enum.auto()
-    HEIR = enum.auto()
-    HEIR_TO = enum.auto()
-
-
 class Character(Component):
     """A character that inhabits the world."""
 
@@ -191,8 +184,8 @@ class Character(Component):
         "species",
         "life_stage",
         "age",
-        "birth_date",
-        "death_date",
+        "birth_year",
+        "death_year",
         "mother",
         "father",
         "biological_father",
@@ -201,15 +194,7 @@ class Character(Component):
         "grandparents",
         "grandchildren",
         "spouse",
-        "former_spouses",
         "marriage",
-        "past_marriages",
-        "betrothed_to",
-        "betrothal",
-        "past_betrothals",
-        "love_affair",
-        "past_love_affairs",
-        "lover",
         "is_alive",
         "family",
         "family_roles",
@@ -217,7 +202,6 @@ class Character(Component):
         "heir",
         "heir_to",
         "influence_points",
-        "killed_by",
     )
 
     first_name: str
@@ -228,8 +212,8 @@ class Character(Component):
     species: Species
     life_stage: LifeStage
     age: float
-    birth_date: Optional[SimDate]
-    death_date: Optional[SimDate]
+    birth_year: Optional[int]
+    death_year: Optional[int]
     mother: Optional[Entity]
     father: Optional[Entity]
     biological_father: Optional[Entity]
@@ -238,15 +222,7 @@ class Character(Component):
     grandparents: OrderedSet[Entity]
     grandchildren: OrderedSet[Entity]
     spouse: Optional[Entity]
-    former_spouses: OrderedSet[Entity]
     marriage: Optional[Entity]
-    past_marriages: OrderedSet[Entity]
-    betrothed_to: Optional[Entity]
-    betrothal: Optional[Entity]
-    past_betrothals: OrderedSet[Entity]
-    love_affair: Optional[Entity]
-    past_love_affairs: OrderedSet[Entity]
-    lover: Optional[Entity]
     is_alive: bool
     family: Optional[Entity]
     birth_family: Optional[Entity]
@@ -254,7 +230,6 @@ class Character(Component):
     heir_to: Optional[Entity]
     family_roles: FamilyRoleFlags
     influence_points: int
-    killed_by: Optional[Entity]
 
     def __init__(
         self,
@@ -276,8 +251,8 @@ class Character(Component):
         self.species = species
         self.life_stage = life_stage
         self.age = age
-        self.birth_date = None
-        self.death_date = None
+        self.birth_year = None
+        self.death_year = None
         self.mother = None
         self.father = None
         self.biological_father = None
@@ -286,15 +261,7 @@ class Character(Component):
         self.grandparents = OrderedSet([])
         self.grandchildren = OrderedSet([])
         self.spouse = None
-        self.former_spouses = OrderedSet([])
         self.marriage = None
-        self.past_marriages = OrderedSet([])
-        self.betrothed_to = None
-        self.betrothal = None
-        self.past_betrothals = OrderedSet([])
-        self.love_affair = None
-        self.past_love_affairs = OrderedSet([])
-        self.lover = None
         self.is_alive = True
         self.family = None
         self.birth_family = None
@@ -302,7 +269,6 @@ class Character(Component):
         self.heir_to = None
         self.family_roles = FamilyRoleFlags.NONE
         self.influence_points = 0
-        self.killed_by = None
 
     @property
     def full_name(self) -> str:
@@ -316,39 +282,39 @@ class Pregnancy(Component):
     __slots__ = (
         "assumed_father",
         "actual_father",
-        "conception_date",
-        "due_date",
+        "conception_year",
+        "due_year",
     )
 
     assumed_father: Optional[Entity]
     """The character believed to have impregnated this character."""
     actual_father: Entity
     """The character that actually impregnated this character."""
-    conception_date: SimDate
+    conception_year: int
     """The date the child was conceived."""
-    due_date: SimDate
+    due_year: int
     """The date the baby is due to be born."""
 
     def __init__(
         self,
         assumed_father: Optional[Entity],
         actual_father: Entity,
-        conception_date: SimDate,
-        due_date: SimDate,
+        conception_year: int,
+        due_year: int,
     ) -> None:
         super().__init__()
         self.assumed_father = assumed_father
         self.actual_father = actual_father
-        self.conception_date = conception_date
-        self.due_date = due_date.copy()
+        self.conception_year = conception_year
+        self.due_year = due_year
 
     def __str__(self) -> str:
         return (
             f"Pregnant("
             f"assumed_father={self.assumed_father.name if self.assumed_father else ''}, "
             f"actual_father={self.actual_father.name}, "
-            f"conception_date={self.conception_date}, "
-            f"due_date={self.due_date}"
+            f"conception_year={self.conception_year}, "
+            f"due_year={self.due_year}"
             f")"
         )
 
@@ -357,28 +323,10 @@ class Pregnancy(Component):
             f"Pregnant("
             f"assumed_father={self.assumed_father.name if self.assumed_father else ''}, "
             f"actual_father={self.actual_father.name}, "
-            f"conception_date={self.conception_date}, "
-            f"due_date={self.due_date}"
+            f"conception_year={self.conception_year}, "
+            f"due_year={self.due_year}"
             f")"
         )
-
-
-class Betrothal(Component):
-    """Information about one character betrothal to another."""
-
-    __slots__ = ("character", "betrothed", "start_date")
-
-    character: Entity
-    betrothed: Entity
-    start_date: SimDate
-
-    def __init__(
-        self, character: Entity, betrothed: Entity, start_date: SimDate
-    ) -> None:
-        super().__init__()
-        self.character = character
-        self.betrothed = betrothed
-        self.start_date = start_date.copy()
 
 
 class Marriage(Component):
@@ -388,36 +336,17 @@ class Marriage(Component):
     the marriage.
     """
 
-    __slots__ = ("character", "spouse", "start_date")
+    __slots__ = ("character", "spouse", "start_year")
 
     character: Entity
     spouse: Entity
-    start_date: SimDate
+    start_year: int
 
-    def __init__(self, character: Entity, spouse: Entity, start_date: SimDate) -> None:
+    def __init__(self, character: Entity, spouse: Entity, start_year: int) -> None:
         super().__init__()
         self.character = character
         self.spouse = spouse
-        self.start_date = start_date.copy()
-
-
-class RomanticAffair(Component):
-    """Information about a character's lover.
-
-    This tracks information about a lover relationship from a single character's POV.
-    """
-
-    __slots__ = ("character", "lover", "start_date")
-
-    character: Entity
-    lover: Entity
-    start_date: SimDate
-
-    def __init__(self, character: Entity, lover: Entity, start_date: SimDate) -> None:
-        super().__init__()
-        self.character = character
-        self.lover = lover
-        self.start_date = start_date
+        self.start_year = start_year
 
 
 class FamilyRoleFlags(enum.IntFlag):
@@ -433,21 +362,29 @@ class FamilyRoleFlags(enum.IntFlag):
     """The character is the head of their family."""
 
 
+class FamilyRank(enum.IntEnum):
+    """Family rank levels."""
+
+    RANK_1 = 1
+    RANK_2 = 2
+    RANK_3 = 3
+    RANK_4 = 4
+    RANK_5 = 5
+
+
 class Family(Component):
     """A collection of characters joined by blood or marriage."""
 
     __slots__ = (
         "name",
         "founder",
-        "parent_family",
-        "branch_families",
         "head",
+        "rank",
         "former_heads",
         "active_members",
         "former_members",
         "alliance",
         "home_base",
-        "territories_present_in",
         "controlled_territories",
         "warriors",
         "advisors",
@@ -461,12 +398,10 @@ class Family(Component):
     """The name of the family."""
     founder: Optional[Entity]
     """The character that founded the family."""
-    parent_family: Optional[Entity]
-    """The family that this family branched from."""
-    branch_families: OrderedSet[Entity]
-    """Branches of this family."""
     head: Optional[Entity]
     """The character that is currently in charge of the family."""
+    rank: FamilyRank
+    """The rank of this family."""
     former_heads: OrderedSet[Entity]
     """Former heads of this family."""
     former_members: OrderedSet[Entity]
@@ -475,8 +410,6 @@ class Family(Component):
     """The alliance this family belongs to."""
     home_base: Optional[Entity]
     """The territory this family belongs to."""
-    territories_present_in: OrderedSet[Entity]
-    """The territories this family has any political influence in."""
     controlled_territories: OrderedSet[Entity]
     """The territories this family has control over."""
     active_members: OrderedSet[Entity]
@@ -501,16 +434,15 @@ class Family(Component):
         color_secondary: str,
         color_tertiary: str,
         banner_symbol: str,
+        rank: FamilyRank = FamilyRank.RANK_1,
     ) -> None:
         super().__init__()
         self.name = name
         self.founder = None
-        self.parent_family = None
-        self.branch_families = OrderedSet([])
         self.head = None
+        self.rank = rank
         self.alliance = None
         self.home_base = None
-        self.territories_present_in = OrderedSet([])
         self.controlled_territories = OrderedSet([])
         self.active_members = OrderedSet([])
         self.former_members = OrderedSet([])
@@ -559,56 +491,36 @@ class Dynasty(Component):
     __slots__ = (
         "founder",
         "family",
-        "_founding_date",
+        "founding_year",
         "current_ruler",
         "previous_rulers",
-        "_ending_date",
+        "ending_year",
         "previous_dynasty",
     )
 
     founder: Entity
     family: Entity
-    _founding_date: SimDate
+    founding_year: int
     current_ruler: Optional[Entity]
     previous_rulers: OrderedSet[Entity]
-    _ending_date: Optional[SimDate]
+    ending_year: Optional[int]
     previous_dynasty: Optional[Entity]
 
     def __init__(
         self,
         founder: Entity,
         family: Entity,
-        founding_date: SimDate,
+        founding_year: int,
         previous_dynasty: Optional[Entity] = None,
     ) -> None:
         super().__init__()
         self.founder = founder
         self.family = family
-        self._founding_date = founding_date.copy()
+        self.founding_year = founding_year
         self.current_ruler = None
         self.previous_rulers = OrderedSet([])
-        self._ending_date = None
+        self.ending_year = None
         self.previous_dynasty = previous_dynasty
-
-    @property
-    def founding_date(self) -> SimDate:
-        """The date the dynasty was founded."""
-        return self._founding_date
-
-    @founding_date.setter
-    def founding_date(self, value: SimDate) -> None:
-        """Set the founding date."""
-        self._founding_date = value.copy()
-
-    @property
-    def ending_date(self) -> Optional[SimDate]:
-        """The date the dynasty ended."""
-        return self._ending_date
-
-    @ending_date.setter
-    def ending_date(self, value: SimDate) -> None:
-        """Set the ending date."""
-        self._ending_date = value.copy()
 
     @property
     def last_ruler(self) -> Optional[Entity]:
@@ -649,233 +561,53 @@ class DynastyTracker:
         return None
 
 
-class Lifespan(StatComponent):
+class CharacterStat(enum.IntEnum):
+    """Enums for each stat associated with characters."""
+
+    LIFESPAN = enum.auto()
+    FERTILITY = enum.auto()
+    STEWARDSHIP = enum.auto()
+    MARTIAL = enum.auto()
+    INTRIGUE = enum.auto()
+    PROWESS = enum.auto()
+    DIPLOMACY = enum.auto()
+    LUCK = enum.auto()
+
+
+class Lifespan(Stat):
     """Tracks an entity's lifespan."""
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, 999_999), True)
 
-
-class Fertility(StatComponent):
+class Fertility(Stat):
     """Tracks an entity's fertility."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Stewardship(StatComponent):
+class Stewardship(Stat):
     """Tracks an entity's stewardship."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Martial(StatComponent):
+class Martial(Stat):
     """Tracks an entity's martial."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Intrigue(StatComponent):
+class Intrigue(Stat):
     """Tracks an entity's intrigue."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
+class Prowess(Stat):
+    """Tracks an entity's prowess."""
 
 
-class Intelligence(StatComponent):
-    """Tracks a character's intelligence stat."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
+class Diplomacy(Stat):
+    """Tracks an entity's diplomacy stat."""
 
 
-class Prowess(StatComponent):
-    """Tracks an entityprowess."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Sociability(StatComponent):
-    """Tracks an entity's sociability."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Honor(StatComponent):
-    """Tracks an entityhonor."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Boldness(StatComponent):
-    """Tracks an entity's boldness."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Compassion(StatComponent):
-    """Tracks an entity's compassion."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Diplomacy(StatComponent):
-    """Tracks an entitydiplomacy."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Greed(StatComponent):
-    """Tracks an entity's greed."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Rationality(StatComponent):
-    """Tracks an entity's rationality."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Vengefulness(StatComponent):
-    """Tracks an entity's vengefulness."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class RomancePropensity(StatComponent):
-    """Tracks an entity's propensity for romantic actions."""
-
-    MAX_VALUE: int = 100
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class Luck(StatComponent):
+class Luck(Stat):
     """Tracks an entity's propensity to be successful."""
 
-    MAX_VALUE: int = 100
 
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
-
-
-class FamilyPrestige(StatComponent):
+class Prestige(Stat):
     """Tracks the prestige level of a family."""
 
-    MAX_VALUE = 999_999
-
-    def __init__(
-        self,
-        calculation_strategy: IStatCalculationStrategy,
-        base_value: float = 0,
-    ) -> None:
-        super().__init__(calculation_strategy, base_value, (0, self.MAX_VALUE), True)
+    def __init__(self, base_value: int = 0) -> None:
+        super().__init__(base_value, 0, 100)

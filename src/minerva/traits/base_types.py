@@ -7,7 +7,7 @@ This module contains class definitions for implementing the trait system.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Iterable, Optional
 
 from minerva.ecs import Component, Entity
 from minerva.pcg.content_selection import get_with_tags
@@ -27,10 +27,11 @@ class TraitEffect(ABC):
         raise NotImplementedError()
 
 
-class Trait:
+class CharacterTrait:
     """Additional state associated with characters and other entities."""
 
     __slots__ = (
+        "uid",
         "trait_id",
         "name",
         "description",
@@ -43,6 +44,8 @@ class Trait:
         "tags",
     )
 
+    uid: int
+    """A numerical ID assigned to this trait."""
     trait_id: str
     """The ID of this tag definition."""
     name: str
@@ -54,13 +57,13 @@ class Trait:
     conflicting_traits: set[str]
     """traits that this trait conflicts with."""
     spawn_frequency: int
-    """(Agents only) The relative frequency of an agent spawning with this trait."""
+    """The relative frequency of an agent spawning with this trait."""
     is_inheritable: bool
-    """(Agents only) Is the trait inheritable."""
+    """Is the trait inheritable."""
     inheritance_chance_single: float
-    """(Agents only) The probability of inheriting this trait if one parent has it."""
+    """The probability of inheriting this trait if one parent has it."""
     inheritance_chance_both: float
-    """(Agents only) The probability of inheriting this trait if both parents have it."""
+    """The probability of inheriting this trait if both parents have it."""
     tags: set[str]
     """Tags describing this definition."""
 
@@ -91,55 +94,176 @@ class Trait:
         self.tags = set(tags) if tags else set()
 
     def __hash__(self) -> int:
-        return hash(self.trait_id)
+        return self.uid
 
     def __str__(self) -> str:
         return self.name
 
 
-class TraitManager(Component):
-    """Tracks the traits attached to an entity."""
+class RelationshipTrait:
+    """A permanent tag associated with a relationship that affects behavior."""
+
+    __slots__ = (
+        "uid",
+        "trait_id",
+        "name",
+        "description",
+        "effects",
+        "conflicting_traits",
+        "tags",
+    )
+
+    uid: int
+    """A numerical ID assigned to this trait."""
+    trait_id: str
+    """The ID of this tag definition."""
+    name: str
+    """The name of this tag printed."""
+    description: str
+    """A short description of the tag."""
+    effects: list[TraitEffect]
+    """Effects to apply when the tag is added."""
+    conflicting_traits: set[str]
+    """traits that this trait conflicts with."""
+    tags: set[str]
+    """Tags associated with this trait."""
+
+    def __init__(
+        self,
+        trait_id: str,
+        name: str,
+        description: str = "",
+        effects: Optional[list[TraitEffect]] = None,
+        tags: Optional[Iterable[str]] = None,
+    ) -> None:
+        self.trait_id = trait_id
+        self.name = name
+        self.description = description
+        self.effects = list(effects) if effects else []
+        self.conflicting_traits = set()
+        self.tags = set(tags if tags else [])
+
+    def __hash__(self) -> int:
+        return self.uid
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Traits(Component):
+    """Tracks traits attached to an entity."""
 
     __slots__ = ("traits",)
 
-    traits: dict[str, Trait]
-    """References to traits attached to the entity."""
+    traits: set[int]
+    """UIDs of attached traits.."""
 
     def __init__(
         self,
     ) -> None:
         super().__init__()
-        self.traits = {}
+        self.traits = set()
 
     def __str__(self) -> str:
-        return f"Traits(traits={list(self.traits.keys())!r})"
+        return f"Traits(traits={self.traits})"
 
     def __repr__(self) -> str:
-        return f"Traits(traits={list(self.traits.keys())!r})"
+        return f"Traits(traits={self.traits})"
 
 
-class TraitLibrary:
-    """Manages trait instances."""
+class CharacterTraitDatabase:
+    """A database of static character trait data."""
 
-    _slots__ = ("traits",)
+    __slots__ = ("_uid_to_trait_map", "_name_to_uid_map", "_next_trait_uid")
 
-    traits: dict[str, Trait]
-    """Trait instances."""
+    _next_trait_uid: int
+    """The UID assigned to the next trait in the database."""
+    _uid_to_trait_map: dict[int, CharacterTrait]
+    """Trait UIDs mapped to trait instances."""
+    _name_to_uid_map: dict[str, int]
+    """Trait names mapped to UIDs."""
 
     def __init__(self) -> None:
-        self.traits = {}
+        self._next_trait_uid = 1
+        self._uid_to_trait_map = {}
+        self._name_to_uid_map = {}
 
-    def add_trait(self, trait: Trait) -> None:
-        """Add trait to the library."""
-        self.traits[trait.trait_id] = trait
+    def get_traits(self) -> list[CharacterTrait]:
+        """Get all traits in the database."""
+        return list(self._uid_to_trait_map.values())
 
-    def get_trait(self, trait_id: str) -> Trait:
+    def get_trait_by_name(self, name: str) -> CharacterTrait:
+        """Get a trait using it's name."""
+        uid = self._name_to_uid_map[name]
+        return self._uid_to_trait_map[uid]
+
+    def get_trait_by_uid(self, uid: int) -> CharacterTrait:
+        """Get a trait using its UID."""
+        return self._uid_to_trait_map[uid]
+
+    def add_trait(self, trait: CharacterTrait) -> None:
+        """Add a trait to the database."""
+        trait.uid = self._next_trait_uid
+        self._next_trait_uid += 1
+        self._uid_to_trait_map[trait.uid] = trait
+        self._name_to_uid_map[trait.trait_id] = trait.uid
+
+    def get_trait(self, trait_id: str) -> CharacterTrait:
         """Get a trait instance."""
-        return self.traits[trait_id]
+        return self.get_trait_by_name(trait_id)
 
-    def get_traits_with_tags(self, tags: list[str]) -> list[Trait]:
+    def get_traits_with_tags(self, tags: list[str]) -> list[CharacterTrait]:
         """Get a trait instance from the library with the given tags."""
 
         return get_with_tags(
-            options=[(d, d.tags) for d in self.traits.values()], tags=tags
+            options=[(d, d.tags) for d in self._uid_to_trait_map.values()], tags=tags
+        )
+
+
+class RelationshipTraitDatabase:
+    """A database of static relationship trait data."""
+
+    __slots__ = ("_uid_to_trait_map", "_name_to_uid_map", "_next_trait_uid")
+
+    _next_trait_uid: int
+    """The UID assigned to the next trait in the database."""
+    _uid_to_trait_map: dict[int, RelationshipTrait]
+    """Trait UIDs mapped to trait instances."""
+    _name_to_uid_map: dict[str, int]
+    """Trait names mapped to UIDs."""
+
+    def __init__(self) -> None:
+        self._next_trait_uid = 1
+        self._uid_to_trait_map = {}
+        self._name_to_uid_map = {}
+
+    def get_traits(self) -> list[RelationshipTrait]:
+        """Get all traits in the database."""
+        return list(self._uid_to_trait_map.values())
+
+    def get_trait_by_name(self, name: str) -> RelationshipTrait:
+        """Get a trait using it's name."""
+        uid = self._name_to_uid_map[name]
+        return self._uid_to_trait_map[uid]
+
+    def get_trait_by_uid(self, uid: int) -> RelationshipTrait:
+        """Get a trait using its UID."""
+        return self._uid_to_trait_map[uid]
+
+    def add_trait(self, trait: RelationshipTrait) -> None:
+        """Add a trait to the database."""
+        trait.uid = self._next_trait_uid
+        self._next_trait_uid += 1
+        self._uid_to_trait_map[trait.uid] = trait
+        self._name_to_uid_map[trait.trait_id] = trait.uid
+
+    def get_trait(self, trait_id: str) -> RelationshipTrait:
+        """Get a trait instance."""
+        return self.get_trait_by_name(trait_id)
+
+    def get_traits_with_tags(self, tags: list[str]) -> list[RelationshipTrait]:
+        """Get a trait instance from the library with the given tags."""
+
+        return get_with_tags(
+            options=[(d, d.tags) for d in self._uid_to_trait_map.values()], tags=tags
         )

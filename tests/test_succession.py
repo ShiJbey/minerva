@@ -13,8 +13,8 @@ from minerva.characters.helpers import (
     start_marriage,
 )
 from minerva.characters.succession_helpers import get_succession_depth_chart
-from minerva.pcg.base_types import CharacterGenOptions
-from minerva.pcg.character import spawn_character
+from minerva.content import default_relationship_traits
+from minerva.pcg.character import CharacterGenOptions, spawn_character
 from minerva.simulation import Simulation
 
 
@@ -22,6 +22,8 @@ from minerva.simulation import Simulation
 def sim() -> Simulation:
     """Create a test simulation."""
     test_sim = Simulation()
+
+    default_relationship_traits.load_traits(test_sim.world)
 
     return test_sim
 

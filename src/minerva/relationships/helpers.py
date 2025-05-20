@@ -2,20 +2,31 @@
 
 from __future__ import annotations
 
-from minerva.ecs import Entity
+from minerva.actions.base_types import ProclivityTracker
+from minerva.ecs import Entity, System, World
+from minerva.game_action import ActionSystem, GameAction
 from minerva.relationships.base_types import (
     Attraction,
     Opinion,
     Relationship,
     RelationshipManager,
-    SocialRuleLibrary,
+    RelationshipModifierDatabase,
 )
-from minerva.simulation_events import SimulationEvents
+from minerva.sim_db import SimDB
 from minerva.stats.base_types import (
-    StatComponent,
-    StatModifierType,
+    StatModifier,
+    add_stat_modifier,
+    get_stat_value,
+    increment_stat_base,
+    remove_stat_modifier,
+    set_stat_base,
 )
-from minerva.traits.base_types import TraitManager
+from minerva.status.data import StatusManager
+from minerva.traits.base_types import (
+    RelationshipTrait,
+    RelationshipTraitDatabase,
+    Traits,
+)
 
 
 def get_relationship(
@@ -87,16 +98,16 @@ def add_relationship(owner: Entity, target: Entity) -> Entity:
     relationship = owner.world.entity()
 
     relationship.add_component(Relationship(owner=owner, target=target))
-    relationship.add_component(TraitManager())
-    relationship.add_component(Opinion(opinion_calc_strategy))
-    relationship.add_component(Attraction(attraction_calc_strategy))
+    relationship.add_component(Traits())
+    relationship.add_component(StatusManager())
+    relationship.add_component(Opinion())
+    relationship.add_component(Attraction())
+    relationship.add_component(ProclivityTracker())
 
     relationship.name = f"[{owner.name} -> {target.name}]"
 
     _add_outgoing_relationship(owner, relationship)
     _add_incoming_relationship(target, relationship)
-
-    owner.world.get_resource(SimulationEvents).relationship_created.emit(relationship)
 
     return relationship
 
@@ -197,144 +208,412 @@ def _remove_incoming_relationship(character: Entity, relationship: Entity) -> bo
     return False
 
 
-def opinion_calc_strategy(stat_component: StatComponent) -> float:
-    """Calculation strategy for opinion stats."""
-
-    relationship = stat_component.entity
-    relationship_component = relationship.get_component(Relationship)
-    owner = relationship_component.owner
-    target = relationship_component.target
-
-    final_value: float = stat_component.base_value
-    sum_percent_add: float = 0.0
-
-    stat_component.active_modifiers.clear()
-
-    # Get all the stat modifiers
-    for modifier in stat_component.modifiers:
-        if modifier.modifier_type == StatModifierType.FLAT:
-            final_value += modifier.value
-
-        elif modifier.modifier_type == StatModifierType.PERCENT:
-            sum_percent_add += modifier.value
-
-    # Get modifiers from owners outgoing modifiers
-    owner_relationship_modifiers = owner.get_component(
-        RelationshipManager
-    ).outgoing_modifiers
-    for relationship_modifier in owner_relationship_modifiers:
-        if relationship_modifier.opinion_modifier is None:
-            continue
-
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.opinion_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
-
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
-
-    # Get modifiers from targets incoming relationship modifiers
-    target_relationship_modifiers = target.get_component(
-        RelationshipManager
-    ).incoming_modifiers
-    for relationship_modifier in target_relationship_modifiers:
-        if relationship_modifier.opinion_modifier is None:
-            continue
-
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.opinion_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
-
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
-
-    # Get modifiers from social rules
-    social_rule_library = relationship.world.get_resource(SocialRuleLibrary)
-    for rule in social_rule_library.iter_rules():
-        if rule.opinion_modifier is None:
-            continue
-
-        if rule.evaluate_precondition(relationship):
-            modifier = rule.opinion_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
-
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
-
-    final_value = final_value + (final_value * sum_percent_add)
-
-    return final_value
+def get_attraction(owner: Entity, target: Entity) -> int:
+    """Get the attraction stat for the relationship."""
+    action = RecalculateAttraction(owner, target)
+    action.execute()
+    return get_stat_value(get_relationship(owner, target).get_component(Attraction))
 
 
-def attraction_calc_strategy(stat_component: StatComponent) -> float:
-    """Calculation strategy for attraction stats."""
-    relationship = stat_component.entity
-    relationship_component = relationship.get_component(Relationship)
-    owner = relationship_component.owner
-    target = relationship_component.target
+def increment_attraction_base(entity: Entity, value: int) -> None:
+    """Increment the attraction base value by the given amount."""
+    increment_stat_base(entity.get_component(Attraction), value)
 
-    final_value: float = stat_component.base_value
-    sum_percent_add: float = 0.0
 
-    stat_component.active_modifiers.clear()
+def set_attraction_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's attraction."""
+    set_stat_base(entity.get_component(Attraction), value)
 
-    # Get all the stat modifiers
-    for modifier in stat_component.modifiers:
-        if modifier.modifier_type == StatModifierType.FLAT:
-            final_value += modifier.value
 
-        elif modifier.modifier_type == StatModifierType.PERCENT:
-            sum_percent_add += modifier.value
+def add_attraction_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to the attraction stat."""
+    add_stat_modifier(entity, entity.get_component(Attraction), modifier)
 
-    # Get modifiers from owners outgoing modifiers
-    owner_relationship_modifiers = owner.get_component(
-        RelationshipManager
-    ).outgoing_modifiers
-    for relationship_modifier in owner_relationship_modifiers:
-        if relationship_modifier.attraction_modifier is None:
-            continue
 
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.attraction_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
+def remove_attraction_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from the attraction stat."""
+    remove_stat_modifier(entity, entity.get_component(Attraction), modifier)
 
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
 
-    # Get modifiers from targets incoming relationship modifiers
-    target_relationship_modifiers = target.get_component(
-        RelationshipManager
-    ).incoming_modifiers
-    for relationship_modifier in target_relationship_modifiers:
-        if relationship_modifier.attraction_modifier is None:
-            continue
+def get_opinion(owner: Entity, target: Entity) -> int:
+    """Get the lifespan for the entity."""
+    RecalculateOpinion(owner, target).execute()
+    return get_stat_value(get_relationship(owner, target).get_component(Opinion))
 
-        if relationship_modifier.evaluate_precondition(relationship):
-            modifier = relationship_modifier.attraction_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
 
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
+def increment_opinion_base(entity: Entity, value: int) -> None:
+    """Increment the opinion base value by the given amount."""
+    increment_stat_base(entity.get_component(Opinion), value)
 
-    # Get modifiers from social rules
-    social_rule_library = relationship.world.get_resource(SocialRuleLibrary)
-    for rule in social_rule_library.iter_rules():
-        if rule.attraction_modifier is None:
-            continue
 
-        if rule.evaluate_precondition(relationship):
-            modifier = rule.attraction_modifier
-            if modifier.modifier_type == StatModifierType.FLAT:
-                final_value += modifier.value
+def set_opinion_base(entity: Entity, value: int) -> None:
+    """Set the base value for an entity's opinion."""
+    set_stat_base(entity.get_component(Opinion), value)
 
-            elif modifier.modifier_type == StatModifierType.PERCENT:
-                sum_percent_add += modifier.value
 
-    final_value = final_value + (final_value * sum_percent_add)
+def add_opinion_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Add a modifier to the opinion stat."""
+    add_stat_modifier(entity, entity.get_component(Opinion), modifier)
 
-    return final_value
+
+def remove_opinion_modifier(entity: Entity, modifier: StatModifier) -> None:
+    """Remove a modifier from the opinion stat."""
+    remove_stat_modifier(entity, entity.get_component(Opinion), modifier)
+
+
+class IncrementOpinion(GameAction):
+    """Increment the base opinion score from one character to another."""
+
+    __slots__ = ("owner", "target", "amount")
+
+    owner: Entity
+    target: Entity
+    amount: int
+
+    def __init__(self, owner: Entity, target: Entity, amount: int) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.amount = amount
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        increment_opinion_base(relationship, self.amount)
+
+
+class IncrementAttraction(GameAction):
+    """Increment the base attraction score from one character to another."""
+
+    __slots__ = ("owner", "target", "amount")
+
+    owner: Entity
+    target: Entity
+    amount: int
+
+    def __init__(self, owner: Entity, target: Entity, amount: int) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.amount = amount
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        increment_attraction_base(relationship, self.amount)
+
+
+class RecalculateOpinion(GameAction):
+    """Recalculate the opinion from one character to another."""
+
+    __slots__ = ("owner", "target", "value")
+
+    owner: Entity
+    target: Entity
+    value: int
+
+    def __init__(self, owner: Entity, target: Entity) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.value = 0
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        relationship_component = relationship.get_component(Relationship)
+        owner = relationship_component.owner
+        target = relationship_component.target
+        stat_component = relationship.get_component(Opinion)
+
+        final_value: float = stat_component.base_value
+        sum_percent_add: float = 0.0
+
+        # Get modifiers from owners outgoing modifiers
+        target_relationship_mod_iter = owner.get_component(
+            RelationshipManager
+        ).iter_opinion_modifiers("outgoing")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from targets incoming relationship modifiers
+        target_relationship_mod_iter = target.get_component(
+            RelationshipManager
+        ).iter_opinion_modifiers("incoming")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from global modifier database.
+        social_rule_library = relationship.world.get_resource(
+            RelationshipModifierDatabase
+        )
+        for rule in social_rule_library.iter_opinion_modifiers("outgoing"):
+            score = rule(relationship)
+            final_value += score
+
+        final_value = final_value + (final_value * sum_percent_add)
+
+        self.value = int(final_value)
+        stat_component.value = int(final_value)
+
+
+class RecalculateAttraction(GameAction):
+    """Recalculate the attraction from one character to another."""
+
+    __slots__ = ("owner", "target", "value")
+
+    owner: Entity
+    target: Entity
+    value: int
+
+    def __init__(self, owner: Entity, target: Entity) -> None:
+        super().__init__(owner.world)
+        self.owner = owner
+        self.target = target
+        self.value = 0
+
+    def on_execute(self) -> None:
+        relationship = get_relationship(self.owner, self.target)
+        relationship_component = relationship.get_component(Relationship)
+        owner = relationship_component.owner
+        target = relationship_component.target
+        stat_component = relationship.get_component(Attraction)
+
+        final_value: float = stat_component.base_value
+        sum_percent_add: float = 0.0
+
+        # Get modifiers from owners outgoing modifiers
+        target_relationship_mod_iter = owner.get_component(
+            RelationshipManager
+        ).iter_attraction_modifiers("outgoing")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from targets incoming relationship modifiers
+        target_relationship_mod_iter = target.get_component(
+            RelationshipManager
+        ).iter_attraction_modifiers("incoming")
+        for modifier in target_relationship_mod_iter:
+            score = modifier(relationship)
+            final_value += score
+
+        # Get modifiers from global modifier database
+        social_rule_library = relationship.world.get_resource(
+            RelationshipModifierDatabase
+        )
+        for rule in social_rule_library.iter_opinion_modifiers("outgoing"):
+            score = rule(relationship)
+            final_value += score
+
+        # Get modifiers from social rules
+        social_rule_library = relationship.world.get_resource(
+            RelationshipModifierDatabase
+        )
+        for rule in social_rule_library.iter_attraction_modifiers("outgoing"):
+            score = rule(relationship)
+            final_value += score
+
+        final_value = final_value + (final_value * sum_percent_add)
+
+        self.value = int(final_value)
+        stat_component.value = int(final_value)
+
+
+class RelationshipSystem(System):
+    """Registers callbacks and action performers for manipulating relationships."""
+
+    def on_start(self, world: World) -> None:
+        action_system = world.get_resource(ActionSystem)
+        action_system.add_listener(
+            RecalculateOpinion, RelationshipSystem.sync_opinion_with_db, "post"
+        )
+        action_system.add_listener(
+            RecalculateAttraction, RelationshipSystem.sync_attraction_with_db, "post"
+        )
+
+    @staticmethod
+    def sync_opinion_with_db(action: RecalculateOpinion) -> None:
+        """Update the opinion score in the database."""
+        relationship = get_relationship(action.owner, action.target)
+
+        db = action.world.get_resource(SimDB).conn
+        cursor = db.cursor()
+
+        cursor.execute(
+            """UPDATE Relationship SET opinion=? WHERE uid=?""",
+            (action.value, relationship.uid),
+        )
+
+        db.commit()
+        cursor.close()
+
+    @staticmethod
+    def sync_attraction_with_db(action: RecalculateAttraction) -> None:
+        """Update the attraction score in the database."""
+        relationship = get_relationship(action.owner, action.target)
+
+        db = action.world.get_resource(SimDB).conn
+        cursor = db.cursor()
+
+        cursor.execute(
+            """UPDATE Relationship SET attraction=? WHERE uid=?""",
+            (action.value, relationship.uid),
+        )
+
+        db.commit()
+        cursor.close()
+
+    def on_update(self, world: World) -> None:
+        return
+
+
+def add_relationship_trait(owner: Entity, target: Entity, trait_id: str) -> bool:
+    """Add a trait to a relationship entity.
+
+    Parameters
+    ----------
+    owner
+        The character that owns the relationship.
+    target
+        The character the relationship is about/directed toward.
+    trait_id
+        The ID of the trait to add.
+
+    Returns
+    -------
+    bool
+        True if the trait was added successfully, False if already present or
+        if the trait conflict with existing traits.
+    """
+    relationship = get_relationship(owner, target)
+
+    library = owner.world.get_resource(RelationshipTraitDatabase)
+    trait = library.get_trait(trait_id)
+
+    traits = relationship.get_component(Traits)
+
+    if trait.uid in traits.traits:
+        return False
+
+    if _has_conflicting_trait(relationship, trait):
+        return False
+
+    traits.traits.add(trait.uid)
+
+    for effect in trait.effects:
+        effect.apply(relationship)
+
+    with relationship.world.get_resource(SimDB) as db:
+        db.execute(
+            """
+            INSERT INTO
+                RelationshipTrait (uid, owner_uid, target_uid, trait_id)
+            VALUES
+                (?, ?, ?, ?);
+            """,
+            (relationship.uid, owner.uid, target.uid, trait_id),
+        )
+
+    return True
+
+
+def remove_relationship_trait(owner: Entity, target: Entity, trait_id: str) -> bool:
+    """Remove a trait from a relationship entity.
+
+    Parameters
+    ----------
+    owner
+        The character that owns the relationship.
+    target
+        The character the relationship is about/directed toward.
+    trait_id
+        The ID of the trait to remove.
+
+    Returns
+    -------
+    bool
+        True if the trait was removed successfully, False otherwise.
+    """
+    relationship = get_relationship(owner, target)
+    trait_db = relationship.world.get_resource(RelationshipTraitDatabase)
+    trait = trait_db.get_trait(trait_id)
+
+    traits = relationship.get_component(Traits)
+
+    if trait.uid in traits.traits:
+        traits.traits.remove(trait.uid)
+
+        for effect in trait.effects:
+            effect.remove(relationship)
+
+        with relationship.world.get_resource(SimDB) as db:
+            db.execute(
+                """
+                DELETE FROM
+                    RelationshipTrait
+                WHERE
+                    uid=? AND trait_id=?;
+                """,
+                (relationship.uid, trait_id),
+            )
+
+        return True
+
+    return False
+
+
+def _has_conflicting_trait(relationship: Entity, trait: RelationshipTrait) -> bool:
+    """Check if a trait conflicts with current traits.
+
+    Parameters
+    ----------
+    entity
+        The object to check.
+    trait
+        The trait to check.
+
+    Returns
+    -------
+    bool
+        True if the trait conflicts with any of the current traits or if any current
+        traits conflict with the given trait. False otherwise.
+    """
+    trait_db = relationship.world.get_resource(RelationshipTraitDatabase)
+    traits = relationship.get_component(Traits)
+
+    for existing_trait_uid in traits.traits:
+        existing_trait = trait_db.get_trait_by_uid(existing_trait_uid)
+
+        if existing_trait.trait_id in trait.conflicting_traits:
+            return True
+
+        if trait.trait_id in existing_trait.conflicting_traits:
+            return True
+
+    return False
+
+
+def has_relationship_trait(owner: Entity, target: Entity, trait_id: str) -> bool:
+    """Check if an entity has a given trait.
+
+    Parameters
+    ----------
+    owner
+        The character that owns the relationship.
+    target
+        The character the relationship is about/directed toward.
+    trait_id
+        The ID of the trait to check for.
+
+    trait_id
+        The trait.
+
+    Returns
+    -------
+    bool
+        True if the trait was removed successfully, False otherwise.
+    """
+    relationship = get_relationship(owner, target)
+    trait_db = relationship.world.get_resource(RelationshipTraitDatabase)
+    trait = trait_db.get_trait_by_name(trait_id)
+    return trait.uid in relationship.get_component(Traits).traits

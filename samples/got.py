@@ -19,15 +19,15 @@ from datetime import datetime
 
 import tqdm
 
-import ck3_traits
 import minerva
 from minerva.config import Config
-from minerva.datetime import MONTHS_PER_YEAR
+from minerva.content import (
+    default_character_traits,
+    default_relationship_traits,
+    got_name_pack,
+)
 from minerva.inspection import SimulationInspector
-from minerva.pcg.text_gen import load_tracery_file
 from minerva.simulation import Simulation
-
-DATA_DIR = pathlib.Path(__file__).parent / "data"
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,7 +77,7 @@ def parse_args() -> argparse.Namespace:
 def run_simulation_with_profiling(simulation: Simulation, years: int) -> None:
     """Run the simulation with profiling enabled."""
 
-    total_time_steps: int = years * MONTHS_PER_YEAR
+    total_time_steps: int = years
 
     print(f"Simulating {years} years ({total_time_steps} timesteps) ...")
 
@@ -99,7 +99,7 @@ def run_simulation_with_profiling(simulation: Simulation, years: int) -> None:
 
 def run_simulation(simulation: Simulation, years: int) -> None:
     """Runs the simulation."""
-    total_time_steps: int = years * MONTHS_PER_YEAR
+    total_time_steps: int = years
 
     print(f"Simulating {years} years ({total_time_steps} timesteps) ...")
 
@@ -123,31 +123,15 @@ if __name__ == "__main__":
         Config(
             seed=args.seed,
             world_size=(25, 15),
-            logging_enabled=bool(args.enable_logging),
-            log_to_terminal=False,
-            log_level="DEBUG" if args.debug else "INFO",
-            show_debug=args.debug if args.debug else False,
         )
     )
 
     # Load name custom data
-    load_tracery_file(
-        sim.world,
-        DATA_DIR / "english_first_names.tracery.json",
-    )
-
-    load_tracery_file(
-        sim.world,
-        DATA_DIR / "got_house_names.tracery.json",
-    )
-
-    load_tracery_file(
-        sim.world,
-        DATA_DIR / "got_seat_names.tracery.json",
-    )
+    got_name_pack.load_names(sim.world)
 
     # Load custom trait definitions
-    ck3_traits.load_traits(sim.world)
+    default_character_traits.load_traits(sim.world)
+    default_relationship_traits.load_traits(sim.world)
 
     print(f"Minerva version: {minerva.__version__}")
     print(f"World Seed: {sim.config.seed}")
