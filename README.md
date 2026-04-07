@@ -1,5 +1,8 @@
 # Minerva Dynasty Simulator
 
+> [!WARNING]
+> This project is no longer maintained or supported. It serves as an archive of my PhD research. (April 7, 2026)
+
 ![Supported Python Versions badge](https://img.shields.io/badge/python-3.12-blue)
 ![3-Clause BSD License badge](https://img.shields.io/badge/License-BSD%203--Clause-green)
 ![Black formatter badge](https://img.shields.io/badge/code%20style-black-black)
